@@ -26,15 +26,24 @@
     <div id="impress">
     <div class='step' >
     
-<h1>&#39;Allo, &#39;Allo!</h1>
+<h1>Python + OpenCVで</h1>
 
-<h2>You now have:</h2>
+<h1>画像処理</h1>
+</div>
+      <div class='step' >
+    
+<h2>いちばん簡単なOpenCVを使ったプログラム</h2>
+<pre><code class='prettyprint '>import cv2
 
-<ul>
-<li>An mdpress presentation</li>
-<li>A custom stylesheet</li>
-</ul>
-
+image = cv2.imread('hoge.png')
+cv2.imwrite('hoge.jpg', image)
+</code></pre></div>
+      <div class='step' >
+    <pre><code class='prettyprint '>success, frame = videoCapture.read()
+while success: # フレームがなくなるまで繰り返す
+    videoWriter.write(frame)
+    success, frame = videoCapture.read()
+</code></pre>
       </div>
     <script src="js/impress.js"></script>
     <script>impress().init();</script>

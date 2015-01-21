@@ -6,10 +6,12 @@ import cv2
 cameraCapture = cv2.VideoCapture(0)
 fps = 30
 size = (
-    int(cameraCapture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)),
+    int(cameraCapture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH )),
     int(cameraCapture.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
 )
-videoWriter = cv2.VideoWriter('MyOutputVid.avi', cv2.cv.CV_FOURCC('I', '4', '2', '0'), fps, size)
+videoWriter = cv2.VideoWriter(
+    'MyOutputVid.avi', cv2.cv.CV_FOURCC('I', '4', '2', '0'), # ('I', '4', '2', '0')はaviファイル形式
+    fps, size)
 
 success, frame = cameraCapture.read()
 numFramesRemaining = 10 * fps - 1
