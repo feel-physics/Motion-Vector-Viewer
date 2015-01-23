@@ -46,11 +46,18 @@ class CaptureManager(object):
 
     @property
     def isWritingImage(self):
-
+        """
+        画像を描画中であるか
+        :return: boolean
+        """
         return self._imageFilename is not None
 
     @property
     def isWritingVideo(self):
+        """
+        動画を記録中であるか
+        :return: boolean
+        """
         return self._videoFilename is not None
 
     def enterFrame(self):
