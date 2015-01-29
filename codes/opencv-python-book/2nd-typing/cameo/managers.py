@@ -198,7 +198,7 @@ class CaptureManager(object):
             return
 
         # _videoWriterが初期化されていなければ、初期化する
-        if not self._videoWriter is None
+        if self._videoWriter is None:
             fps = self._capture.get(cv2.cv.CV_CAP_PROP_FPS)
             """:type : float"""
             if fps == 0.0:
@@ -224,6 +224,7 @@ class WindowManager(object):
 
     def __init__(self, windowName, keypressCallback = None):
         self.keypressCallback = keypressCallback
+        """:type : function"""
 
         self._windowName      = windowName
         """:type : str"""
