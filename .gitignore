@@ -1,3 +1,5 @@
 .idea
 node_modules
 *.avi
+screen-shot.png
+*.pyc
