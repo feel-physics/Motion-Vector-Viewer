@@ -2,6 +2,7 @@
 __author__ = 'weed'
 
 import cv2
+import filters
 from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
 
@@ -18,11 +19,14 @@ class Cameo(object):
             cv2.VideoCapture(0), self._windowManager, True
         )
         """:type : managers.CaptureManager"""
-        # def __init__(self, capture, previewWindowManager = None,
+        # def __init__(self, capture, previewWindowManager = None,d
         #     shouldMirrorPreview = False):
 
+        self._curveFilter = filters.BGRPortraCurveFilter()
+
         self._faceTracker = FaceTracker()
-        self._shouldDrawDebugRects = True
+        self._shouldDrawDebugRects = False
+        self._shouldApplyCurveFilter = False
 
     def run(self):
         """
@@ -48,6 +52,9 @@ class Cameo(object):
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
                 self._faceTracker.drawDebugRects(frame)
+
+            if self._shouldApplyCurveFilter:
+                self._curveFilter.apply(frame, frame)
 
             # TODO: フレームをフィルタ処理する（第3章）
 
@@ -78,6 +85,12 @@ class Cameo(object):
                 self._captureManager.stopWritingVideo()
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
+        elif keycode == ord('c'):
+            self._shouldApplyCurveFilter = \
+                not self._shouldApplyCurveFilter
+        elif keycode == ord('d'):
+            self._shouldDrawDebugRects = \
+                not self._shouldDrawDebugRects
 
 if __name__=="__main__":
     Cameo().run()

@@ -59,3 +59,76 @@ def widthHeightDividedBy(image, divisor):
     # ValueError: total size of new array must be unchanged
 
     return (w/divisor, h/divisor)
+
+def createLookupArray(func, length = 256):
+    """
+
+    :param func:
+    :param length:
+    :return:
+    """
+    if func is None:
+        return None
+    lookupArray = numpy.empty(length)
+    i = 0
+    while i < length:
+        func_i = func(i)
+        lookupArray[i] = min(max(0, func_i), length - 1)
+        i += 1
+    return lookupArray
+
+def createFlatView(array):
+    """
+
+    :param array:
+    :type  array: numpy.array
+    :return:
+    """
+    flatView = array.view()
+    flatView.shape = array.size
+    return flatView
+
+def createCompositeFunc(func0, func1):
+    """
+
+    :param func0:
+    :param func1:
+    :return:
+    """
+    if func0 is None:
+        return func1
+    if func1 is None:
+        return func0
+    return lambda x: func0(func1(x))
+
+def applyLookupArray(lookupArray, src, dst):
+    """
+
+    :param lookupArray:
+    :param src:
+    :param dst:
+    :return:
+    """
+    if lookupArray is None:
+        return
+    dst[:] = lookupArray[src]
+
+def createCurveFunc(points):
+    """
+
+    :param points:
+    :return:
+    """
+    if points is None:
+        return None
+    numPoints = len(points)
+    if numPoints < 2:
+        return None
+    xs, ys = zip(*points)
+    if numPoints < 4:
+        kind = 'linear'
+        # not implemented
+    else:
+        kind = 'cubic'
+    return scipy.interpolate.interp1d(xs, ys, kind,
+                                      bounds_error = False)
