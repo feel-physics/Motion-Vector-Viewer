@@ -23,10 +23,24 @@ class Cameo(object):
         #     shouldMirrorPreview = False):
 
         self._curveFilter = filters.BGRPortraCurveFilter()
+        self._sharpenFilter = filters.SharpenFilter()
+        self._findEdgesFilter = filters.FindEdgesFilter()
+        self._blurFilter = filters.BlurFilter()
+        self._embossFilter = filters.EmbossFilter()
 
         self._faceTracker = FaceTracker()
+
         self._shouldDrawDebugRects = False
         self._shouldApplyCurveFilter = False
+        self._shouldRecolorRC = False
+        self._shouldRecolorRGV = False
+        self._shouldRecolorCMV = False
+        self._shouldStrokeEdges = False
+        self._shouldApplySharpenFilter = False
+        self._shouldApplyFindEdgesFilter = False
+        self._shouldApplyBlurFilter = False
+        self._shouldApplyEmbossFilter = False
+        self._shouldConvertBgr2Hsv = False
 
     def run(self):
         """
@@ -52,11 +66,26 @@ class Cameo(object):
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
                 self._faceTracker.drawDebugRects(frame)
-
             if self._shouldApplyCurveFilter:
                 self._curveFilter.apply(frame, frame)
-
-            # TODO: フレームをフィルタ処理する（第3章）
+            if self._shouldRecolorRC:
+                filters.recolorRC(frame, frame)
+            if self._shouldRecolorRGV:
+                filters.recolorRGV(frame, frame)
+            if self._shouldRecolorCMV:
+                filters.recolorCMV(frame, frame)
+            if self._shouldStrokeEdges:
+                filters.strokeEdges(frame, frame)
+            if self._shouldApplySharpenFilter:
+                self._sharpenFilter.apply(frame, frame)
+            if self._shouldApplyFindEdgesFilter:
+                self._findEdgesFilter.apply(frame, frame)
+            if self._shouldApplyBlurFilter:
+                self._blurFilter.apply(frame, frame)
+            if self._shouldApplyEmbossFilter:
+                self._embossFilter.apply(frame, frame)
+            if self._shouldConvertBgr2Hsv:
+                filters.convertBgr2Hsv(frame, frame)
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -91,6 +120,33 @@ class Cameo(object):
         elif keycode == ord('d'):
             self._shouldDrawDebugRects = \
                 not self._shouldDrawDebugRects
+        elif keycode == ord('r'):
+            self._shouldRecolorRC = \
+                not self._shouldRecolorRC
+        elif keycode == ord('v'):
+            self._shouldRecolorRGV = \
+                not self._shouldRecolorRGV
+        elif keycode == ord('m'):
+            self._shouldRecolorCMV = \
+                not self._shouldRecolorCMV
+        elif keycode == ord('s'):
+            self._shouldStrokeEdges = \
+                not self._shouldStrokeEdges
+        elif keycode == ord('s'):
+            self._shouldApplySharpenFilter = \
+                not self._shouldApplySharpenFilter
+        elif keycode == ord('f'):
+            self._shouldApplyFindEdgesFilter = \
+                not self._shouldApplyFindEdgesFilter
+        elif keycode == ord('b'):
+            self._shouldApplyBlurFilter = \
+                not self._shouldApplyBlurFilter
+        elif keycode == ord('e'):
+            self._shouldApplyEmbossFilter = \
+                not self._shouldApplyEmbossFilter
+        elif keycode == ord('h'):
+            self._shouldConvertBgr2Hsv = \
+                not self._shouldConvertBgr2Hsv
 
 if __name__=="__main__":
     Cameo().run()
