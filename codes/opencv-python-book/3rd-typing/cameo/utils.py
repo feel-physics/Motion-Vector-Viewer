@@ -60,23 +60,6 @@ def widthHeightDividedBy(image, divisor):
 
     return (w/divisor, h/divisor)
 
-def createLookupArray(func, length = 256):
-    """
-
-    :param func:
-    :param length:
-    :return:
-    """
-    if func is None:
-        return None
-    lookupArray = numpy.empty(length)
-    i = 0
-    while i < length:
-        func_i = func(i)
-        lookupArray[i] = min(max(0, func_i), length - 1)
-        i += 1
-    return lookupArray
-
 def createCurveFunc(points):
     """
     制御点を元にした関数を返す
@@ -91,10 +74,7 @@ def createCurveFunc(points):
         return None
     xs, ys = zip(*points)
     # Works like itertools.izip().
-    #
-    ### TODO: これは何をやっているんだ？
-    ### TODO: 仮説(x1,y1),(x2,y2)->(x1,x2),(y1,y2)
-    #
+    # TODO: 仮説(x1,y1),(x2,y2),(x3,y3)->(x1,x2,x3),(y1,y2,y3)
     if numPoints < 4:
         kind = 'linear'
         # 'quadratic'（ベジェ曲線のようなもの） is not implemented
@@ -107,3 +87,78 @@ def createCurveFunc(points):
     #
     # x and y are arrays of values used to approximate some function f: y = f(x).
     # This class returns a function whose call method uses interpolation to find the value of new points.
+
+def createLookupArray(func, length = 256):
+    """
+    ピクセルごとにcreateCurveFuncしていたら大変なので
+    1から256の入力に対する出力をリストにしておく。
+    :param func:   カーブ関数
+    :param length: 入力の段階数
+    :return: LookupArray
+    """
+    if func is None:
+        return None
+    lookupArray = numpy.empty(length)
+    i = 0
+    while i < length:
+        func_i = func(i)
+        func_i = max(0, func_i) # 出力値は0以上
+        func_i = min(func_i, length - 1) # 出力値の最大はlength-1
+        lookupArray[i] = func_i
+        i += 1
+    return lookupArray
+
+def applyLookupArray(lookupArray, src, dst):
+    """
+    LookupArrayを使って入力画像から出力画像を求める
+    :param lookupArray: あらかじめカーブ関数をリスト化したもの
+    :param src: BGR形式の入力画像
+    :param dst: BGR形式の出力画像
+    :return: None
+    """
+    if lookupArray is None:
+        return
+    dst[:] = lookupArray[src]
+    # TODO: ？？？
+
+def createCompositeFunc(func0, func1):
+    """
+    カーブ関数をあらかじめ合成する
+    そうしておいてLookupArrayをつくる方が、
+    何回もLookupArrayを適用するよりも効率的かつ正確になる
+    :param func0: カーブ関数0
+    :param func1: カーブ関数1
+    :return: 合成されたカーブ関数
+    """
+    if func0 is None:
+        return func1
+    if func1 is None:
+        return func0
+    return lambda x: func0(func1(x))
+    # >>> def make_incrementor(n):
+    # ...     return lambda x: x + n
+    # ...
+    # >>> f = make_incrementor(42)
+    # >>> f(0)
+    # 42
+    # >>> f(1)
+    # 43
+    #
+    # >>> pairs = [(1, 'one'), (2, 'two'), (3, 'three'), (4, 'four')]
+    # >>> pairs.sort(key=lambda pair: pair[1])
+    # >>> pairs
+    # [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
+
+def createFlatView(array):
+    """
+    入力された配列（何次元でも良い）の、1次元のビューを返す
+    :param array: 配列
+    :return: 1次元のビュー
+    """
+    flatView = array.view()
+    # numpy.chararray.view
+    # New view of array with the same data.
+    # 同じデータの配列の新しいビュー
+    # TODO: わからん・・・
+    flatView.shape = array.size
+    return flatView
