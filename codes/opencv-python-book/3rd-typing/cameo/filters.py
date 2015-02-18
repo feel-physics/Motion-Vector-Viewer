@@ -74,3 +74,194 @@ def recolorCMV(src, dst):
     cv2.max(b, g, b)
     cv2.max(b, r, b)
     cv2.merge((b, g, r), dst)
+
+class VFuncFilter(object):
+    """
+    関数を引数にとってインスタンス化されるクラス。
+    あとでapply()メソッドを使って関数を画像に適用する。
+    関数は、グレースケール画像のV（値）チャンネルもしくは
+    カラー画像のすべてのチャンネルに、適用される。
+    """
+    def __init__(self, vFunc = None, dtype = numpy.uint8):
+
+        length = numpy.iinfo(dtype).max + 1
+        # class numpy.iinfo(type)
+        # 整数型の計算機の限界
+        #
+        # Parameters:
+        # type : integer type, dtype, or instance
+        # The kind of integer data type to get information about.
+        #
+        # >>> ii16 = np.iinfo(np.int16)
+        # >>> ii16.min
+        # -32768
+        # >>> ii16.max
+        # 32767
+        # >>> ii32 = np.iinfo(np.int32)
+        # >>> ii32.min
+        # -2147483648
+        # >>> ii32.max
+        # 2147483647
+        #
+        # 正の整数8ビットのmaxは255なので、lengthは256になる。
+        # lengthは入力データのビット数（8，16，32）によって変わる。
+
+        self._vLookupArray = utils.createLookupArray(vFunc, length)
+        # 変換用配列（256個の1次元配列）をつくる
+
+    def apply(self, src, dst):
+        # TODO: ここはわからない。後回し。
+        """
+        :param src: グレースケールもしくはBGR形式の入力画像
+        :param dst: グレースケールもしくはBGR形式の出力画像
+        :return: None
+        """
+        srcFlatView = utils.createFlatView(src)
+        dstFlatView = utils.createFlatView(dst)
+        utils.applyLookupArray(self._vLookupArray, srcFlatView, dstFlatView)
+
+class VCurveFilter(VFuncFilter):
+    """
+    複数の(x,y)を引数にとってインスタンス化されるクラス。
+    複数の(x,y)からベジエ曲線をつくり、y=f(x)の関数にする。
+    あとでapply()メソッドを使って関数を画像に適用する。
+    関数は、グレースケール画像のV（値）チャンネルもしくは
+    カラー画像のすべてのチャンネルに、適用される。
+    """
+    def __init__(self, vPoints, dtype = numpy.uint8):
+        VFuncFilter.__init__(self, utils.createCurveFunc(vPoints), dtype)
+
+class BGRFuncFilter(object):
+    """
+    BGRチャンネルそれぞれに異なった関数を適用するフィルタ
+    VFuncFilterは一つの関数しか適用できなかったが、
+    このフィルタでは全体に適用する関数の他に
+    BGRチャンネルそれぞれに適用する関数を使うことができる。
+    """
+    def __init__(self,
+                 vFunc = None,
+                 bFunc = None,
+                 gFunc = None,
+                 rFunc = None,
+                 dtype = numpy.uint8):
+        """
+        初期化する
+        :param vFunc: RGBすべてのチャンネルに適用する関数
+        :type  vFunc: function
+        :param bFunc: Bチャンネルに適用する関数
+        :type  bFunc: function
+        :param gFunc: Gチャンネルに適用する関数
+        :type  gFunc: function
+        :param rFunc: Rチャンネルに適用する関数
+        :type  rFunc: function
+        :param dtype: データタイプ。普通はunsigned int 8bit(0-255)
+        :return: BGRFuncFilter
+        """
+
+        length = numpy.iinfo(dtype).max + 1
+        # 正の整数8ビットのmaxは255なので、lengthは256になる。
+        # lengthは入力データのビット数（8，16，32）によって変わる。
+
+        bvFunc = utils.createCompositeFunc(bFunc, vFunc)
+        self._bLookupArray = utils.createLookupArray(bvFunc, length)
+        gvFunc = utils.createCompositeFunc(bFunc, vFunc)
+        self._gLookupArray = utils.createLookupArray(gvFunc, length)
+        rvFunc = utils.createCompositeFunc(rFunc, vFunc)
+        self._rLookupArray = utils.createLookupArray(rvFunc, length)
+
+    def apply(self, src, dst):
+        """
+        BGR画像にフィルタを適用する
+        :param src: 入力されるBGR画像
+        :param dst: 出力されるBGR画像
+        :return:
+        """
+        b, g, r = cv2.split(src)
+        utils.applyLookupArray(self._bLookupArray, b, b)
+        utils.applyLookupArray(self._gLookupArray, g, g)
+        utils.applyLookupArray(self._rLookupArray, r, r)
+        cv2.merge([b, g, r], dst)
+
+class BGRCurveFilter(BGRFuncFilter):
+    """
+    BGRチャンネルそれぞれに異なったカーブ関数を適用するフィルタ
+    """
+    def __init__(self,
+                 vPoints = None,
+                 bPoints = None,
+                 gPoints = None,
+                 rPoints = None,
+                 dtype = numpy.uint8):
+        """
+        初期化する
+        :param vPoints:
+        :rtype vPoints: list[tuple]
+        :param bPoints:
+        :rtype bPoints: list[tuple]
+        :param gPoints:
+        :rtype gPoints: list[tuple]
+        :param rPoints:
+        :rtype rPoints: list[tuple]
+        :param dtype:
+        :return:
+        """
+        BGRFuncFilter.__init__(self,
+                               utils.createCurveFunc(vPoints),
+                               utils.createCurveFunc(bPoints),
+                               utils.createCurveFunc(gPoints),
+                               utils.createCurveFunc(rPoints))
+
+class BGRPortraCurveFilter(BGRCurveFilter):
+    """
+    Kodak Portra Film emulation
+    """
+    def __init__(self, dtype = numpy.uint8):
+        BGRCurveFilter.__init__(
+            self,
+            bPoints=[(0,0),(35,25),(205,227),(255,255)],
+            gPoints=[(0,0),(27,21),(196,207),(255,255)],
+            rPoints=[(0,0),(59,54),(202,210),(255,255)],
+            dtype=dtype)
+
+def strokeEdges(src, dst, blurKsize = 7, edgeKsize = 5):
+    if blurKsize >= 3:
+        # まずぼかし・・・
+        blurredSrc = cv2.medianBlur(src, blurKsize)
+        # Python: cv2.medianBlur(src, ksize[, dst]) → dst
+        #
+        # Parameters:
+        #
+        # src – input 1-, 3-, or 4-channel image;
+        # when ksize is 3 or 5,
+        # the image depth should be CV_8U, CV_16U, or CV_32F,
+        # for larger aperture sizes, it can only be CV_8U.
+        #
+        # dst – destination array of the same size and type as src.
+        #
+        # ksize – aperture linear size;
+        # it must be odd and greater than 1, for example: 3, 5, 7 ...
+        #
+        # The function smoothes an image
+        # using the median filter with the ksize x ksize aperture.
+        # Each channel of a multi-channel image is processed independently.
+        # In-place operation is supported.
+
+        graySrc = cv2.cvtColor(blurredSrc, cv2.COLOR_BGR2GRAY)
+    else:
+        graySrc = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+    # ・・・次に、エッジ検出する
+    cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeKsize)
+    # 0 - 255 の整数を 0.0 - 1.0 の値にする
+    normalizedInverseAlpha = (1.0 / 255) * (255 - graySrc)
+    channels = cv2.split(src)
+    for channel in channels:
+        channel[:] = channel * normalizedInverseAlpha
+    cv2.merge(channels, dst)
+
+def applyBlur(src, dst, blurKsize = 7):
+    dst[:] = cv2.medianBlur(src, blurKsize)
+
+def applyLaplacian(src, dst, edgeSize = 5):
+    graySrc = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+    cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
+    dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)

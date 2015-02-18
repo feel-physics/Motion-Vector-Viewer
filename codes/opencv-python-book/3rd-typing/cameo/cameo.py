@@ -22,8 +22,17 @@ class Cameo(object):
         # def __init__(self, capture, previewWindowManager = None,
         #     shouldMirrorPreview = False):
 
+        self._curveFilter = filters.BGRPortraCurveFilter()
+
         self._faceTracker = FaceTracker()
-        self._shouldDrawDebugRects = True
+
+        ### Filters ###
+        self._shouldApplyPortraCurveFilter = False
+        self._shouldStrokeEdge             = False
+        self._shouldApplyBlur              = False
+        self._shouldApplyLaplacian         = False
+
+        self._shouldDrawDebugRects = False
 
     def run(self):
         """
@@ -38,6 +47,17 @@ class Cameo(object):
             self._captureManager.enterFrame()
             frame = self._captureManager.frame
             """:type : numpy.ndarray"""
+
+            ### Filters ###
+            if self._shouldApplyPortraCurveFilter:
+                self._curveFilter.apply(frame, frame)
+            if self._shouldStrokeEdge:
+                filters.strokeEdges(frame, frame)
+            if self._shouldApplyBlur:
+                filters.applyBlur(frame, frame)
+            if self._shouldApplyLaplacian:
+                filters.applyLaplacian(frame, frame)
+
             # 顔を検出して・・・
             self._faceTracker.update(frame)
 
@@ -50,8 +70,6 @@ class Cameo(object):
             if self._shouldDrawDebugRects:
                 self._faceTracker.drawDebugRects(frame)
 
-            # TODO: フレームをフィルタ処理する（第3章）
-
             # フレームを解放する
             self._captureManager.exitFrame()
             # キーイベントがあれば実行する
@@ -59,12 +77,12 @@ class Cameo(object):
 
     def onKeypress(self, keycode):
         """
-        キー入力を処理する
+        キー入力を処理するe
         スペース　：スクリーンショットを撮る
         タブ　　　：スクリーンキャストの録画を開始／終了する
         エスケープ：終了する
-        :param keycode: int
-        :return:
+        :param keycode: intppp
+        :return: None
         """
         if keycode == 32: # スペース
             self._captureManager.writeImage('screen-shot.png')
@@ -79,6 +97,20 @@ class Cameo(object):
                 self._captureManager.stopWritingVideo()
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
+
+        ### Filters ###
+        elif keycode == ord('p'):
+            self._shouldApplyPortraCurveFilter = \
+                not self._shouldApplyPortraCurveFilter
+        elif keycode == ord('e'):
+            self._shouldStrokeEdge = \
+                not self._shouldStrokeEdge
+        elif keycode == ord('b'):
+            self._shouldApplyBlur = \
+                not self._shouldApplyBlur
+        elif keycode == ord('l'):
+            self._shouldApplyLaplacian = \
+                not self._shouldApplyLaplacian
 
 if __name__=="__main__":
     Cameo().run()

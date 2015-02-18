@@ -65,7 +65,9 @@ def createCurveFunc(points):
     制御点を元にした関数を返す
     xが入力、yが出力なので制御点(128, 160)はより明るくする
     :param points: 制御点
-    :return:
+    :type  points: list[tuple]
+    :return 補完された1次元の関数
+    :rtype function
     """
     if points is None:
         return None
@@ -91,7 +93,7 @@ def createCurveFunc(points):
 def createLookupArray(func, length = 256):
     """
     ピクセルごとにcreateCurveFuncしていたら大変なので
-    1から256の入力に対する出力をリストにしておく。
+    1から256の入力に対する出力を変換用配列にしておく。
     :param func:   カーブ関数
     :param length: 入力の段階数
     :return: LookupArray
@@ -111,15 +113,16 @@ def createLookupArray(func, length = 256):
 def applyLookupArray(lookupArray, src, dst):
     """
     LookupArrayを使って入力画像から出力画像を求める
-    :param lookupArray: あらかじめカーブ関数をリスト化したもの
-    :param src: BGR形式の入力画像
-    :param dst: BGR形式の出力画像
+    :param lookupArray: あらかじめカーブ関数を変換用配列にしたもの
+    :param src: グレースケールもしくはBGR形式の入力画像
+    :param dst: グレースケールもしくはBGR形式の出力画像
     :return: None
     """
     if lookupArray is None:
         return
     dst[:] = lookupArray[src]
-    # TODO: ？？？
+    # 左辺にスライスを付けているのはidを変えないため
+    # スライスが付いていないと左辺のidが右辺のidによって上書きされてしまう。
 
 def createCompositeFunc(func0, func1):
     """
@@ -127,8 +130,11 @@ def createCompositeFunc(func0, func1):
     そうしておいてLookupArrayをつくる方が、
     何回もLookupArrayを適用するよりも効率的かつ正確になる
     :param func0: カーブ関数0
+    :type  func0: function
     :param func1: カーブ関数1
+    :type  func1: function
     :return: 合成されたカーブ関数
+    :rtype : function
     """
     if func0 is None:
         return func1
@@ -159,6 +165,6 @@ def createFlatView(array):
     # numpy.chararray.view
     # New view of array with the same data.
     # 同じデータの配列の新しいビュー
-    # TODO: わからん・・・
+    # view()は型変換や要素型変換に使う
     flatView.shape = array.size
     return flatView
