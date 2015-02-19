@@ -16,7 +16,7 @@ class Cameo(object):
         # def __init__(self, windowName, keypressCallback = None):
 
         self._captureManager = CaptureManager(
-            cv2.VideoCapture(0), self._windowManager, True
+            cv2.VideoCapture(0), self._windowManager, False
         )
         """:type : managers.CaptureManager"""
         # def __init__(self, capture, previewWindowManager = None,

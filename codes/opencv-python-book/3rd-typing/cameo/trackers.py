@@ -227,11 +227,16 @@ class FaceTracker(object):
             mouthColor    = (255,   0,   0) # 青
 
         for face in self.faces:
-            rects.outlineRect(image, face.faceRect    , faceColor    )
-            rects.outlineRect(image, face.leftEyeRect , leftEyeColor )
-            rects.outlineRect(image, face.rightEyeRect, rightEyeColor)
-            rects.outlineRect(image, face.noseRect    , noseColor    )
-            rects.outlineRect(image, face.mouthRect   , mouthColor   )
+            # rects.outlineRect(image, face.faceRect    , faceColor    )
+            # rects.outlineRect(image, face.leftEyeRect , leftEyeColor )
+            # rects.outlineRect(image, face.rightEyeRect, rightEyeColor)
+            # rects.outlineRect(image, face.noseRect    , noseColor    )
+            # rects.outlineRect(image, face.mouthRect   , mouthColor   )
+            rects.outlineRectWithTitle(image, face.faceRect    , faceColor    , 'Face')
+            rects.outlineRectWithTitle(image, face.leftEyeRect , leftEyeColor , 'Left Eye')
+            rects.outlineRectWithTitle(image, face.rightEyeRect, rightEyeColor, 'Right Eye')
+            rects.outlineRectWithTitle(image, face.noseRect    , noseColor    , 'Nose')
+            rects.outlineRectWithTitle(image, face.mouthRect   , mouthColor   , 'Mouth')
 
 
 if __name__=="__main__":

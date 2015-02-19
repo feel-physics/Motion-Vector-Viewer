@@ -31,6 +31,31 @@ def outlineRect(image, rect, color):
     # lineType – Type of the line. See the line() description.
     # shift – Number of fractional bits in the point coordinates.
 
+def outlineRectWithTitle(image, rect, color, title):
+    """
+    左上にタイトルの付いた枠線を描画する
+    :param image:
+    :param rect:
+    :param color:
+    :param title:
+    :type  title: str
+    :return:
+    """
+    if rect is None:
+        return
+    outlineRect(image, rect, color)
+
+    #putText(img, text, org, fontFace, fontScale,
+    # color[, thickness[, linetype[, bottomLeftOrigin]]]) -> None
+
+    x, y, w, h = rect
+    location=(x, y - (THICKNESS + 1)/2)
+
+    fontface=cv2.FONT_HERSHEY_PLAIN
+    fontscale=2.0
+    cv2.putText(image, title, location,
+                fontface, fontscale, color, (THICKNESS + 1)/2)
+
 def copyRect(src, dst, srcRect, dstRect,
              interpolation = cv2.INTER_LINEAR):
     """
