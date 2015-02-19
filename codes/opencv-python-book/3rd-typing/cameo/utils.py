@@ -155,6 +155,7 @@ def createCompositeFunc(func0, func1):
     # >>> pairs
     # [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
 
+# 何をしているのか不明。なくても動く。現在は使用してない。
 def createFlatView(array):
     """
     入力された配列（何次元でも良い）の、1次元のビューを返す

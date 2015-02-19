@@ -23,6 +23,7 @@ class Cameo(object):
         #     shouldMirrorPreview = False):
 
         self._curveFilter = filters.BGRPortraCurveFilter()
+        self._testCurveFilter = filters.TestCurveFilter()
 
         self._faceTracker = FaceTracker()
 
@@ -31,6 +32,7 @@ class Cameo(object):
         self._shouldStrokeEdge             = False
         self._shouldApplyBlur              = False
         self._shouldApplyLaplacian         = False
+        self._shouldApplyTestCurveFilter   = False
 
         self._shouldDrawDebugRects = False
 
@@ -57,6 +59,8 @@ class Cameo(object):
                 filters.applyBlur(frame, frame)
             if self._shouldApplyLaplacian:
                 filters.applyLaplacian(frame, frame)
+            if self._shouldApplyTestCurveFilter:
+                self._testCurveFilter.apply(frame, frame)
 
             # 顔を検出して・・・
             self._faceTracker.update(frame)
@@ -115,6 +119,9 @@ class Cameo(object):
         elif keycode == ord('l'):
             self._shouldApplyLaplacian = \
                 not self._shouldApplyLaplacian
+        elif keycode == ord('t'):
+            self._shouldApplyTestCurveFilter = \
+                not self._shouldApplyTestCurveFilter
 
 if __name__=="__main__":
     Cameo().run()

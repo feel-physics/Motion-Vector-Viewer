@@ -116,9 +116,10 @@ class VFuncFilter(object):
         :param dst: グレースケールもしくはBGR形式の出力画像
         :return: None
         """
-        srcFlatView = utils.createFlatView(src)
-        dstFlatView = utils.createFlatView(dst)
-        utils.applyLookupArray(self._vLookupArray, srcFlatView, dstFlatView)
+        # srcFlatView = utils.createFlatView(src)
+        # dstFlatView = utils.createFlatView(dst)
+        # utils.applyLookupArray(self._vLookupArray, srcFlatView, dstFlatView)
+        utils.applyLookupArray(self._vLookupArray, src, dst)
 
 class VCurveFilter(VFuncFilter):
     """
@@ -130,6 +131,12 @@ class VCurveFilter(VFuncFilter):
     """
     def __init__(self, vPoints, dtype = numpy.uint8):
         VFuncFilter.__init__(self, utils.createCurveFunc(vPoints), dtype)
+
+class TestCurveFilter(VCurveFilter):
+    def __init__(self, dtype = numpy.uint8):
+        VCurveFilter.__init__(self,
+                              [(0,0),(35,25),(205,227),(255,255)],
+                              dtype=dtype)
 
 class BGRFuncFilter(object):
     """
