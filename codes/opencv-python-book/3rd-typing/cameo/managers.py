@@ -46,7 +46,7 @@ class CaptureManager(object):
         """:type : float"""
 
         self.paused        = False
-        self.pausedFrame  = None
+        self._pausedFrame  = None
 
     @property
     def channel(self):
@@ -75,6 +75,20 @@ class CaptureManager(object):
         :return: numpy.ndarray
         """
 
+        # 一時停止しているとき
+        if self.paused is True:
+            # 一時停止した瞬間
+            if self._pausedFrame is None:
+                # 現在のフレームを一時停止フレームに保存する
+                self._pausedFrame = self._frame
+            else:
+                # 一時停止フレームを返す
+                self._frame = self._pausedFrame
+        # 一時停止していないとき一時停止フレームが残っていたら・・・
+        elif self._pausedFrame is not None:
+            # 削除する
+            self._pausedFrame = None
+
         # 新しいフレームに入ったが新しいフレームができていないとき・・・
         if self._enteredFrame and self._frame is None:
             # VideoCaptureから取ったフレームをデコードする
@@ -84,20 +98,6 @@ class CaptureManager(object):
             # VideoCapture::retrieve
             # Decodes and returns the grabbed video frame.
             # → retval, image
-
-        # 一時停止しているとき
-        if self.paused is True:
-            # 一時停止した瞬間
-            if self.pausedFrame is None:
-                # 現在のフレームを一時停止フレームに保存する
-                self.pausedFrame = self._frame
-            else:
-                # 一時停止フレームを返す
-                self._frame = self.pausedFrame
-        # 一時停止していないとき
-        elif self.pausedFrame is not None:
-            # 一時停止フレームが残っていたら削除する
-            self.pausedFrame = None
 
         return self._frame
 
