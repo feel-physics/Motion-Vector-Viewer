@@ -46,6 +46,7 @@ class CaptureManager(object):
         """:type : float"""
 
         self.paused        = False
+        self.pausedFrame  = None
 
     @property
     def channel(self):
@@ -83,6 +84,21 @@ class CaptureManager(object):
             # VideoCapture::retrieve
             # Decodes and returns the grabbed video frame.
             # → retval, image
+
+        # 一時停止しているとき
+        if self.paused is True:
+            # 一時停止した瞬間
+            if self.pausedFrame is None:
+                # 現在のフレームを一時停止フレームに保存する
+                self.pausedFrame = self._frame
+            else:
+                # 一時停止フレームを返す
+                self._frame = self.pausedFrame
+        # 一時停止していないとき
+        elif self.pausedFrame is not None:
+            # 一時停止フレームが残っていたら削除する
+            self.pausedFrame = None
+
         return self._frame
 
     @property
@@ -132,6 +148,18 @@ class CaptureManager(object):
             self._enteredFrame = False
             return
 
+        # FPS測定値と関係する変数を更新する
+        # 測定開始
+        if self._framesElapsed == 0:
+            self._startTime = time.time()
+        # 測定中
+        else:
+            timeElapsed = time.time() - self._startTime
+            """:type : float"""
+            # FPS = 表示したフレームの枚数 / 秒
+            self._fpsEstimate = self._framesElapsed / timeElapsed
+        self._framesElapsed += 1
+
         #とにかく、ウィンドウに描画する
         if self.previewWindowManager is not None:
             if self.shouldMirrorPreview:
@@ -144,23 +172,6 @@ class CaptureManager(object):
         if self.isWritingImage:
             cv2.imwrite(self._imageFilename, self._frame)
             self._imageFilename = None # 書き出し終わったら解放する
-
-        # 一時停止ならば、何もせずにexitFrameする
-        if self.paused is True:
-            self._enteredFrame = False
-            return
-
-        # FPS測定値と関係する変数を更新する
-        # 測定開始
-        if self._framesElapsed == 0:
-            self._startTime = time.time()
-        # 測定中
-        else:
-            timeElapsed = time.time() - self._startTime
-            """:type : float"""
-            # FPS = 表示したフレームの枚数 / 秒
-            self._fpsEstimate = self._framesElapsed / timeElapsed
-        self._framesElapsed += 1
 
         # とにかく、動画ファイルに書き出す
         if self.isWritingVideo:

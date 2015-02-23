@@ -105,6 +105,7 @@ class Cameo(object):
         if keycode == 32: # スペース
             self._captureManager.paused = \
                 not self._captureManager.paused
+            # self._captureManager.pausedFrame = None
         elif keycode == 13: # リターン
             now = datetime.now()
             timestamp = now.strftime('%y%m%d-%H%M%S')
