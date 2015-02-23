@@ -34,12 +34,15 @@ def outlineRect(image, rect, color):
 def outlineRectWithTitle(image, rect, color, title):
     """
     左上にタイトルの付いた枠線を描画する
-    :param image:
-    :param rect:
-    :param color:
-    :param title:
+    :param image: 画像データ
+    :type  image: numpy.ndarray
+    :param rect : (x, y, w, h)
+    :type  rect : tuple
+    :param color: BGR値 例：(255, 0, 0)
+    :type  color: tuple
+    :param title: タイトル
     :type  title: str
-    :return:
+    :return: None
     """
     if rect is None:
         return

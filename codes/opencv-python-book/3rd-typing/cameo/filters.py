@@ -272,3 +272,29 @@ def applyLaplacian(src, dst, edgeSize = 5):
     graySrc = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
     cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
     dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)
+
+def hueMask(src, dst, hue):
+    hueRange = 10
+    src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(src)
+    cv2.threshold(s, hue + hueRange, hue, cv2.THRESH_TOZERO_INV, s)
+    # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
+    # Parameters:
+    # src – input array (single-channel, 8-bit or 32-bit floating point).
+    # dst – output array of the same size and type as src.
+    # thresh – threshold value.
+    # maxval – maximum value to use with the THRESH_BINARY and THRESH_BINARY_INV thresholding types.
+    # type – thresholding type (see the details below).
+    #
+    # THRESH_TOZERO_INV
+    # if src(x,y) > thresh then dst(x,y) = 0
+    # if otherwise         then dst(x,y) = src(x,y)
+    # 「src(x,y)がthreshより大きければ、dst(x,y)は0」
+    cv2.threshold(s, hue - hueRange, hue, cv2.THRESH_BINARY, s)
+    # THRESH_BINARY
+    # if src(x,y) > thresh then dst(x,y) = maxval
+    # if otherwise         then dst(x,y) = 0
+    # 「src(x,y)がthreshより小さければ、dst(x,y)は0」
+
+    cv2.merge((h, s, v), src)
+    cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)

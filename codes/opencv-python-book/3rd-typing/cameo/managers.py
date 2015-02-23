@@ -45,6 +45,8 @@ class CaptureManager(object):
         self._fpsEstimate   = None
         """:type : float"""
 
+        self.paused        = False
+
     @property
     def channel(self):
         """
@@ -130,6 +132,24 @@ class CaptureManager(object):
             self._enteredFrame = False
             return
 
+        #とにかく、ウィンドウに描画する
+        if self.previewWindowManager is not None:
+            if self.shouldMirrorPreview:
+                mirroredFrame = numpy.fliplr(self._frame).copy()
+                self.previewWindowManager.show(mirroredFrame)
+            else:
+                self.previewWindowManager.show(self._frame)
+
+          # とにかく、画像ファイルに書き出す
+        if self.isWritingImage:
+            cv2.imwrite(self._imageFilename, self._frame)
+            self._imageFilename = None # 書き出し終わったら解放する
+
+        # 一時停止ならば、何もせずにexitFrameする
+        if self.paused is True:
+            self._enteredFrame = False
+            return
+
         # FPS測定値と関係する変数を更新する
         # 測定開始
         if self._framesElapsed == 0:
@@ -141,19 +161,6 @@ class CaptureManager(object):
             # FPS = 表示したフレームの枚数 / 秒
             self._fpsEstimate = self._framesElapsed / timeElapsed
         self._framesElapsed += 1
-
-        #とにかく、ウィンドウに描画する
-        if self.previewWindowManager is not None:
-            if self.shouldMirrorPreview:
-                mirroredFrame = numpy.fliplr(self._frame).copy()
-                self.previewWindowManager.show(mirroredFrame)
-            else:
-                self.previewWindowManager.show(self._frame)
-
-        # とにかく、画像ファイルに書き出す
-        if self.isWritingImage:
-            cv2.imwrite(self._imageFilename, self._frame)
-            self._imageFilename = None # 書き出し終わったら解放する
 
         # とにかく、動画ファイルに書き出す
         if self.isWritingVideo:

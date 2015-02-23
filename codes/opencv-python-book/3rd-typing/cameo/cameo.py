@@ -5,6 +5,7 @@ import cv2
 import filters
 from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
+from datetime import datetime
 
 class Cameo(object):
 
@@ -33,6 +34,11 @@ class Cameo(object):
         self._shouldApplyBlur              = False
         self._shouldApplyLaplacian         = False
         self._shouldApplyTestCurveFilter   = False
+        self._shouldRecolorRC = False
+        self._shouldRecolorRGV = False
+        self._shouldRecolorCMV = False
+        self._shouldHueMask = False
+        self._hue = 180
 
         self._shouldDrawDebugRects = False
 
@@ -61,6 +67,14 @@ class Cameo(object):
                 filters.applyLaplacian(frame, frame)
             if self._shouldApplyTestCurveFilter:
                 self._testCurveFilter.apply(frame, frame)
+            if self._shouldRecolorRC:
+                filters.recolorRC(frame, frame)
+            if self._shouldRecolorRGV:
+                filters.recolorRGV(frame, frame)
+            if self._shouldRecolorCMV:
+                filters.recolorCMV(frame, frame)
+            if self._shouldHueMask:
+                filters.hueMask(frame, frame, self._hue)
 
             # 顔を検出して・・・
             self._faceTracker.update(frame)
@@ -85,11 +99,17 @@ class Cameo(object):
         スペース　：スクリーンショットを撮る
         タブ　　　：スクリーンキャストの録画を開始／終了する
         エスケープ：終了する
-        :param keycode: intppp
+        :param keycode: int
         :return: None
         """
         if keycode == 32: # スペース
-            self._captureManager.writeImage('screen-shot.png')
+            self._captureManager.paused = \
+                not self._captureManager.paused
+        elif keycode == 13: # リターン
+            now = datetime.now()
+            timestamp = now.strftime('%y%m%d-%H%M%S')
+            self._captureManager.writeImage(timestamp + '-screen-shot.png')
+
         elif keycode == 9: # タブ
             # 動画ファイルに書き出し中でなければ・・・
             if not self._captureManager.isWritingVideo:
@@ -102,7 +122,7 @@ class Cameo(object):
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
 
-        elif keycode == ord('r'):
+        elif keycode == ord('d'):
             self._shouldDrawDebugRects = \
                 not self._shouldDrawDebugRects
 
@@ -122,6 +142,31 @@ class Cameo(object):
         elif keycode == ord('t'):
             self._shouldApplyTestCurveFilter = \
                 not self._shouldApplyTestCurveFilter
+
+        ### Filters from 2nd typing ###
+        elif keycode == ord('r'):
+            self._shouldRecolorRC = \
+                not self._shouldRecolorRC
+        elif keycode == ord('v'):
+            self._shouldRecolorRGV = \
+                not self._shouldRecolorRGV
+        elif keycode == ord('m'):
+            self._shouldRecolorCMV = \
+                not self._shouldRecolorCMV
+
+        ### Hue Filter ###
+        elif keycode == ord('h'):
+            self._shouldHueMask = \
+                not self._shouldHueMask
+        elif keycode == 0: # up arrow
+            self._hue += 10
+            print self._hue
+        elif keycode == 1: # down arrow
+            self._hue -= 10
+            print self._hue
+
+        else:
+            print keycode
 
 if __name__=="__main__":
     Cameo().run()
