@@ -277,7 +277,9 @@ def hueMask(src, dst, hue):
     hueRange = 10
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
-    cv2.threshold(s, hue + hueRange, hue, cv2.THRESH_TOZERO_INV, s)
+    hOrg = h.copy()
+
+    cv2.threshold(h, hue + hueRange, hue, cv2.THRESH_TOZERO_INV, h)
     # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
     # Parameters:
     # src – input array (single-channel, 8-bit or 32-bit floating point).
@@ -290,11 +292,40 @@ def hueMask(src, dst, hue):
     # if src(x,y) > thresh then dst(x,y) = 0
     # if otherwise         then dst(x,y) = src(x,y)
     # 「src(x,y)がthreshより大きければ、dst(x,y)は0」
-    cv2.threshold(s, hue - hueRange, hue, cv2.THRESH_BINARY, s)
+
+    cv2.threshold(h, hue - hueRange, hue, cv2.THRESH_BINARY, h)
     # THRESH_BINARY
-    # if src(x,y) > thresh then dst(x,y) = maxval
+    # if src(x,y) > thresh then dst(x,y) = maxval = hue = src(x,y)
     # if otherwise         then dst(x,y) = 0
     # 「src(x,y)がthreshより小さければ、dst(x,y)は0」
 
-    cv2.merge((h, s, v), src)
+    # 0
+    # 0
+    # 0
+    # thresh
+    # src
+    # thresh
+    # 0
+    # 0
+    # 0
+
+    # src
+    # src
+    # src
+    # thresh
+    # 0
+    # thresh
+    # src
+    # src
+    # src
+
+    #「src(x,y)がthresh（下限）より大きければ、dst(x,y)は0。さもなければsrc(x,y)。」
+    # cv2.threshold(h, hue + hueRange, hue, cv2.THRESH_TOZERO, h)
+    #「src(x,y)がthresh（下限）より大きければ、dst(x,y)はsrc(x,y)。さもなければ。」
+    # cv2.threshold(h, hue - hueRange, hue, cv2.THRESH_TOZERO_INV, h)
+
+    # cv2.bitwise_and(h, 255, h)
+    cv2.bitwise_and(s, h, s)
+
+    cv2.merge((hOrg, s, v), src)
     cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
