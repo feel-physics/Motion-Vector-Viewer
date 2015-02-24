@@ -3,8 +3,6 @@
 import cv2
 import numpy
 import time
-import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class CaptureManager(object):
 
@@ -98,15 +96,12 @@ class CaptureManager(object):
                 print(id(self._frame))
             else:
                 # 一時停止フレームを返す
-                logging.debug('_frame        : ' + str(type(self._frame)))
-                logging.debug('_pausedFrame  : ' + str(type(self._pausedFrame)))
+
                 # self._frame[:] = self._pausedFrame
-                # 左辺がNoneTypeなので代入できない
+                # エラーが出るコード。左辺がNoneTypeなので代入できない
 
                 # ディープコピー（idを新たに起こす）する
                 self._frame = self._pausedFrame.copy()
-                logging.debug('cm.pausedFrame: ' + str(id(self._pausedFrame)))
-                logging.debug('cm._frame(ent): ' + str(id(self._frame)))
         # 一時停止していないとき一時停止フレームが残っていたら・・・
         elif self._pausedFrame is not None:
             # 削除する
@@ -180,7 +175,6 @@ class CaptureManager(object):
                 self.previewWindowManager.show(mirroredFrame)
             else:
                 self.previewWindowManager.show(self._frame)
-                logging.debug('cm._frame(ext): ' + str(id(self._frame)))
 
           # とにかく、画像ファイルに書き出す
         if self.isWritingImage:
