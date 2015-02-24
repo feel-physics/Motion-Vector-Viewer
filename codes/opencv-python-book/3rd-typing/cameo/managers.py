@@ -75,8 +75,11 @@ class CaptureManager(object):
         :return: numpy.ndarray
         """
 
-        # 新しいフレームに入ったが新しいフレームができていないとき・・・
-        if self._enteredFrame and self._frame is None and self._pausedFrame is None:
+        # 新しいフレームに入ったが新しいフレームができていないとき、
+        # もしくは、一時停止に入る瞬間
+        # もしくは、一時停止から抜ける瞬間
+        if self._enteredFrame and self._frame is None and \
+                (self._pausedFrame is None or self.paused is False):
             # VideoCaptureから取ったフレームをデコードする
             _, self._frame = self._capture.retrieve(
                 channel = self.channel
