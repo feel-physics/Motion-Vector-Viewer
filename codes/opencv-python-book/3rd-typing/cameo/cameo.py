@@ -6,6 +6,9 @@ import filters
 from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
 from datetime import datetime
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class Cameo(object):
 
@@ -56,6 +59,8 @@ class Cameo(object):
             frame = self._captureManager.frame
             """:type : numpy.ndarray"""
 
+            logging.debug('ca.frame(B)   : ' + str(id(frame)))
+
             ### Filters ###
             if self._shouldApplyPortraCurveFilter:
                 self._curveFilter.apply(frame, frame)
@@ -87,6 +92,8 @@ class Cameo(object):
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
                 self._faceTracker.drawDebugRects(frame)
+
+            logging.debug('ca.frame(A)   : ' + str(id(frame)))
 
             # フレームを解放する
             self._captureManager.exitFrame()

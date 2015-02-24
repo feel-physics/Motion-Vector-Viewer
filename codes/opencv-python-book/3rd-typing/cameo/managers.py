@@ -3,6 +3,8 @@
 import cv2
 import numpy
 import time
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class CaptureManager(object):
 
@@ -75,22 +77,8 @@ class CaptureManager(object):
         :return: numpy.ndarray
         """
 
-        # 一時停止しているとき
-        if self.paused is True:
-            # 一時停止した瞬間
-            if self._pausedFrame is None:
-                # 現在のフレームを一時停止フレームに保存する
-                self._pausedFrame = self._frame
-            else:
-                # 一時停止フレームを返す
-                self._frame = self._pausedFrame
-        # 一時停止していないとき一時停止フレームが残っていたら・・・
-        elif self._pausedFrame is not None:
-            # 削除する
-            self._pausedFrame = None
-
         # 新しいフレームに入ったが新しいフレームができていないとき・・・
-        if self._enteredFrame and self._frame is None:
+        if self._enteredFrame and self._frame is None and self._pausedFrame is None:
             # VideoCaptureから取ったフレームをデコードする
             _, self._frame = self._capture.retrieve(
                 channel = self.channel
@@ -98,6 +86,31 @@ class CaptureManager(object):
             # VideoCapture::retrieve
             # Decodes and returns the grabbed video frame.
             # → retval, image
+
+        # 一時停止しているとき
+        if self.paused is True:
+            # 一時停止した瞬間
+            if self._pausedFrame is None:
+                # 現在のフレームを一時停止フレームに保存する
+                # self._pausedFrame = self._frame
+                self._pausedFrame = self._frame
+                print(id(self._pausedFrame))
+                print(id(self._frame))
+            else:
+                # 一時停止フレームを返す
+                logging.debug('_frame        : ' + str(type(self._frame)))
+                logging.debug('_pausedFrame  : ' + str(type(self._pausedFrame)))
+                # self._frame[:] = self._pausedFrame
+                # 左辺がNoneTypeなので代入できない
+
+                # ディープコピー（idを新たに起こす）する
+                self._frame = self._pausedFrame.copy()
+                logging.debug('cm.pausedFrame: ' + str(id(self._pausedFrame)))
+                logging.debug('cm._frame(ent): ' + str(id(self._frame)))
+        # 一時停止していないとき一時停止フレームが残っていたら・・・
+        elif self._pausedFrame is not None:
+            # 削除する
+            self._pausedFrame = None
 
         return self._frame
 
@@ -144,9 +157,9 @@ class CaptureManager(object):
         # self.frameメソッドを呼ぶことでgrabしたVideoCaptureをデコードしている
         # これがNoneだとreturnでプログラムを終了させる
         # TODO: 意味不明「ゲッターはフレームを回収してキャッシュするかもしれない」
-        if self.frame is None:
-            self._enteredFrame = False
-            return
+        # if self.frame is None:
+        #     self._enteredFrame = False
+        #     return
 
         # FPS測定値と関係する変数を更新する
         # 測定開始
@@ -167,6 +180,7 @@ class CaptureManager(object):
                 self.previewWindowManager.show(mirroredFrame)
             else:
                 self.previewWindowManager.show(self._frame)
+                logging.debug('cm._frame(ext): ' + str(id(self._frame)))
 
           # とにかく、画像ファイルに書き出す
         if self.isWritingImage:
