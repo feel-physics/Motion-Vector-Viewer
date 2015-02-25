@@ -165,11 +165,11 @@ class Cameo(object):
         elif keycode == 1: # down arrow
             self._hue -= 10
             print self._hue
-        elif keycode == 2: # up arrow
-            self._hueRange += 5
-            print self._hueRange
-        elif keycode == 3: # down arrow
+        elif keycode == 2: # left arrow
             self._hueRange -= 5
+            print self._hueRange
+        elif keycode == 3: # right arrow
+            self._hueRange += 5
             print self._hueRange
 
         else:
