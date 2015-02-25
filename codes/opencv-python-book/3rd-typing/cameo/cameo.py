@@ -77,16 +77,16 @@ class Cameo(object):
             if self._shouldHueMask:
                 filters.hueMask(frame, frame, self._hue, self._hueRange)
 
-            # 顔を検出して・・・
-            self._faceTracker.update(frame)
-
-            # これが何をやっているのかサッパリわからん
-            # faces = self._faceTracker.faces
-            # rects.swapRects(frame, frame,
-            #                 [face.faceRect for face in faces])
-
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
+                # 顔を検出して・・・
+                self._faceTracker.update(frame)
+
+                # これが何をやっているのかサッパリわからん
+                # faces = self._faceTracker.faces
+                # rects.swapRects(frame, frame,
+                #                 [face.faceRect for face in faces])
+
                 self._faceTracker.drawDebugRects(frame)
 
             # フレームを解放する
@@ -178,7 +178,7 @@ class Cameo(object):
                 not self._shouldHueMask
         elif keycode == ord('G'):
             self._hue = 70
-            self._hueRange = 20
+            self._hueRange = 25
             self._shouldHueMask = \
                 not self._shouldHueMask
 
