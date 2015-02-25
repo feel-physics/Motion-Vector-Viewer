@@ -171,6 +171,16 @@ class Cameo(object):
         elif keycode == 3: # right arrow
             self._hueRange += 5
             print self._hueRange
+        elif keycode == ord('B'):
+            self._hue = 110
+            self._hueRange = 10
+            self._shouldHueMask = \
+                not self._shouldHueMask
+        elif keycode == ord('G'):
+            self._hue = 70
+            self._hueRange = 20
+            self._shouldHueMask = \
+                not self._shouldHueMask
 
         else:
             print keycode
