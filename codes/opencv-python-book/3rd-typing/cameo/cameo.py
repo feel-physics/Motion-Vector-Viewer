@@ -39,6 +39,7 @@ class Cameo(object):
         self._shouldRecolorCMV = False
         self._shouldHueMask = False
         self._hue = 180
+        self._hueRange = 10
 
         self._shouldDrawDebugRects = False
 
@@ -74,7 +75,7 @@ class Cameo(object):
             if self._shouldRecolorCMV:
                 filters.recolorCMV(frame, frame)
             if self._shouldHueMask:
-                filters.hueMask(frame, frame, self._hue)
+                filters.hueMask(frame, frame, self._hue, self._hueRange)
 
             # 顔を検出して・・・
             self._faceTracker.update(frame)
@@ -164,6 +165,12 @@ class Cameo(object):
         elif keycode == 1: # down arrow
             self._hue -= 10
             print self._hue
+        elif keycode == 2: # up arrow
+            self._hueRange += 5
+            print self._hueRange
+        elif keycode == 3: # down arrow
+            self._hueRange -= 5
+            print self._hueRange
 
         else:
             print keycode
