@@ -331,8 +331,29 @@ def hueMask(src, dst, hue, hueRange):
     # 0
     # 0
 
-    cv2.bitwise_or(v, 64, v, hTarget) # 論理和
+    # 蛍光灯の光などを除外するため、
+    # 極端に明るいピクセルをターゲット範囲から除外する
+    vNotHighlight = v.copy() # 極端に明るくないところ
+    cv2.threshold(vNotHighlight, 220, 255, cv2.THRESH_BINARY_INV)
 
+    # hTargetとvNotHighlightの論理積が新しいhTarget
+    cv2.bitwise_and(hTarget, vNotHighlight, hTarget)
+
+    # 明度画像のコピーをとる。
+    vBrightened = v.copy()
+    # それに+96のガンマ補正をかけ、明るくする
+    cv2.addWeighted(v, 0.625, v, 0.0, 96, vBrightened)
+    # メイド画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
+    cv2.bitwise_and(vBrightened, 255, v, hTarget)
+
+    hMask2 = h.copy()
+    # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
+    # hMask2（1チャンネル画像）の該当ピクセルを255にセットする。
+    # さもなくば、0にセットする。
+    # 要するにhMask2はhTargetマスク画像を反転させたもの。
+    cv2.compare(hTarget, 0, cv2.CMP_EQ, hMask2)
+
+    """
     hUp = h.copy()
     #「src(x,y)がthresh（上限）より大きければ、dst(x,y)はsrc(x,y)。さもなければ0。」
     cv2.threshold(h, hue + hueRange, hue, cv2.THRESH_TOZERO, hUp)
@@ -375,8 +396,9 @@ def hueMask(src, dst, hue, hueRange):
     # src
     # src
     # src
+    """
 
-    cv2.bitwise_and(s, 0, s, hMask) # 論理積
+    cv2.bitwise_and(s, 0, s, hMask2) # 論理積
 
     cv2.merge((hOrg, s, v), src)
     cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
