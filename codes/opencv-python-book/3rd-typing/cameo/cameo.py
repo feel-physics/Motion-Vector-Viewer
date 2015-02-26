@@ -34,14 +34,22 @@ class Cameo(object):
         self._shouldApplyBlur              = False
         self._shouldApplyLaplacian         = False
         self._shouldApplyTestCurveFilter   = False
-        self._shouldRecolorRC = False
-        self._shouldRecolorRGV = False
-        self._shouldRecolorCMV = False
-        self._shouldHueMask = False
-        self._hue = 180
-        self._hueRange = 10
+        self._shouldRecolorRC              = False
+        self._shouldRecolorRGV             = False
+        self._shouldRecolorCMV             = False
+        self._shouldHueMask                = False
+        self._hue                          = 180
+        self._hueRange                     = 10
 
-        self._shouldDrawDebugRects = False
+        self._timeSelfTimerStarted         = None
+
+        self._shouldDrawDebugRects         = False
+
+    def _takeScreenShot(self):
+        now = datetime.now()
+        timestamp = now.strftime('%y%m%d-%H%M%S')
+        self._captureManager.writeImage(timestamp + '-screen-shot.png')
+        print 'captured'
 
     def run(self):
         """
@@ -94,6 +102,13 @@ class Cameo(object):
             # キーイベントがあれば実行する
             self._windowManager.processEvents()
 
+            if self._timeSelfTimerStarted is not None:
+                timeElapsed = datetime.now() - self._timeSelfTimerStarted
+                if timeElapsed.seconds > 3:
+                    self._takeScreenShot()
+                    # タイマーをリセットする
+                    self._timeSelfTimerStarted = None
+
     def onKeypress(self, keycode):
         """
         キー入力を処理するe
@@ -107,9 +122,7 @@ class Cameo(object):
             self._captureManager.paused = \
                 not self._captureManager.paused
         elif keycode == 13: # リターン
-            now = datetime.now()
-            timestamp = now.strftime('%y%m%d-%H%M%S')
-            self._captureManager.writeImage(timestamp + '-screen-shot.png')
+            self._takeScreenShot()
 
         elif keycode == 9: # タブ
             # 動画ファイルに書き出し中でなければ・・・
@@ -128,9 +141,9 @@ class Cameo(object):
                 not self._shouldDrawDebugRects
 
         ### Filters ###
-        elif keycode == ord('p'):
-            self._shouldApplyPortraCurveFilter = \
-                not self._shouldApplyPortraCurveFilter
+        # elif keycode == ord('p'):
+        #     self._shouldApplyPortraCurveFilter = \
+        #         not self._shouldApplyPortraCurveFilter
         elif keycode == ord('e'):
             self._shouldStrokeEdge = \
                 not self._shouldStrokeEdge
@@ -172,15 +185,28 @@ class Cameo(object):
             self._hueRange += 5
             print self._hueRange
         elif keycode == ord('B'):
-            self._hue = 110
+            self._hue      = 110
             self._hueRange = 10
             self._shouldHueMask = \
                 not self._shouldHueMask
         elif keycode == ord('G'):
-            self._hue = 70
+            self._hue      = 70
             self._hueRange = 25
             self._shouldHueMask = \
                 not self._shouldHueMask
+        elif keycode == ord('R'):
+            self._hue      = 5
+            self._hueRange = 5
+            self._shouldHueMask = \
+                not self._shouldHueMask
+        elif keycode == ord('Y'):
+            self._hue      = 30
+            self._hueRange = 15
+            self._shouldHueMask = \
+                not self._shouldHueMask
+
+        elif keycode == ord('p'):
+             self._timeSelfTimerStarted = datetime.now()
 
         else:
             print keycode
