@@ -343,7 +343,7 @@ def hueMask(src, dst, hue, hueRange):
     vBrightened = v.copy()
     # それに+96のガンマ補正をかけ、明るくする
     cv2.addWeighted(v, 0.625, v, 0.0, 96, vBrightened)
-    # メイド画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
+    # 明度画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
 
     hMask2 = h.copy()
