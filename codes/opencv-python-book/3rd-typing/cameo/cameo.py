@@ -41,6 +41,7 @@ class Cameo(object):
         self._hue                          = 90
         self._hueRange                     = 10
         self._shouldEqualizeHist           = False
+        self._shouldHueMaskAndOpening      = False
 
         self._timeSelfTimerStarted         = None
 
@@ -87,6 +88,8 @@ class Cameo(object):
                 filters.hueMask(frame, frame, self._hue, self._hueRange)
             if self._shouldEqualizeHist:
                 filters.equaliseHist(frame, frame)
+            if self._shouldHueMaskAndOpening:
+                filters.hueMaskAndOpening(frame, frame, self._hue, self._hueRange, 5)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -176,10 +179,10 @@ class Cameo(object):
             self._shouldHueMask = \
                 not self._shouldHueMask
         elif keycode == 0:  # up arrow
-            self._hue += 10
+            self._hue += 5
             print 'hue     : ' + str(self._hue)
         elif keycode == 1:  # down arrow
-            self._hue -= 10
+            self._hue -= 5
             print 'hue     : ' + str(self._hue)
         elif keycode == 2:  # left arrow
             self._hueRange -= 5
@@ -193,8 +196,8 @@ class Cameo(object):
             self._shouldHueMask = \
                 not self._shouldHueMask
         elif keycode == ord('G'):
-            self._hue      = 60
-            self._hueRange = 25
+            self._hue      = 70
+            self._hueRange = 30
             self._shouldHueMask = \
                 not self._shouldHueMask
         elif keycode == ord('R'):
@@ -207,6 +210,11 @@ class Cameo(object):
             self._hueRange = 15
             self._shouldHueMask = \
                 not self._shouldHueMask
+        elif keycode == ord('o'):
+            # self._shouldHueMask = \
+            #     not self._shouldHueMask
+            self._shouldHueMaskAndOpening = \
+                not self._shouldHueMaskAndOpening
 
         elif keycode == ord('e'):
             self._shouldEqualizeHist = \

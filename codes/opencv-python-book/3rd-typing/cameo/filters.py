@@ -353,62 +353,177 @@ def hueMask(src, dst, hue, hueRange):
     # 明度画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
 
-    hMask2 = h.copy()
+    hNotTarget = h.copy()
     # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
-    # hMask2（1チャンネル画像）の該当ピクセルを255にセットする。
+    # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
     # さもなくば、0にセットする。
     # 要するにhMask2はhTargetマスク画像を反転させたもの。
-    cv2.compare(hTarget, 0, cv2.CMP_EQ, hMask2)
+    cv2.compare(hTarget, 0, cv2.CMP_EQ, hNotTarget)
 
-    """
-    hUp = h.copy()
-    #「src(x,y)がthresh（上限）より大きければ、dst(x,y)はsrc(x,y)。さもなければ0。」
-    cv2.threshold(h, hue + hueRange, hue, cv2.THRESH_TOZERO, hUp)
-
-    # src
-    # src
-    # src
-    # thresh
-    # 0
-    # 0
-    # 0
-    # 0
-    # 0
-
-    hDown = h.copy()
-    #「src(x,y)がthresh（下限）より大きければ、dst(x,y)は0。さもなければsrc(x,y)。」
-    cv2.threshold(h, hue - hueRange, hue, cv2.THRESH_TOZERO_INV, hDown)
-
-    # 0
-    # 0
-    # 0
-    # 0
-    # 0
-    # thresh
-    # src
-    # src
-    # src
-
-    hMask = h.copy()
-    cv2.bitwise_or(hUp, hDown, hMask)
-
-    # 結果
-
-    # src
-    # src
-    # src
-    # thresh
-    # 0
-    # thresh
-    # src
-    # src
-    # src
-    """
-
-    cv2.bitwise_and(s, 0, s, hMask2) # 論理積
+    # ターゲット範囲以外は彩度を0にする
+    cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
 
     cv2.merge((hOrg, s, v), src)
     cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
+
+def hueMaskAndOpening(src, dst, hue, hueRange, iterations=1):
+    src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(src)
+    hOrg = h.copy()
+    hTarget = h.copy()
+
+    """
+    cv2.threshold(hTarget, hue + hueRange, hue, cv2.THRESH_TOZERO_INV, hTarget)
+    # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
+    # Parameters:
+    # src – input array (single-channel, 8-bit or 32-bit floating point).
+    # dst – output array of the same size and type as src.
+    # thresh – threshold value.
+    # maxval – maximum value to use with the THRESH_BINARY and THRESH_BINARY_INV thresholding types.
+    # type – thresholding type (see the details below).
+
+    # THRESH_TOZERO_INV
+    # if src(x,y) > thresh then dst(x,y) = 0
+    # if otherwise         then dst(x,y) = src(x,y)
+    # 「src(x,y)がthreshより大きければ、dst(x,y)は0」
+
+    # 0
+    # 0
+    # 0
+    # thresh
+    # src
+    # src
+    # src
+    # src
+    # src
+
+    cv2.threshold(hTarget, hue - hueRange, hue, cv2.THRESH_BINARY, hTarget)
+    # THRESH_BINARY
+    # if src(x,y) > thresh then dst(x,y) = maxval = hue = src(x,y)
+    # if otherwise         then dst(x,y) = 0
+    # 「src(x,y)がthreshより小さければ、dst(x,y)は0」
+
+    # 0(src)
+    # 0(src)
+    # 0(src)
+    # src
+    # src
+    # thresh
+    # 0
+    # 0
+    # 0
+
+    # 結果
+
+    # 0
+    # 0
+    # 0
+    # thresh
+    # src
+    # thresh
+    # 0
+    # 0
+    # 0
+    """
+
+    hTargetLower = h.copy()
+    cv2.threshold(hTarget, hue + hueRange, 255, cv2.THRESH_BINARY_INV, hTargetLower)
+    # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
+    # Parameters:
+    # src – input array (single-channel, 8-bit or 32-bit floating point).
+    # dst – output array of the same size and type as src.
+    # thresh – threshold value.
+    # maxval – maximum value to use with the THRESH_BINARY and THRESH_BINARY_INV thresholding types.
+    # type – thresholding type (see the details below).
+
+    # 0
+    # 0
+    # 0
+    # thresh
+    # 255
+    # 255
+    # 255
+    # 255
+    # 255
+
+    hTargetHigher = h.copy()
+    cv2.threshold(hTarget, hue - hueRange, 255, cv2.THRESH_BINARY, hTargetHigher)
+    # THRESH_BINARY
+    # if src(x,y) > thresh then dst(x,y) = maxval = 255
+    # if otherwise         then dst(x,y) = 0
+    # 「src(x,y)がthreshより小さければ、dst(x,y)は0」
+
+    # 255
+    # 255
+    # 255
+    # 255
+    # 255
+    # thresh
+    # 0
+    # 0
+    # 0
+
+    cv2.bitwise_and(hTargetLower, hTargetHigher, hTarget)
+
+    # 結果
+
+    # 0
+    # 0
+    # 0
+    # thresh
+    # 255
+    # thresh
+    # 0
+    # 0
+    # 0
+
+
+    # 蛍光灯の光などを除外するため、
+    # 極端に明るいピクセルをターゲット範囲から除外する
+    # vNotHighlight = v.copy() # 極端に明るくないところ
+    # cv2.threshold(vNotHighlight, 220, 255, cv2.THRESH_BINARY_INV)
+
+    # 蛍光灯の光（黄）や髪の毛（青）を除外するため、
+    # 極端に彩度の低いピクセルをターゲット範囲から除外する
+    sNotVeryLow = s.copy() # 極端に彩度が低くないところ
+    # 彩度が31より高いならターゲット範囲（255）に入れる。
+    # さもなくば非ターゲット範囲（0）。
+    cv2.threshold(sNotVeryLow, 31, 255, cv2.THRESH_BINARY, sNotVeryLow)
+
+    # hTargetとvNotHighlightの論理積が新しいhTarget
+    # ここでhTargetが完成する
+    cv2.bitwise_and(hTarget, sNotVeryLow, hTarget)
+
+    # 8近傍
+    element8 = numpy.array([[1,1,1],
+                            [1,1,1],
+                            [1,1,1]], numpy.uint8)
+    # オープニング
+    # cv2.morphologyEx(hTarget, cv2.MORPH_OPEN, element8, hTarget, None, iterations)
+    # anchor – アンカー点．
+    # デフォルト値は(-1,-1) で、アンカーがカーネルの中心にあることを意味します
+
+    # 明度画像のコピーをとる。
+    vBrightened = v.copy()
+    # それに+96のガンマ補正をかけ、明るくする
+    cv2.addWeighted(v, 0.625, v, 0.0, 96, vBrightened)
+    # 明度画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
+    cv2.bitwise_and(vBrightened, 255, v, hTarget)
+
+    hNotTarget = h.copy()
+    # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
+    # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
+    # さもなくば、0にセットする。
+    # 要するにhNotTargetはhTargetマスク画像を反転させたもの。
+    cv2.compare(hTarget, 0, cv2.CMP_EQ, hNotTarget)
+
+    # ターゲット範囲以外は彩度を0にする
+    cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
+
+    cv2.merge((hOrg, s, v), src)
+    # cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
+
+    cv2.merge((hTarget, hTarget, hTarget), dst)
 
 def equaliseHist(src, dst):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
