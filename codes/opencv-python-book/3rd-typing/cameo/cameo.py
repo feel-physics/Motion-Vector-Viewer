@@ -7,6 +7,7 @@ from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
 from datetime import datetime
 
+
 class Cameo(object):
 
     def __init__(self):
@@ -17,8 +18,7 @@ class Cameo(object):
         # def __init__(self, windowName, keypressCallback = None):
 
         self._captureManager = CaptureManager(
-            cv2.VideoCapture(0), self._windowManager, False
-        )
+            cv2.VideoCapture(0), self._windowManager, False)
         """:type : managers.CaptureManager"""
         # def __init__(self, capture, previewWindowManager = None,
         #     shouldMirrorPreview = False):
@@ -38,8 +38,9 @@ class Cameo(object):
         self._shouldRecolorRGV             = False
         self._shouldRecolorCMV             = False
         self._shouldHueMask                = False
-        self._hue                          = 180
+        self._hue                          = 90
         self._hueRange                     = 10
+        self._shouldEqualizeHist           = False
 
         self._timeSelfTimerStarted         = None
 
@@ -84,6 +85,8 @@ class Cameo(object):
                 filters.recolorCMV(frame, frame)
             if self._shouldHueMask:
                 filters.hueMask(frame, frame, self._hue, self._hueRange)
+            if self._shouldEqualizeHist:
+                filters.equaliseHist(frame, frame)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -118,10 +121,10 @@ class Cameo(object):
         :param keycode: int
         :return: None
         """
-        if keycode == 32: # スペース
+        if keycode == 32:  # スペース
             self._captureManager.paused = \
                 not self._captureManager.paused
-        elif keycode == 13: # リターン
+        elif keycode == 13:  # リターン
             self._takeScreenShot()
 
         elif keycode == 9: # タブ
@@ -144,7 +147,7 @@ class Cameo(object):
         # elif keycode == ord('p'):
         #     self._shouldApplyPortraCurveFilter = \
         #         not self._shouldApplyPortraCurveFilter
-        elif keycode == ord('e'):
+        elif keycode == ord('s'):
             self._shouldStrokeEdge = \
                 not self._shouldStrokeEdge
         elif keycode == ord('b'):
@@ -172,25 +175,25 @@ class Cameo(object):
         elif keycode == ord('h'):
             self._shouldHueMask = \
                 not self._shouldHueMask
-        elif keycode == 0: # up arrow
+        elif keycode == 0:  # up arrow
             self._hue += 10
-            print self._hue
-        elif keycode == 1: # down arrow
+            print 'hue     : ' + str(self._hue)
+        elif keycode == 1:  # down arrow
             self._hue -= 10
-            print self._hue
-        elif keycode == 2: # left arrow
+            print 'hue     : ' + str(self._hue)
+        elif keycode == 2:  # left arrow
             self._hueRange -= 5
-            print self._hueRange
-        elif keycode == 3: # right arrow
+            print 'hueRange: ' + str(self._hueRange)
+        elif keycode == 3:  # right arrow
             self._hueRange += 5
-            print self._hueRange
+            print 'hueRange: ' + str(self._hueRange)
         elif keycode == ord('B'):
             self._hue      = 110
             self._hueRange = 10
             self._shouldHueMask = \
                 not self._shouldHueMask
         elif keycode == ord('G'):
-            self._hue      = 70
+            self._hue      = 60
             self._hueRange = 25
             self._shouldHueMask = \
                 not self._shouldHueMask
@@ -205,11 +208,15 @@ class Cameo(object):
             self._shouldHueMask = \
                 not self._shouldHueMask
 
+        elif keycode == ord('e'):
+            self._shouldEqualizeHist = \
+                not self._shouldEqualizeHist
+
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
 
         else:
             print keycode
 
-if __name__=="__main__":
+if __name__ == "__main__":
     Cameo().run()

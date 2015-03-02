@@ -333,11 +333,18 @@ def hueMask(src, dst, hue, hueRange):
 
     # 蛍光灯の光などを除外するため、
     # 極端に明るいピクセルをターゲット範囲から除外する
-    vNotHighlight = v.copy() # 極端に明るくないところ
-    cv2.threshold(vNotHighlight, 220, 255, cv2.THRESH_BINARY_INV)
+    # vNotHighlight = v.copy() # 極端に明るくないところ
+    # cv2.threshold(vNotHighlight, 220, 255, cv2.THRESH_BINARY_INV)
+
+    # 蛍光灯の光（黄）や髪の毛（青）を除外するため、
+    # 極端に彩度の低いピクセルをターゲット範囲から除外する
+    sNotVeryLow = s.copy() # 極端に彩度が低くないところ
+    # 彩度が31より高いならターゲット範囲（255）に入れる。
+    # さもなくば非ターゲット範囲（0）。
+    cv2.threshold(sNotVeryLow, 31, 255, cv2.THRESH_BINARY, sNotVeryLow)
 
     # hTargetとvNotHighlightの論理積が新しいhTarget
-    cv2.bitwise_and(hTarget, vNotHighlight, hTarget)
+    cv2.bitwise_and(hTarget, sNotVeryLow, hTarget)
 
     # 明度画像のコピーをとる。
     vBrightened = v.copy()
@@ -401,4 +408,11 @@ def hueMask(src, dst, hue, hueRange):
     cv2.bitwise_and(s, 0, s, hMask2) # 論理積
 
     cv2.merge((hOrg, s, v), src)
+    cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
+
+def equaliseHist(src, dst):
+    src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(src)
+    cv2.equalizeHist(v, v)
+    cv2.merge((h, s, v), src)
     cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
