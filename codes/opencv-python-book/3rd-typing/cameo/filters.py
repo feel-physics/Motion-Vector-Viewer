@@ -349,18 +349,9 @@ def lightTarget(v, hTarget):
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
     return v
 
-def grayNotTarget(s, hTarget):
-    hNotTarget = hTarget.copy()
-    # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
-    # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
-    # さもなくば、0にセットする。
-    # 要するにhMask2はhTargetマスク画像を反転させたもの。
-    cv2.compare(hTarget, 0, cv2.CMP_EQ, hNotTarget)
-    # ターゲット範囲以外は彩度を0にする
-    cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
-    return s
-
-def hueMask(src, dst, hue, hueRange, shouldProcessClosing=False, iterations=1):
+def maskByHue(src, dst, hue, hueRange,
+              shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
+              shouldProcessOpening=True, iterations=1):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
     hOrg = h.copy()
@@ -368,23 +359,42 @@ def hueMask(src, dst, hue, hueRange, shouldProcessClosing=False, iterations=1):
 
     hTarget = getHueMask(h, s, hue, hueRange)
 
-    if shouldProcessClosing:
+    if shouldProcessOpening:
         # 8近傍
         element8 = numpy.array([[1,1,1],
                                 [1,1,1],
                                 [1,1,1]], numpy.uint8)
         # クロージング
-        cv2.morphologyEx(hTarget, cv2.MORPH_CLOSE, element8, hTarget, None, iterations)
+        # cv2.morphologyEx(hTarget, cv2.MORPH_CLOSE, element8, hTarget, None, iterations)
+        cv2.morphologyEx(hTarget, cv2.MORPH_OPEN, element8, hTarget, None, iterations)
         # anchor – アンカー点．
         # デフォルト値は(-1,-1) で、アンカーがカーネルの中心にあることを意味します
 
+    if shouldProcessGaussianBlur:
+        # ガウシアンフィルタを用いて画像の平滑化を行います．
+        # GaussianBlur(src, ksize, sigmaX[, dst[, sigmaY[, borderType]]]) -> dst
+        # ksize must pair of odd. (5,5),(7,7),(9,9)...
+        cv2.GaussianBlur(hTarget, (9,9), 0, hTarget)
+
     v = lightTarget(v, hTarget)
-    s = grayNotTarget(s, hTarget)
+
+    # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
+    # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
+    # さもなくば、0にセットする。
+    # 要するにhMask2はhTargetマスク画像を反転させたもの。
+    hNotTarget = hTarget.copy()
+    cv2.compare(hTarget, 0, cv2.CMP_EQ, hNotTarget)
+
+    # ターゲット範囲以外は
+    if shouldPaintBackgroundBlack:
+        # 黒くする
+        cv2.bitwise_and(v, 0, v, hNotTarget) # 論理積
+    else:
+        # 彩度を0にする
+        cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
 
     cv2.merge((hOrg, s, v), src)
     cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
-
-    # cv2.merge((hTarget, hTarget, hTarget), dst)
 
 def equaliseHist(src, dst):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)

@@ -37,11 +37,12 @@ class Cameo(object):
         self._shouldRecolorRC              = False
         self._shouldRecolorRGV             = False
         self._shouldRecolorCMV             = False
-        self._shouldHueMask                = False
+        self._shouldMaskByHue              = False
         self._hue                          = 90
         self._hueRange                     = 10
         self._shouldEqualizeHist           = False
-        self._shouldHueMaskAndProcessClosing = False
+        self._shouldMaskByHueAndProcessGaussianBlur = False
+        self._shouldPaintBackgroundBlack   = False
 
         self._timeSelfTimerStarted         = None
 
@@ -84,12 +85,21 @@ class Cameo(object):
                 filters.recolorRGV(frame, frame)
             if self._shouldRecolorCMV:
                 filters.recolorCMV(frame, frame)
-            if self._shouldHueMask:
-                filters.hueMask(frame, frame, self._hue, self._hueRange)
             if self._shouldEqualizeHist:
                 filters.equaliseHist(frame, frame)
-            if self._shouldHueMaskAndProcessClosing:
-                filters.hueMask(frame, frame, self._hue, self._hueRange, True, 5)
+
+            # def maskByHue(src, dst, hue, hueRange,
+            #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
+            #               shouldProcessOpening=True, iterations=1):
+            if self._shouldMaskByHue and self._shouldPaintBackgroundBlack:
+                filters.maskByHue(frame, frame, self._hue, self._hueRange, False, True)
+            elif self._shouldMaskByHue:
+                filters.maskByHue(frame, frame, self._hue, self._hueRange)
+            elif self._shouldMaskByHueAndProcessGaussianBlur \
+                    and self._shouldPaintBackgroundBlack:
+                filters.maskByHue(frame, frame, self._hue, self._hueRange, True, True)
+            elif self._shouldMaskByHueAndProcessGaussianBlur:
+                filters.maskByHue(frame, frame, self._hue, self._hueRange, True)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -176,8 +186,8 @@ class Cameo(object):
 
         ### Hue Filter ###
         elif keycode == ord('h'):
-            self._shouldHueMask = \
-                not self._shouldHueMask
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
         elif keycode == 0:  # up arrow
             self._hue += 5
             print 'hue     : ' + str(self._hue)
@@ -193,28 +203,31 @@ class Cameo(object):
         elif keycode == ord('B'):
             self._hue      = 110
             self._hueRange = 10
-            self._shouldHueMask = \
-                not self._shouldHueMask
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
         elif keycode == ord('G'):
             self._hue      = 70
             self._hueRange = 30
-            self._shouldHueMask = \
-                not self._shouldHueMask
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
         elif keycode == ord('R'):
             self._hue      = 5
             self._hueRange = 5
-            self._shouldHueMask = \
-                not self._shouldHueMask
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
         elif keycode == ord('Y'):
             self._hue      = 30
             self._hueRange = 15
-            self._shouldHueMask = \
-                not self._shouldHueMask
-        elif keycode == ord('c'):
-            self._shouldHueMask = \
-                not self._shouldHueMask
-            self._shouldHueMaskAndProcessClosing = \
-                not self._shouldHueMaskAndProcessClosing
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
+        elif keycode == ord('g'):
+            self._shouldMaskByHue = \
+                not self._shouldMaskByHue
+            self._shouldMaskByHueAndProcessGaussianBlur = \
+                not self._shouldMaskByHueAndProcessGaussianBlur
+        elif keycode == ord('k'):
+            self._shouldPaintBackgroundBlack = \
+                not self._shouldPaintBackgroundBlack
 
         elif keycode == ord('e'):
             self._shouldEqualizeHist = \
