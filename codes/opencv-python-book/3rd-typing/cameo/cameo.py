@@ -43,6 +43,7 @@ class Cameo(object):
         self._shouldEqualizeHist           = False
         self._shouldMaskByHueAndProcessGaussianBlur = False
         self._shouldPaintBackgroundBlack   = False
+        self._shouldProcessGaussianBlur    = False
 
         self._timeSelfTimerStarted         = None
 
@@ -91,15 +92,10 @@ class Cameo(object):
             # def maskByHue(src, dst, hue, hueRange,
             #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
             #               shouldProcessOpening=True, iterations=1):
-            if self._shouldMaskByHue and self._shouldPaintBackgroundBlack:
-                filters.maskByHue(frame, frame, self._hue, self._hueRange, False, True)
-            elif self._shouldMaskByHue:
-                filters.maskByHue(frame, frame, self._hue, self._hueRange)
-            elif self._shouldMaskByHueAndProcessGaussianBlur \
-                    and self._shouldPaintBackgroundBlack:
-                filters.maskByHue(frame, frame, self._hue, self._hueRange, True, True)
-            elif self._shouldMaskByHueAndProcessGaussianBlur:
-                filters.maskByHue(frame, frame, self._hue, self._hueRange, True)
+            if self._shouldMaskByHue:
+                filters.maskByHue(frame, frame, self._hue, self._hueRange,
+                                  self._shouldProcessGaussianBlur,
+                                  self._shouldPaintBackgroundBlack)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -221,10 +217,8 @@ class Cameo(object):
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('g'):
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
-            self._shouldMaskByHueAndProcessGaussianBlur = \
-                not self._shouldMaskByHueAndProcessGaussianBlur
+            self._shouldProcessGaussianBlur = \
+                not self._shouldProcessGaussianBlur
         elif keycode == ord('k'):
             self._shouldPaintBackgroundBlack = \
                 not self._shouldPaintBackgroundBlack
