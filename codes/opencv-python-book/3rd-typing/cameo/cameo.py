@@ -217,9 +217,11 @@ class Cameo(object):
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('g'):
+            self._shouldMaskByHue = True
             self._shouldProcessGaussianBlur = \
                 not self._shouldProcessGaussianBlur
         elif keycode == ord('k'):
+            self._shouldMaskByHue = True
             self._shouldPaintBackgroundBlack = \
                 not self._shouldPaintBackgroundBlack
 
