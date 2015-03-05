@@ -44,6 +44,7 @@ class Cameo(object):
         self._shouldMaskByHueAndProcessGaussianBlur = False
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = False
+        self._shouldProcessClosing         = False
 
         self._timeSelfTimerStarted         = None
 
@@ -91,11 +92,12 @@ class Cameo(object):
 
             # def maskByHue(src, dst, hue, hueRange,
             #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
-            #               shouldProcessOpening=True, iterations=1):
+            #               shouldProcessClosing=True, iterations=1):
             if self._shouldMaskByHue:
                 filters.maskByHue(frame, frame, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
-                                  self._shouldPaintBackgroundBlack)
+                                  self._shouldPaintBackgroundBlack,
+                                  self._shouldProcessClosing)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -224,6 +226,10 @@ class Cameo(object):
             self._shouldMaskByHue = True
             self._shouldPaintBackgroundBlack = \
                 not self._shouldPaintBackgroundBlack
+        elif keycode == ord('c'):
+            self._shouldMaskByHue = True
+            self._shouldProcessClosing = \
+                not self._shouldProcessClosing
 
         elif keycode == ord('e'):
             self._shouldEqualizeHist = \

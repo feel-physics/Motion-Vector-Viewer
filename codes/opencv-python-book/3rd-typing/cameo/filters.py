@@ -351,7 +351,7 @@ def lightTarget(v, hTarget):
 
 def maskByHue(src, dst, hue, hueRange,
               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
-              shouldProcessOpening=True, iterations=1):
+              shouldProcessClosing=True, iterations=1):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
     hOrg = h.copy()
@@ -359,7 +359,7 @@ def maskByHue(src, dst, hue, hueRange,
 
     hTarget = getHueMask(h, s, hue, hueRange)
 
-    if shouldProcessOpening:
+    if shouldProcessClosing:
         # 8近傍
         element8 = numpy.array([[1,1,1],
                                 [1,1,1],
