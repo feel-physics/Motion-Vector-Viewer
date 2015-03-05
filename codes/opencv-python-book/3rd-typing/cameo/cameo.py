@@ -154,34 +154,6 @@ class Cameo(object):
             self._shouldDrawDebugRects = \
                 not self._shouldDrawDebugRects
 
-        ### Filters ###
-        # elif keycode == ord('p'):
-        #     self._shouldApplyPortraCurveFilter = \
-        #         not self._shouldApplyPortraCurveFilter
-        elif keycode == ord('s'):
-            self._shouldStrokeEdge = \
-                not self._shouldStrokeEdge
-        elif keycode == ord('b'):
-            self._shouldApplyBlur = \
-                not self._shouldApplyBlur
-        elif keycode == ord('l'):
-            self._shouldApplyLaplacian = \
-                not self._shouldApplyLaplacian
-        elif keycode == ord('t'):
-            self._shouldApplyTestCurveFilter = \
-                not self._shouldApplyTestCurveFilter
-
-        ### Filters from 2nd typing ###
-        elif keycode == ord('r'):
-            self._shouldRecolorRC = \
-                not self._shouldRecolorRC
-        elif keycode == ord('v'):
-            self._shouldRecolorRGV = \
-                not self._shouldRecolorRGV
-        elif keycode == ord('m'):
-            self._shouldRecolorCMV = \
-                not self._shouldRecolorCMV
-
         ### Hue Filter ###
         elif keycode == ord('h'):
             self._shouldMaskByHue = \
@@ -230,10 +202,6 @@ class Cameo(object):
             self._shouldMaskByHue = True
             self._shouldProcessClosing = \
                 not self._shouldProcessClosing
-
-        elif keycode == ord('e'):
-            self._shouldEqualizeHist = \
-                not self._shouldEqualizeHist
 
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
