@@ -41,7 +41,6 @@ class Cameo(object):
         self._hue                          = 140  # 緑
         self._hueRange                     = 60
         self._shouldEqualizeHist           = False
-        self._shouldMaskByHueAndProcessGaussianBlur = False
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = False
         self._shouldProcessClosing         = False
