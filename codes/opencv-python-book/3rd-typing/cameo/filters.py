@@ -352,12 +352,16 @@ def lightTarget(v, hTarget):
 def maskByHue(src, dst, hue, hueRange,
               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
               shouldProcessClosing=True, iterations=1):
+
+    _hue      = hue / 2
+    _hueRange = hueRange / 2
+
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
     hOrg = h.copy()
     hTarget = h.copy()
 
-    hTarget = getHueMask(h, s, hue, hueRange)
+    hTarget = getHueMask(h, s, _hue, _hueRange)
 
     if shouldProcessClosing:
         # 8近傍

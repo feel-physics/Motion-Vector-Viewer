@@ -38,8 +38,8 @@ class Cameo(object):
         self._shouldRecolorRGV             = False
         self._shouldRecolorCMV             = False
         self._shouldMaskByHue              = False
-        self._hue                          = 90
-        self._hueRange                     = 10
+        self._hue                          = 140  # 緑
+        self._hueRange                     = 60
         self._shouldEqualizeHist           = False
         self._shouldMaskByHueAndProcessGaussianBlur = False
         self._shouldPaintBackgroundBlack   = False
@@ -159,35 +159,35 @@ class Cameo(object):
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == 0:  # up arrow
-            self._hue += 5
+            self._hue += 10
             print 'hue     : ' + str(self._hue)
         elif keycode == 1:  # down arrow
-            self._hue -= 5
+            self._hue -= 10
             print 'hue     : ' + str(self._hue)
         elif keycode == 2:  # left arrow
-            self._hueRange -= 5
+            self._hueRange -= 10
             print 'hueRange: ' + str(self._hueRange)
         elif keycode == 3:  # right arrow
-            self._hueRange += 5
+            self._hueRange += 10
             print 'hueRange: ' + str(self._hueRange)
         elif keycode == ord('B'):
-            self._hue      = 110
-            self._hueRange = 10
+            self._hue      = 220
+            self._hueRange = 20
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('G'):
-            self._hue      = 70
-            self._hueRange = 30
+            self._hue      = 140
+            self._hueRange = 60
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('R'):
-            self._hue      = 5
-            self._hueRange = 5
+            self._hue      = 10
+            self._hueRange = 10
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('Y'):
-            self._hue      = 30
-            self._hueRange = 15
+            self._hue      = 60
+            self._hueRange = 30
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
         elif keycode == ord('g'):
