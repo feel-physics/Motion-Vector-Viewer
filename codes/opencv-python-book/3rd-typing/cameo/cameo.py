@@ -50,6 +50,8 @@ class Cameo(object):
         self._shouldDrawDebugRects         = False
 
         self._shouldFindCircle             = False
+        self._dp                           = 3
+        self._houghCircleParam2            = 200
 
     def _takeScreenShot(self):
         now = datetime.now()
@@ -122,8 +124,8 @@ class Cameo(object):
                 frameToFindCircle = cv2.cvtColor(frameToFindCircle, cv2.cv.CV_BGR2GRAY)
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
-                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, 2,
-                                           height / 4)
+                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, self._dp,
+                                           height / 4,  100, self._houghCircleParam2, 100, 1)
                 # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
                 #                  minRadius[, maxRadius]]]]]) → circles
                 # ハフ変換を用いて，グレースケール画像から円を検出します．
@@ -153,7 +155,8 @@ class Cameo(object):
                 # 円を描く
                 if circles is not None:
                     x, y, r = circles[0][0]
-                    cv2.circle(frame, (x,y), r, (0,255,0), 5)
+                    print x, y, r
+                    cv2.circle(frame, (x,y), r, (0,255,0), 5)  # 緑色の円を描く
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -200,18 +203,30 @@ class Cameo(object):
         elif keycode == ord('h'):
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
+        # elif keycode == 0:  # up arrow
+        #     self._hue += 10
+        #     print 'hue     : ' + str(self._hue)
+        # elif keycode == 1:  # down arrow
+        #     self._hue -= 10
+        #     print 'hue     : ' + str(self._hue)
+        # elif keycode == 2:  # left arrow
+        #     self._hueRange -= 10
+        #     print 'hueRange: ' + str(self._hueRange)
+        # elif keycode == 3:  # right arrow
+        #     self._hueRange += 10
+        #     print 'hueRange: ' + str(self._hueRange)
         elif keycode == 0:  # up arrow
-            self._hue += 10
-            print 'hue     : ' + str(self._hue)
+            self._dp += 1
+            print 'dp    : ' + str(self._dp)
         elif keycode == 1:  # down arrow
-            self._hue -= 10
-            print 'hue     : ' + str(self._hue)
+            self._dp -= 1
+            print 'dp    : ' + str(self._dp)
         elif keycode == 2:  # left arrow
-            self._hueRange -= 10
-            print 'hueRange: ' + str(self._hueRange)
+            self._houghCircleParam2 -= 10
+            print 'param2: ' + str(self._houghCircleParam2)
         elif keycode == 3:  # right arrow
-            self._hueRange += 10
-            print 'hueRange: ' + str(self._hueRange)
+            self._houghCircleParam2 += 10
+            print 'param2: ' + str(self._houghCircleParam2)
         elif keycode == ord('B'):
             self._hue      = 220
             self._hueRange = 20
