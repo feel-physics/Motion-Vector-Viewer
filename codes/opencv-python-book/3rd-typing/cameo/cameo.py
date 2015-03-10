@@ -49,6 +49,8 @@ class Cameo(object):
 
         self._shouldDrawDebugRects         = False
 
+        self._shouldFindCircle             = False
+
     def _takeScreenShot(self):
         now = datetime.now()
         timestamp = now.strftime('%y%m%d-%H%M%S')
@@ -110,6 +112,49 @@ class Cameo(object):
 
                 self._faceTracker.drawDebugRects(frame)
 
+            # 円を検出する
+            if self._shouldFindCircle:
+                frameToFindCircle = frame.copy()
+                filters.maskByHue(frame, frameToFindCircle, self._hue, self._hueRange,
+                                  self._shouldProcessGaussianBlur, True,
+                                  self._shouldProcessClosing)
+                # グレースケール画像に変換する
+                frameToFindCircle = cv2.cvtColor(frameToFindCircle, cv2.cv.CV_BGR2GRAY)
+                # Hough変換で円を検出する
+                height, width = frameToFindCircle.shape
+                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, 2,
+                                           height / 4)
+                # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
+                #                  minRadius[, maxRadius]]]]]) → circles
+                # ハフ変換を用いて，グレースケール画像から円を検出します．
+                # パラメタ:
+                # image – 8ビット，シングルチャンネル，グレースケールの入力画像．
+                # circles – 検出された円を出力するベクトル．
+                #   各ベクトルは，3要素の浮動小数点型ベクトル  (x, y, radius) としてエンコードされます．
+                # method – 現在のところ， CV_HOUGH_GRADIENT メソッドのみが実装されています．
+                #   基本的には 2段階ハフ変換 で，これについては Yuen90 で述べられています．
+                # dp – 画像分解能に対する投票分解能の比率の逆数．
+                #   例えば， dp=1 の場合は，投票空間は入力画像と同じ分解能をもちます．
+                #   また dp=2 の場合は，投票空間の幅と高さは半分になります．
+                # minDist – 検出される円の中心同士の最小距離．
+                #   このパラメータが小さすぎると，正しい円の周辺に別の円が複数誤って検出されることになります．
+                #   逆に大きすぎると，検出できない円がでてくる可能性があります．
+                # param1 – 手法依存の 1 番目のパラメータ．
+                #   CV_HOUGH_GRADIENT の場合は，
+                #   Canny() エッジ検出器に渡される2つの閾値の内，大きい方の閾値を表します
+                #   （小さい閾値は，この値の半分になります）．
+                # param2 – 手法依存の 2 番目のパラメータ．
+                #   CV_HOUGH_GRADIENT の場合は，円の中心を検出する際の投票数の閾値を表します．
+                #   これが小さくなるほど，より多くの誤検出が起こる可能性があります．
+                #   より多くの投票を獲得した円が，最初に出力されます．
+                # minRadius – 円の半径の最小値．
+                # maxRadius – 円の半径の最大値．
+
+                # 円を描く
+                if circles is not None:
+                    x, y, r = circles[0][0]
+                    cv2.circle(frame, (x,y), r, (0,255,0), 5)
+
             # フレームを解放する
             self._captureManager.exitFrame()
             # キーイベントがあれば実行する
@@ -131,6 +176,8 @@ class Cameo(object):
         :param keycode: int
         :return: None
         """
+
+        ### 基本操作
         if keycode == 32:  # スペース
             self._captureManager.paused = \
                 not self._captureManager.paused
@@ -148,10 +195,6 @@ class Cameo(object):
                 self._captureManager.stopWritingVideo()
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
-
-        elif keycode == ord('d'):
-            self._shouldDrawDebugRects = \
-                not self._shouldDrawDebugRects
 
         ### Hue Filter ###
         elif keycode == ord('h'):
@@ -201,6 +244,14 @@ class Cameo(object):
             self._shouldMaskByHue = True
             self._shouldProcessClosing = \
                 not self._shouldProcessClosing
+
+        ### その他
+        elif keycode == ord('d'):
+            self._shouldDrawDebugRects = \
+                not self._shouldDrawDebugRects
+        elif keycode == ord('f'):
+            self._shouldFindCircle = \
+                not self._shouldFindCircle
 
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
