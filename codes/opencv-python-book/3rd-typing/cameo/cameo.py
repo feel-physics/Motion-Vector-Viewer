@@ -37,21 +37,25 @@ class Cameo(object):
         self._shouldRecolorRC              = False
         self._shouldRecolorRGV             = False
         self._shouldRecolorCMV             = False
-        self._shouldMaskByHue              = False
+        self._shouldMaskByHue              = True
         self._hue                          = 140  # 緑
         self._hueRange                     = 60
         self._shouldEqualizeHist           = False
         self._shouldPaintBackgroundBlack   = False
-        self._shouldProcessGaussianBlur    = False
-        self._shouldProcessClosing         = False
+        self._shouldProcessGaussianBlur    = True
+        self._shouldProcessClosing         = True
 
         self._timeSelfTimerStarted         = None
 
         self._shouldDrawDebugRects         = False
 
-        self._shouldFindCircle             = False
-        self._dp                           = 3
+        ### Ball Tracking ###
+        self._shouldFindCircle             = True
+        self._houghCircleDp                = 3
         self._houghCircleParam2            = 200
+        self._pointCircleCenter            = None
+        self._passedPoints                 = []
+        self._numberOfDisplayedPoints      = 50
 
     def _takeScreenShot(self):
         now = datetime.now()
@@ -124,7 +128,7 @@ class Cameo(object):
                 frameToFindCircle = cv2.cvtColor(frameToFindCircle, cv2.cv.CV_BGR2GRAY)
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
-                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, self._dp,
+                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, self._houghCircleDp,
                                            height / 4,  100, self._houghCircleParam2, 100, 1)
                 # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
                 #                  minRadius[, maxRadius]]]]]) → circles
@@ -152,11 +156,36 @@ class Cameo(object):
                 # minRadius – 円の半径の最小値．
                 # maxRadius – 円の半径の最大値．
 
-                # 円を描く
+                # 円を描画する
+                # もし円を見つけたら・・・
                 if circles is not None:
                     x, y, r = circles[0][0]
-                    print x, y, r
-                    cv2.circle(frame, (x,y), r, (0,255,0), 5)  # 緑色の円を描く
+                    self._pointCircleCenter = (x,y)
+
+                    # 円を描く
+                    cv2.circle(frame, self._pointCircleCenter, r, (0,255,0), 5)
+
+                # 軌跡を描画する
+                # 最初に円が見つかったときに初期化する
+                if len(self._passedPoints) == 0 \
+                        and self._pointCircleCenter is not None:
+
+                    # 最初の(x,y)でリストを埋める
+                    for i in range(self._numberOfDisplayedPoints):
+                        self._passedPoints.append(self._pointCircleCenter)
+
+                # 次の円を検出したら・・・
+                elif self._pointCircleCenter is not None:
+                    # 通過点リストの最後に要素を追加する
+                    self._passedPoints.append(self._pointCircleCenter)
+                    self._passedPoints.pop(0)  # 最初の要素は削除する
+
+                # 次の円が見つかっても見つからなくても・・・
+                if len(self._passedPoints) != 0:
+                    for i in range(self._numberOfDisplayedPoints - 1):
+                        # 軌跡を描画する
+                        cv2.line(frame, self._passedPoints[i],
+                                 self._passedPoints[i+1], (0,255,0), 5)
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -216,11 +245,11 @@ class Cameo(object):
         #     self._hueRange += 10
         #     print 'hueRange: ' + str(self._hueRange)
         elif keycode == 0:  # up arrow
-            self._dp += 1
-            print 'dp    : ' + str(self._dp)
+            self._houghCircleDp += 1
+            print 'dp    : ' + str(self._houghCircleDp)
         elif keycode == 1:  # down arrow
-            self._dp -= 1
-            print 'dp    : ' + str(self._dp)
+            self._houghCircleDp -= 1
+            print 'dp    : ' + str(self._houghCircleDp)
         elif keycode == 2:  # left arrow
             self._houghCircleParam2 -= 10
             print 'param2: ' + str(self._houghCircleParam2)
