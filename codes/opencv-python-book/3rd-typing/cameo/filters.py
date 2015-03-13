@@ -273,7 +273,7 @@ def applyLaplacian(src, dst, edgeSize = 5):
     cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
     dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)
 
-def getHueMask(h, s, hue, hueRange):
+def getHueMask(h, s, hue, hueRange, sThreshold = 5):
 
     hTargetLower = h.copy()
     cv2.threshold(h, hue + hueRange, 255, cv2.THRESH_BINARY_INV, hTargetLower)
@@ -326,12 +326,13 @@ def getHueMask(h, s, hue, hueRange):
     # 0
     # 0
 
-    # 蛍光灯の光（黄）や髪の毛（青）を除外するため、
-    # 極端に彩度の低いピクセルをターゲット範囲から除外する
-    sNotVeryLow = s.copy() # 極端に彩度が低くないところ
+    """
+    # 蛍光灯の光（黄）を除外するため、
+    # 極端に彩度が低く明度が高い（つまり白い）ピクセルをターゲット範囲から除外する
+    sVeryLowAndVVeryHigh = s.copy() # 極端に彩度が低く明度が高いところ
     # 彩度が31より高いならターゲット範囲（255）に入れる。
     # さもなくば非ターゲット範囲（0）。
-    cv2.threshold(sNotVeryLow, 31, 255, cv2.THRESH_BINARY, sNotVeryLow)
+    cv2.threshold(sNotVeryLow, 2 ** sThreshold - 1, 255, cv2.THRESH_BINARY, sNotVeryLow)
 
     # hTargetとvNotHighlightの論理積が新しいhTarget
     # ここでhTargetが完成する
@@ -339,19 +340,23 @@ def getHueMask(h, s, hue, hueRange):
     cv2.bitwise_and(hTarget, sNotVeryLow, hTarget)
 
     return hTarget
+    """
+    return h
 
-def lightTarget(v, hTarget):
+def lightTarget(v, hTarget, gamma):
     # 明度画像のコピーをとる。
     vBrightened = v.copy()
     # それに+96のガンマ補正をかけ、明るくする
-    cv2.addWeighted(v, 0.625, v, 0.0, 96, vBrightened)
+    cv2.addWeighted(v, 1.0-gamma/256, v, 0.0, gamma, vBrightened)
     # 明度画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
     return v
 
 def maskByHue(src, dst, hue, hueRange,
-              shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
-              shouldProcessClosing=True, iterations=1):
+              shouldProcessGaussianBlur=False,
+              shouldPaintBackgroundBlack=False,
+              shouldProcessClosing=True, iterations=1,
+              sThreshold=5, gamma=96):
 
     _hue      = hue / 2
     _hueRange = hueRange / 2
@@ -361,7 +366,7 @@ def maskByHue(src, dst, hue, hueRange,
     hOrg = h.copy()
     hTarget = h.copy()
 
-    hTarget = getHueMask(h, s, _hue, _hueRange)
+    hTarget = getHueMask(h, s, _hue, _hueRange, sThreshold)
 
     if shouldProcessClosing:
         # 8近傍
@@ -380,7 +385,7 @@ def maskByHue(src, dst, hue, hueRange,
         # ksize must pair of odd. (5,5),(7,7),(9,9)...
         cv2.GaussianBlur(hTarget, (9,9), 0, hTarget)
 
-    v = lightTarget(v, hTarget)
+    v = lightTarget(v, hTarget, gamma)
 
     # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
     # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。

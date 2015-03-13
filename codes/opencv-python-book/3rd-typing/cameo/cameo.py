@@ -7,6 +7,13 @@ from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
 from datetime import datetime
 
+adjustingTargets = {}
+
+HUE = 1
+HUE_RANGE = 2
+HOUGH_CIRCLE_RESOLUTION = 3
+HOUGH_CIRCLE_THRESHOLD = 4
+GAMMA = 5
 
 class Cameo(object):
 
@@ -44,18 +51,25 @@ class Cameo(object):
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = True
         self._shouldProcessClosing         = True
+        self._sThreshold                   = 5
+        self._gamma                        = 100
 
         self._timeSelfTimerStarted         = None
 
         self._shouldDrawDebugRects         = False
 
         ### Ball Tracking ###
-        self._shouldFindCircle             = True
+        self._shouldFindCircle             = False
         self._houghCircleDp                = 3
         self._houghCircleParam2            = 200
-        self._pointCircleCenter            = None
+        self._centerPointOfCircle          = None
         self._passedPoints                 = []
         self._numberOfDisplayedPoints      = 50
+
+        adjustingTargets = [self._hue, self._hueRange,
+                            self._houghCircleDp, self._houghCircleParam2,
+                            self._gamma]
+        self._adjustingTarget = adjustingTargets[HUE]
 
     def _takeScreenShot(self):
         now = datetime.now()
@@ -104,7 +118,8 @@ class Cameo(object):
                 filters.maskByHue(frame, frame, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
                                   self._shouldPaintBackgroundBlack,
-                                  self._shouldProcessClosing)
+                                  self._shouldProcessClosing, 1,
+                                  self._sThreshold, self._gamma)
 
             # 検出した領域の周りに枠を描画する
             if self._shouldDrawDebugRects:
@@ -122,7 +137,8 @@ class Cameo(object):
             if self._shouldFindCircle:
                 frameToFindCircle = frame.copy()
                 filters.maskByHue(frame, frameToFindCircle, self._hue, self._hueRange,
-                                  self._shouldProcessGaussianBlur, True,
+                                  self._shouldProcessGaussianBlur,
+                                  True,  # Paint Background Black
                                   self._shouldProcessClosing)
                 # グレースケール画像に変換する
                 frameToFindCircle = cv2.cvtColor(frameToFindCircle, cv2.cv.CV_BGR2GRAY)
@@ -160,24 +176,24 @@ class Cameo(object):
                 # もし円を見つけたら・・・
                 if circles is not None:
                     x, y, r = circles[0][0]
-                    self._pointCircleCenter = (x,y)
+                    self._centerPointOfCircle = (x,y)
 
                     # 円を描く
-                    cv2.circle(frame, self._pointCircleCenter, r, (0,255,0), 5)
+                    cv2.circle(frame, self._centerPointOfCircle, r, (0,255,0), 5)
 
                 # 軌跡を描画する
                 # 最初に円が見つかったときに初期化する
                 if len(self._passedPoints) == 0 \
-                        and self._pointCircleCenter is not None:
+                        and self._centerPointOfCircle is not None:
 
                     # 最初の(x,y)でリストを埋める
                     for i in range(self._numberOfDisplayedPoints):
-                        self._passedPoints.append(self._pointCircleCenter)
+                        self._passedPoints.append(self._centerPointOfCircle)
 
                 # 次の円を検出したら・・・
-                elif self._pointCircleCenter is not None:
+                elif self._centerPointOfCircle is not None:
                     # 通過点リストの最後に要素を追加する
-                    self._passedPoints.append(self._pointCircleCenter)
+                    self._passedPoints.append(self._centerPointOfCircle)
                     self._passedPoints.pop(0)  # 最初の要素は削除する
 
                 # 次の円が見つかっても見つからなくても・・・
@@ -186,6 +202,16 @@ class Cameo(object):
                         # 軌跡を描画する
                         cv2.line(frame, self._passedPoints[i],
                                  self._passedPoints[i+1], (0,255,0), 5)
+
+            # 情報を表示する
+            def putText(text):
+                cv2.putText(frame, text, (100,100),
+                            cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
+
+            if self._isAdjustingHue:
+                putText('Adjusting Hue')
+            else:
+                putText('Adjusting Hough Circle Params')
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -232,30 +258,6 @@ class Cameo(object):
         elif keycode == ord('h'):
             self._shouldMaskByHue = \
                 not self._shouldMaskByHue
-        # elif keycode == 0:  # up arrow
-        #     self._hue += 10
-        #     print 'hue     : ' + str(self._hue)
-        # elif keycode == 1:  # down arrow
-        #     self._hue -= 10
-        #     print 'hue     : ' + str(self._hue)
-        # elif keycode == 2:  # left arrow
-        #     self._hueRange -= 10
-        #     print 'hueRange: ' + str(self._hueRange)
-        # elif keycode == 3:  # right arrow
-        #     self._hueRange += 10
-        #     print 'hueRange: ' + str(self._hueRange)
-        elif keycode == 0:  # up arrow
-            self._houghCircleDp += 1
-            print 'dp    : ' + str(self._houghCircleDp)
-        elif keycode == 1:  # down arrow
-            self._houghCircleDp -= 1
-            print 'dp    : ' + str(self._houghCircleDp)
-        elif keycode == 2:  # left arrow
-            self._houghCircleParam2 -= 10
-            print 'param2: ' + str(self._houghCircleParam2)
-        elif keycode == 3:  # right arrow
-            self._houghCircleParam2 += 10
-            print 'param2: ' + str(self._houghCircleParam2)
         elif keycode == ord('B'):
             self._hue      = 220
             self._hueRange = 20
@@ -289,6 +291,11 @@ class Cameo(object):
             self._shouldProcessClosing = \
                 not self._shouldProcessClosing
 
+        ### Adjustment
+        elif keycode == ord('a'):
+            self._isAdjustingHue = \
+                not self._isAdjustingHue
+
         ### その他
         elif keycode == ord('d'):
             self._shouldDrawDebugRects = \
@@ -300,6 +307,37 @@ class Cameo(object):
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
 
+        ### Adjustment
+        elif keycode == 3:  # right arrow
+            self._adjustingTarget = adjustingTargets
+            print adjustingTargets[self._adjustingTarget]
+        elif keycode == 2:  # left arrow
+            self._adjustingTarget -= 1
+            print adjustingTargets[self._adjustingTarget]
+        elif keycode == 0:  # up arrow
+            self._hue += 10
+            print 'hue       : ' + str(self._hue)
+        elif keycode == 1:  # down arrow
+            self._hue -= 10
+            print 'hue       : ' + str(self._hue)
+        elif keycode == ord('^'):
+            self._sThreshold += 1
+            print 'sThreshold: ' + str(self._sThreshold)
+        elif keycode == ord('-'):
+            self._sThreshold -= 1
+            print 'sThreshold: ' + str(self._sThreshold)
+        elif keycode == 0:  # up arrow
+            self._houghCircleDp += 1
+            print 'dp    : ' + str(self._houghCircleDp)
+        elif keycode == 1:  # down arrow
+            self._houghCircleDp -= 1
+            print 'dp    : ' + str(self._houghCircleDp)
+        elif keycode == 2:  # left arrow
+            self._houghCircleParam2 -= 10
+            print 'param2: ' + str(self._houghCircleParam2)
+        elif keycode == 3:  # right arrow
+            self._houghCircleParam2 += 10
+            print 'param2: ' + str(self._houghCircleParam2)
         else:
             print keycode
 
