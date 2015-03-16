@@ -326,7 +326,6 @@ def getHueMask(h, s, hue, hueRange, sThreshold = 5):
     # 0
     # 0
 
-    """
     # 蛍光灯の光（黄）を除外するため、
     # 極端に彩度が低く明度が高い（つまり白い）ピクセルをターゲット範囲から除外する
     sVeryLowAndVVeryHigh = s.copy() # 極端に彩度が低く明度が高いところ
@@ -340,8 +339,6 @@ def getHueMask(h, s, hue, hueRange, sThreshold = 5):
     cv2.bitwise_and(hTarget, sNotVeryLow, hTarget)
 
     return hTarget
-    """
-    return h
 
 def lightTarget(v, hTarget, gamma):
     # 明度画像のコピーをとる。

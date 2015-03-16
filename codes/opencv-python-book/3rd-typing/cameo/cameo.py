@@ -2,10 +2,12 @@
 __author__ = 'weed'
 
 import cv2
+from datetime import datetime
+import copy
+
 import filters
 from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
-from datetime import datetime
 
 ADJUSTING = (
     HUE,
@@ -14,6 +16,14 @@ ADJUSTING = (
     HOUGH_CIRCLE_THRESHOLD,
     GAMMA
 ) = range(0, 5)
+
+paramDic = [
+    {'name': 'hue',               'pitch': 10},
+    {'name': 'hueRange',          'pitch': 10},
+    {'name': 'houghCircleDp',     'pitch':  1},
+    {'name': 'houghCircleParam2', 'pitch': 50},
+    {'name': 'gamma',             'pitch': 10}
+]
 
 class Cameo(object):
 
@@ -201,21 +211,9 @@ class Cameo(object):
                                  self._passedPoints[i+1], (0,255,0), 5)
 
             # 情報を表示する
-            def putText(text):
-                cv2.putText(frame, text, (100,100),
-                            cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
-
-            adjusting = 'Adjusting '
-            if self._currentAdjusting == HUE:
-                putText(adjusting + 'Hue')
-            elif self._currentAdjusting == HUE_RANGE:
-                putText(adjusting + 'Hue Range')
-            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
-                putText(adjusting + 'Hough Circle Resolution')
-            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
-                putText(adjusting + 'Hough Circle Threshold')
-            elif self._currentAdjusting == GAMMA:
-                putText(adjusting + 'Gamma')
+            text = 'Adjusting ' + paramDic[self._currentAdjusting]['name']
+            cv2.putText(frame, text, (100,100), cv2.FONT_HERSHEY_PLAIN,
+                        2.0, (255,255,255), 3)
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -239,35 +237,15 @@ class Cameo(object):
         :return: None
         """
 
-        def _increaseParam(self, shouldIncrease, paramId):
-            paramDic = [
-                {'name': 'hue',               'pitch': 10},
-                {'name': 'hueRange',          'pitch': 10},
-                {'name': 'houghCircleDp',     'pitch':  1},
-                {'name': 'houghCircleParam2', 'pitch': 50},
-                {'name': 'gamma',             'pitch': 10}
-            ]
-            param = None
-            if paramId == HUE:
-                param = self._hue
-            elif paramId == HUE_RANGE:
-                param = self._hueRange
-            elif paramId == HOUGH_CIRCLE_RESOLUTION:
-                param = self._houghCircleDp
-            elif paramId == HOUGH_CIRCLE_RESOLUTION:
-                param = self._houghCircleParam2
-            elif paramId == GAMMA:
-                param = self._gamma
-            else:
-                raise ValueError('paramId')
-
+        def _increaseParam(currentAdjusting, param, shouldIncrease):
+            print id(param)
+            pitch = paramDic[currentAdjusting]['pitch']
             if shouldIncrease:
-                # paramDic[paramId]['param'] += paramDic[paramId]['pitch']
-                param += paramDic[paramId]['pitch']
+                param += pitch
             else:
-                param -= paramDic[paramId]['pitch']
-            # print paramDic[paramId]['name'] + ': ' + str(paramDic[paramId]['param'])
-            print paramDic[paramId]['name'] + ': ' + str(param)
+                param -= pitch
+            print id(param)
+            print paramDic[currentAdjusting]['name'] + ': ' + str(param)
 
         ### 基本操作
         if keycode == 32:  # スペース
@@ -349,9 +327,41 @@ class Cameo(object):
             if not self._currentAdjusting == 0:
                 self._currentAdjusting -= 1
         elif keycode == 0:  # up arrow
-            _increaseParam(self, True , self._currentAdjusting)
+            if self._currentAdjusting   == HUE:
+                self._hue               += paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hue)
+            elif self._currentAdjusting == HUE_RANGE:
+                self._hueRange          += paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hueRange)
+            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
+                self._houghCircleDp     += paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleDp)
+            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
+                self._houghCircleParam2 += paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleParam2)
+            elif self._currentAdjusting == GAMMA:
+                self._gamma             += paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._gamma)
+            else:
+                raise ValueError('self._currentAdjusting')
         elif keycode == 1:  # down arrow
-            _increaseParam(self, False, self._currentAdjusting)
+            if self._currentAdjusting   == HUE:
+                self._hue               -= paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hue)
+            elif self._currentAdjusting == HUE_RANGE:
+                self._hueRange          -= paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hueRange)
+            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
+                self._houghCircleDp     -= paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleDp)
+            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
+                self._houghCircleParam2 -= paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleParam2)
+            elif self._currentAdjusting == GAMMA:
+                self._gamma             -= paramDic[self._currentAdjusting]['pitch']
+                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._gamma)
+            else:
+                raise ValueError('self._currentAdjusting')
 
         # elif keycode == ord('^'):
         #     self._sThreshold += 1
