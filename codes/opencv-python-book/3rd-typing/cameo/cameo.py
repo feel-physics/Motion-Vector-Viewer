@@ -239,20 +239,35 @@ class Cameo(object):
         :return: None
         """
 
-        def _increaseParam(self, bool, paramId):
+        def _increaseParam(self, shouldIncrease, paramId):
             paramDic = [
-                {'param': self._hue,               'name': 'hue',               'pitch': 10},
-                {'param': self._hueRange,          'name': 'hueRange',          'pitch': 10},
-                {'param': self._houghCircleDp,     'name': 'houghCircleDp',     'pitch':  1},
-                {'param': self._houghCircleParam2, 'name': 'houghCircleParam2', 'pitch': 50},
-                {'param': self._gamma,             'name': 'gamma',             'pitch': 10}
+                {'name': 'hue',               'pitch': 10},
+                {'name': 'hueRange',          'pitch': 10},
+                {'name': 'houghCircleDp',     'pitch':  1},
+                {'name': 'houghCircleParam2', 'pitch': 50},
+                {'name': 'gamma',             'pitch': 10}
             ]
-            if bool:
-                # paramDic[paramId]['param'] += paramDic[paramId]['pitch']
-                self._hue += paramDic[paramId]['pitch']
+            param = None
+            if paramId == HUE:
+                param = self._hue
+            elif paramId == HUE_RANGE:
+                param = self._hueRange
+            elif paramId == HOUGH_CIRCLE_RESOLUTION:
+                param = self._houghCircleDp
+            elif paramId == HOUGH_CIRCLE_RESOLUTION:
+                param = self._houghCircleParam2
+            elif paramId == GAMMA:
+                param = self._gamma
             else:
-                paramDic[paramId]['param'] -= paramDic[paramId]['pitch']
-            print paramDic[paramId]['name'] + ': ' + str(paramDic[paramId]['param'])
+                raise ValueError('paramId')
+
+            if shouldIncrease:
+                # paramDic[paramId]['param'] += paramDic[paramId]['pitch']
+                param += paramDic[paramId]['pitch']
+            else:
+                param -= paramDic[paramId]['pitch']
+            # print paramDic[paramId]['name'] + ': ' + str(paramDic[paramId]['param'])
+            print paramDic[paramId]['name'] + ': ' + str(param)
 
         ### 基本操作
         if keycode == 32:  # スペース
