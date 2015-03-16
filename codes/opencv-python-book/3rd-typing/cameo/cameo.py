@@ -240,15 +240,16 @@ class Cameo(object):
         """
 
         def _increaseParam(self, bool, paramId):
-            paramDic = (
+            paramDic = [
                 {'param': self._hue,               'name': 'hue',               'pitch': 10},
                 {'param': self._hueRange,          'name': 'hueRange',          'pitch': 10},
                 {'param': self._houghCircleDp,     'name': 'houghCircleDp',     'pitch':  1},
                 {'param': self._houghCircleParam2, 'name': 'houghCircleParam2', 'pitch': 50},
                 {'param': self._gamma,             'name': 'gamma',             'pitch': 10}
-            )
+            ]
             if bool:
-                paramDic[paramId]['param'] += paramDic[paramId]['pitch']
+                # paramDic[paramId]['param'] += paramDic[paramId]['pitch']
+                self._hue += 10
             else:
                 paramDic[paramId]['param'] -= paramDic[paramId]['pitch']
             print paramDic[paramId]['name'] + ': ' + str(paramDic[paramId]['param'])
