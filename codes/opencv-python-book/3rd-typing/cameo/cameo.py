@@ -249,7 +249,7 @@ class Cameo(object):
             ]
             if bool:
                 # paramDic[paramId]['param'] += paramDic[paramId]['pitch']
-                self._hue += 10
+                self._hue += paramDic[paramId]['pitch']
             else:
                 paramDic[paramId]['param'] -= paramDic[paramId]['pitch']
             print paramDic[paramId]['name'] + ': ' + str(paramDic[paramId]['param'])
