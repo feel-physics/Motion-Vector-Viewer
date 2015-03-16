@@ -66,7 +66,7 @@ class Cameo(object):
         self._passedPoints                 = []
         self._numberOfDisplayedPoints      = 50
 
-        self._currentAdjustingTarget       = HUE
+        self._currentAdjusting             = HUE
 
     def _takeScreenShot(self):
         now = datetime.now()
@@ -206,15 +206,15 @@ class Cameo(object):
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
 
             adjusting = 'Adjusting '
-            if self._currentAdjustingTarget == HUE:
+            if self._currentAdjusting == HUE:
                 putText(adjusting + 'Hue')
-            elif self._currentAdjustingTarget == HUE_RANGE:
+            elif self._currentAdjusting == HUE_RANGE:
                 putText(adjusting + 'Hue Range')
-            elif self._currentAdjustingTarget == HOUGH_CIRCLE_RESOLUTION:
+            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
                 putText(adjusting + 'Hough Circle Resolution')
-            elif self._currentAdjustingTarget == HOUGH_CIRCLE_THRESHOLD:
+            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
                 putText(adjusting + 'Hough Circle Threshold')
-            elif self._currentAdjustingTarget == GAMMA:
+            elif self._currentAdjusting == GAMMA:
                 putText(adjusting + 'Gamma')
 
             # フレームを解放する
@@ -327,16 +327,16 @@ class Cameo(object):
 
         ### Adjustment
         elif keycode == 3:  # right arrow
-            if not self._currentAdjustingTarget == len(ADJUSTING) - 1:
-                self._currentAdjustingTarget += 1
+            if not self._currentAdjusting == len(ADJUSTING) - 1:
+                self._currentAdjusting += 1
         elif keycode == 2:  # left arrow
-            if not self._currentAdjustingTarget == 0:
-                self._currentAdjustingTarget -= 1
-
+            if not self._currentAdjusting == 0:
+                self._currentAdjusting -= 1
         elif keycode == 0:  # up arrow
-            _increaseParam(self, True, self._currentAdjustingTarget)
+            _increaseParam(self, True , self._currentAdjusting)
         elif keycode == 1:  # down arrow
-            _increaseParam(self, False, self._currentAdjustingTarget)
+            _increaseParam(self, False, self._currentAdjusting)
+
         # elif keycode == ord('^'):
         #     self._sThreshold += 1
         #     print 'sThreshold: ' + str(self._sThreshold)
