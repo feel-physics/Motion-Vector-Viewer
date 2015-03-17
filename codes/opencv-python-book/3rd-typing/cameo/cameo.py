@@ -274,33 +274,22 @@ class Cameo(object):
                 self._currentAdjusting = len(self.ADJUSTING) - 1
         elif keycode == 0 or keycode == 1:  # up / down arrow
             if self._currentAdjusting   == self.HUE:
-                pitch = 10
-                if keycode == 1:
-                    pitch = - pitch
-                self._hue               += pitch
+                pitch = 10 if keycode == 0 else -10
                 print 'hue: ' + str(self._hue)
             elif self._currentAdjusting == self.HUE_RANGE:
-                pitch = 10
-                if keycode == 1:
-                    pitch = - pitch
+                pitch = 10 if keycode == 0 else -10
                 self._hueRange          += pitch
                 print 'hueRange: ' + str(self._hueRange)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-                pitch = 1
-                if keycode == 1:
-                    pitch = - pitch
+                pitch = 1  if keycode == 0 else -1
                 self._houghCircleDp     += pitch
                 print 'houghCircleDp: ' + str(self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
-                pitch = 50
-                if keycode == 1:
-                    pitch = - pitch
+                pitch = 50 if keycode == 0 else -50
                 self._houghCircleParam2 += pitch
                 print 'houghCircleParam2: ' + str(self._houghCircleParam2)
             elif self._currentAdjusting == self.GAMMA:
-                pitch = 10
-                if keycode == 1:
-                    pitch = - pitch
+                pitch = 10 if keycode == 0 else -10
                 self._gamma             += pitch
                 print 'gamma: ' + str(self._gamma)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
