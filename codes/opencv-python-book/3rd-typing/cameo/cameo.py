@@ -3,11 +3,9 @@ __author__ = 'weed'
 
 import cv2
 from datetime import datetime
-import copy
 
 import filters
 from managers import WindowManager, CaptureManager
-from trackers import FaceTracker
 
 class Cameo(object):
 
@@ -16,8 +14,15 @@ class Cameo(object):
         HUE_RANGE,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_THRESHOLD,
-        GAMMA
-    ) = range(0, 5)
+        GAMMA,
+        SHOULD_TRACK_CIRCLE,
+        SHOULD_MASK_BY_HUE,
+        SHOULD_PROCESS_GAUSSIAN_BLUR,
+        SHOULD_PAINT_BACKGROUND_BLACK,
+        SHOULD_PROCESS_CLOSING,
+        SHOULD_DRAW_CIRCLE,
+        SHOULD_DRAW_TRACKS
+    ) = range(0, 12)
 
     def __init__(self):
 
@@ -32,24 +37,10 @@ class Cameo(object):
         # def __init__(self, capture, previewWindowManager = None,
         #     shouldMirrorPreview = False):
 
-        self._curveFilter = filters.BGRPortraCurveFilter()
-        self._testCurveFilter = filters.TestCurveFilter()
-
-        self._faceTracker = FaceTracker()
-
-        ### Filters ###
-        self._shouldApplyPortraCurveFilter = False
-        self._shouldStrokeEdge             = False
-        self._shouldApplyBlur              = False
-        self._shouldApplyLaplacian         = False
-        self._shouldApplyTestCurveFilter   = False
-        self._shouldRecolorRC              = False
-        self._shouldRecolorRGV             = False
-        self._shouldRecolorCMV             = False
-        self._shouldMaskByHue              = True
+        ### Filtering
+        self._shouldMaskByHue              = False
         self._hue                          = 140  # 緑
         self._hueRange                     = 60
-        self._shouldEqualizeHist           = False
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = True
         self._shouldProcessClosing         = True
@@ -58,22 +49,22 @@ class Cameo(object):
 
         self._timeSelfTimerStarted         = None
 
-        self._shouldDrawDebugRects         = False
-
         ### Ball Tracking ###
-        self._shouldFindCircle             = False
+        self._shouldTrackCircle            = False
         self._houghCircleDp                = 3
         self._houghCircleParam2            = 200
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
         self._numberOfDisplayedPoints      = 50
+        self._shouldDrawCircle             = False
+        self._shouldDrawTracks             = False
 
         self._currentAdjusting             = self.HUE
 
     def _takeScreenShot(self):
-        now = datetime.now()
-        timestamp = now.strftime('%y%m%d-%H%M%S')
-        self._captureManager.writeImage(timestamp + '-screen-shot.png')
+        self._captureManager.writeImage(
+            datetime.now().strftime('%y%m%d-%H%M%S')
+            + '-screenshot.png')
         print 'captured'
 
     def run(self):
@@ -88,27 +79,6 @@ class Cameo(object):
             # フレームを取得し・・・
             self._captureManager.enterFrame()
             frame = self._captureManager.frame
-            """:type : numpy.ndarray"""
-
-            ### Filters ###
-            if self._shouldApplyPortraCurveFilter:
-                self._curveFilter.apply(frame, frame)
-            if self._shouldStrokeEdge:
-                filters.strokeEdges(frame, frame)
-            if self._shouldApplyBlur:
-                filters.applyBlur(frame, frame)
-            if self._shouldApplyLaplacian:
-                filters.applyLaplacian(frame, frame)
-            if self._shouldApplyTestCurveFilter:
-                self._testCurveFilter.apply(frame, frame)
-            if self._shouldRecolorRC:
-                filters.recolorRC(frame, frame)
-            if self._shouldRecolorRGV:
-                filters.recolorRGV(frame, frame)
-            if self._shouldRecolorCMV:
-                filters.recolorCMV(frame, frame)
-            if self._shouldEqualizeHist:
-                filters.equaliseHist(frame, frame)
 
             # def maskByHue(src, dst, hue, hueRange,
             #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
@@ -120,20 +90,8 @@ class Cameo(object):
                                   self._shouldProcessClosing, 1,
                                   self._sThreshold, self._gamma)
 
-            # 検出した領域の周りに枠を描画する
-            if self._shouldDrawDebugRects:
-                # 顔を検出して・・・
-                self._faceTracker.update(frame)
-
-                # これが何をやっているのかサッパリわからん
-                # faces = self._faceTracker.faces
-                # rects.swapRects(frame, frame,
-                #                 [face.faceRect for face in faces])
-
-                self._faceTracker.drawDebugRects(frame)
-
             # 円を検出する
-            if self._shouldFindCircle:
+            if self._shouldTrackCircle:
                 frameToFindCircle = frame.copy()
                 filters.maskByHue(frame, frameToFindCircle, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
@@ -171,61 +129,85 @@ class Cameo(object):
                 # minRadius – 円の半径の最小値．
                 # maxRadius – 円の半径の最大値．
 
-                # 円を描画する
                 # もし円を見つけたら・・・
                 if circles is not None:
+                    # 中心座標と半径を取得して・・・
                     x, y, r = circles[0][0]
                     self._centerPointOfCircle = (x,y)
 
                     # 円を描く
-                    cv2.circle(frame, self._centerPointOfCircle, r, (0,255,0), 5)
+                    if self._shouldDrawCircle:
+                        cv2.circle(frame, self._centerPointOfCircle, r, (0,255,0), 5)
 
-                # 軌跡を描画する
-                # 最初に円が見つかったときに初期化する
-                if len(self._passedPoints) == 0 \
-                        and self._centerPointOfCircle is not None:
+                if self._shouldDrawTracks:
+                    # 軌跡を描画する
+                    # 最初に円が見つかったときに初期化する
+                    if len(self._passedPoints) == 0 \
+                            and self._centerPointOfCircle is not None:
 
-                    # 最初の(x,y)でリストを埋める
-                    for i in range(self._numberOfDisplayedPoints):
+                        # 最初の(x,y)でリストを埋める
+                        for i in range(self._numberOfDisplayedPoints):
+                            self._passedPoints.append(self._centerPointOfCircle)
+
+                    # 次の円を検出したら・・・
+                    elif self._centerPointOfCircle is not None:
+                        # 通過点リストの最後に要素を追加する
                         self._passedPoints.append(self._centerPointOfCircle)
+                        self._passedPoints.pop(0)  # 最初の要素は削除する
 
-                # 次の円を検出したら・・・
-                elif self._centerPointOfCircle is not None:
-                    # 通過点リストの最後に要素を追加する
-                    self._passedPoints.append(self._centerPointOfCircle)
-                    self._passedPoints.pop(0)  # 最初の要素は削除する
-
-                # 次の円が見つかっても見つからなくても・・・
-                if len(self._passedPoints) != 0:
-                    for i in range(self._numberOfDisplayedPoints - 1):
-                        # 軌跡を描画する
-                        cv2.line(frame, self._passedPoints[i],
-                                 self._passedPoints[i+1], (0,255,0), 5)
+                    # 次の円が見つかっても見つからなくても・・・
+                    if len(self._passedPoints) != 0:
+                        for i in range(self._numberOfDisplayedPoints - 1):
+                            # 軌跡を描画する
+                            cv2.line(frame, self._passedPoints[i],
+                                     self._passedPoints[i+1], (0,255,0), 5)
 
             # 情報を表示する
-            def putText(text):
-                cv2.putText(frame, text, (100,100),
+            def putText(text, lineNumber):
+                cv2.putText(frame, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
+            def putLabelAndValue(label, value):
+                putText(label, 1)
+                if value is True:
+                    value = 'True'
+                elif value is False:
+                    value = 'False'
+                putText(str(value), 2)
 
-            adjusting = 'Adjusting '
             if   self._currentAdjusting == self.HUE:
-                self.putText(adjusting + 'Hue')
+                putLabelAndValue('Hue'                          , self._hue)
             elif self._currentAdjusting == self.HUE_RANGE:
-                self.putText(adjusting + 'Hue Range')
+                putLabelAndValue('Hue Range'                    , self._hueRange)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-                self.putText(adjusting + 'Hough Circle Resolution')
+                putLabelAndValue('Hough Circle Resolution'      , self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
-                self.putText(adjusting + 'Hough Circle Threshold')
+                putLabelAndValue('Hough Circle Threshold'       , self._houghCircleParam2)
             elif self._currentAdjusting == self.GAMMA:
-                self.putText(adjusting + 'Gamma')
+                putLabelAndValue('Gamma'                        , self._gamma)
+            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
+                putLabelAndValue('Should Track Circle'          , self._shouldTrackCircle)
+            elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
+                putLabelAndValue('Should Mask By Hue'           , self._shouldMaskByHue)
+            elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+                putLabelAndValue('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
+            elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
+                putLabelAndValue('Should Paint Background Black', self._shouldPaintBackgroundBlack)
+            elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
+                putLabelAndValue('Should Process Closing'       , self._shouldProcessClosing)
+            elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
+                putLabelAndValue('Should Draw Circle'           , self._shouldDrawCircle)
+            elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
+                putLabelAndValue('Should Draw Tracks'           , self._shouldDrawTracks)
 
             # フレームを解放する
             self._captureManager.exitFrame()
             # キーイベントがあれば実行する
             self._windowManager.processEvents()
 
+            # セルフタイマー処理
             if self._timeSelfTimerStarted is not None:
                 timeElapsed = datetime.now() - self._timeSelfTimerStarted
+                # 3秒たったら・・・
                 if timeElapsed.seconds > 3:
                     self._takeScreenShot()
                     # タイマーをリセットする
@@ -241,16 +223,6 @@ class Cameo(object):
         :return: None
         """
 
-        def _increaseParam(currentAdjusting, param, shouldIncrease):
-            print id(param)
-            pitch = paramDic[currentAdjusting]['pitch']
-            if shouldIncrease:
-                param += pitch
-            else:
-                param -= pitch
-            print id(param)
-            print paramDic[currentAdjusting]['name'] + ': ' + str(param)
-
         ### 基本操作
         if keycode == 32:  # スペース
             self._captureManager.paused = \
@@ -262,7 +234,9 @@ class Cameo(object):
             # 動画ファイルに書き出し中でなければ・・・
             if not self._captureManager.isWritingVideo:
                 # ファイルに書き出すのを始めて・・・
-                self._captureManager.startWritingVideo('screen-cast.avi')
+                self._captureManager.startWritingVideo(
+                    datetime.now().strftime('%y%m%d-%H%M%S')
+                    + 'screencast.avi')
             # 書き出し中であれば・・・
             else:
                 # ・・・書き出しを終える
@@ -271,54 +245,18 @@ class Cameo(object):
             self._windowManager.destroyWindow()
 
         ### Hue Filter ###
-        elif keycode == ord('h'):
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
         elif keycode == ord('B'):
             self._hue      = 220
             self._hueRange = 20
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
         elif keycode == ord('G'):
             self._hue      = 140
             self._hueRange = 60
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
         elif keycode == ord('R'):
             self._hue      = 10
             self._hueRange = 10
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
         elif keycode == ord('Y'):
             self._hue      = 60
             self._hueRange = 30
-            self._shouldMaskByHue = \
-                not self._shouldMaskByHue
-        elif keycode == ord('g'):
-            self._shouldMaskByHue = True
-            self._shouldProcessGaussianBlur = \
-                not self._shouldProcessGaussianBlur
-        elif keycode == ord('k'):
-            self._shouldMaskByHue = True
-            self._shouldPaintBackgroundBlack = \
-                not self._shouldPaintBackgroundBlack
-        elif keycode == ord('c'):
-            self._shouldMaskByHue = True
-            self._shouldProcessClosing = \
-                not self._shouldProcessClosing
-
-        ### Adjustment
-        elif keycode == ord('a'):
-            self._isAdjustingHue = \
-                not self._isAdjustingHue
-
-        ### その他
-        elif keycode == ord('d'):
-            self._shouldDrawDebugRects = \
-                not self._shouldDrawDebugRects
-        elif keycode == ord('f'):
-            self._shouldFindCircle = \
-                not self._shouldFindCircle
 
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
@@ -327,9 +265,13 @@ class Cameo(object):
         elif keycode == 3:  # right arrow
             if not self._currentAdjusting == len(self.ADJUSTING) - 1:
                 self._currentAdjusting += 1
+            else:
+                self._currentAdjusting = 0
         elif keycode == 2:  # left arrow
             if not self._currentAdjusting == 0:
                 self._currentAdjusting -= 1
+            else:
+                self._currentAdjusting = len(self.ADJUSTING) - 1
         elif keycode == 0 or keycode == 1:  # up / down arrow
             if self._currentAdjusting   == self.HUE:
                 pitch = 10
@@ -361,6 +303,37 @@ class Cameo(object):
                     pitch = - pitch
                 self._gamma             += pitch
                 print 'gamma: ' + str(self._gamma)
+            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
+                self._shouldTrackCircle = \
+                    not self._shouldTrackCircle
+            elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
+                self._shouldMaskByHue = \
+                    not self._shouldMaskByHue
+            elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+                self._shouldProcessGaussianBlur = \
+                    not self._shouldProcessGaussianBlur
+            elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
+                if self._shouldPaintBackgroundBlack is False:
+                    self._shouldMaskByHue = True
+                    self._shouldPaintBackgroundBlack = True
+                else:
+                    self._shouldPaintBackgroundBlack = False
+            elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
+                self._shouldProcessClosing = \
+                    not self._shouldProcessClosing
+            elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
+                if self._shouldDrawCircle is False:
+                    self._shouldTrackCircle = True
+                    self._shouldDrawCircle = True
+                else:
+                    self._shouldDrawCircle = False
+            elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
+                if self._shouldDrawTracks is False:
+                    self._shouldTrackCircle = True
+                    self._shouldDrawTracks = True
+                else:
+                    self._shouldDrawTracks = False
+
             else:
                 raise ValueError('self._currentAdjusting')
 
