@@ -9,23 +9,15 @@ import filters
 from managers import WindowManager, CaptureManager
 from trackers import FaceTracker
 
-ADJUSTING = (
-    HUE,
-    HUE_RANGE,
-    HOUGH_CIRCLE_RESOLUTION,
-    HOUGH_CIRCLE_THRESHOLD,
-    GAMMA
-) = range(0, 5)
-
-paramDic = [
-    {'name': 'hue',               'pitch': 10},
-    {'name': 'hueRange',          'pitch': 10},
-    {'name': 'houghCircleDp',     'pitch':  1},
-    {'name': 'houghCircleParam2', 'pitch': 50},
-    {'name': 'gamma',             'pitch': 10}
-]
-
 class Cameo(object):
+
+    ADJUSTING = (
+        HUE,
+        HUE_RANGE,
+        HOUGH_CIRCLE_RESOLUTION,
+        HOUGH_CIRCLE_THRESHOLD,
+        GAMMA
+    ) = range(0, 5)
 
     def __init__(self):
 
@@ -76,7 +68,7 @@ class Cameo(object):
         self._passedPoints                 = []
         self._numberOfDisplayedPoints      = 50
 
-        self._currentAdjusting             = HUE
+        self._currentAdjusting             = self.HUE
 
     def _takeScreenShot(self):
         now = datetime.now()
@@ -211,9 +203,21 @@ class Cameo(object):
                                  self._passedPoints[i+1], (0,255,0), 5)
 
             # 情報を表示する
-            text = 'Adjusting ' + paramDic[self._currentAdjusting]['name']
-            cv2.putText(frame, text, (100,100), cv2.FONT_HERSHEY_PLAIN,
-                        2.0, (255,255,255), 3)
+            def putText(text):
+                cv2.putText(frame, text, (100,100),
+                            cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
+
+            adjusting = 'Adjusting '
+            if   self._currentAdjusting == self.HUE:
+                self.putText(adjusting + 'Hue')
+            elif self._currentAdjusting == self.HUE_RANGE:
+                self.putText(adjusting + 'Hue Range')
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
+                self.putText(adjusting + 'Hough Circle Resolution')
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
+                self.putText(adjusting + 'Hough Circle Threshold')
+            elif self._currentAdjusting == self.GAMMA:
+                self.putText(adjusting + 'Gamma')
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -321,66 +325,45 @@ class Cameo(object):
 
         ### Adjustment
         elif keycode == 3:  # right arrow
-            if not self._currentAdjusting == len(ADJUSTING) - 1:
+            if not self._currentAdjusting == len(self.ADJUSTING) - 1:
                 self._currentAdjusting += 1
         elif keycode == 2:  # left arrow
             if not self._currentAdjusting == 0:
                 self._currentAdjusting -= 1
-        elif keycode == 0:  # up arrow
-            if self._currentAdjusting   == HUE:
-                self._hue               += paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hue)
-            elif self._currentAdjusting == HUE_RANGE:
-                self._hueRange          += paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hueRange)
-            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
-                self._houghCircleDp     += paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleDp)
-            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
-                self._houghCircleParam2 += paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleParam2)
-            elif self._currentAdjusting == GAMMA:
-                self._gamma             += paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._gamma)
-            else:
-                raise ValueError('self._currentAdjusting')
-        elif keycode == 1:  # down arrow
-            if self._currentAdjusting   == HUE:
-                self._hue               -= paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hue)
-            elif self._currentAdjusting == HUE_RANGE:
-                self._hueRange          -= paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._hueRange)
-            elif self._currentAdjusting == HOUGH_CIRCLE_RESOLUTION:
-                self._houghCircleDp     -= paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleDp)
-            elif self._currentAdjusting == HOUGH_CIRCLE_THRESHOLD:
-                self._houghCircleParam2 -= paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._houghCircleParam2)
-            elif self._currentAdjusting == GAMMA:
-                self._gamma             -= paramDic[self._currentAdjusting]['pitch']
-                print paramDic[self._currentAdjusting]['name'] + ': ' + str(self._gamma)
+        elif keycode == 0 or keycode == 1:  # up / down arrow
+            if self._currentAdjusting   == self.HUE:
+                pitch = 10
+                if keycode == 1:
+                    pitch = - pitch
+                self._hue               += pitch
+                print 'hue: ' + str(self._hue)
+            elif self._currentAdjusting == self.HUE_RANGE:
+                pitch = 10
+                if keycode == 1:
+                    pitch = - pitch
+                self._hueRange          += pitch
+                print 'hueRange: ' + str(self._hueRange)
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
+                pitch = 1
+                if keycode == 1:
+                    pitch = - pitch
+                self._houghCircleDp     += pitch
+                print 'houghCircleDp: ' + str(self._houghCircleDp)
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
+                pitch = 50
+                if keycode == 1:
+                    pitch = - pitch
+                self._houghCircleParam2 += pitch
+                print 'houghCircleParam2: ' + str(self._houghCircleParam2)
+            elif self._currentAdjusting == self.GAMMA:
+                pitch = 10
+                if keycode == 1:
+                    pitch = - pitch
+                self._gamma             += pitch
+                print 'gamma: ' + str(self._gamma)
             else:
                 raise ValueError('self._currentAdjusting')
 
-        # elif keycode == ord('^'):
-        #     self._sThreshold += 1
-        #     print 'sThreshold: ' + str(self._sThreshold)
-        # elif keycode == ord('-'):
-        #     self._sThreshold -= 1
-        #     print 'sThreshold: ' + str(self._sThreshold)
-        # elif keycode == 0:  # up arrow
-        #     self._houghCircleDp += 1
-        #     print 'dp    : ' + str(self._houghCircleDp)
-        # elif keycode == 1:  # down arrow
-        #     self._houghCircleDp -= 1
-        #     print 'dp    : ' + str(self._houghCircleDp)
-        # elif keycode == 2:  # left arrow
-        #     self._houghCircleParam2 -= 10
-        #     print 'param2: ' + str(self._houghCircleParam2)
-        # elif keycode == 3:  # right arrow
-        #     self._houghCircleParam2 += 10
-        #     print 'param2: ' + str(self._houghCircleParam2)
         else:
             print keycode
 
