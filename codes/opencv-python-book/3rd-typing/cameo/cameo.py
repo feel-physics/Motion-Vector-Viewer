@@ -3,9 +3,26 @@ __author__ = 'weed'
 
 import cv2
 from datetime import datetime
+import math
 
 import filters
 from managers import WindowManager, CaptureManager
+
+def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
+    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+    vx = pt2[0] - pt1[0]
+    vy = pt2[1] - pt1[1]
+    v  = math.sqrt(vx ** 2 + vy ** 2)
+    ux = vx / v
+    uy = vy / v
+    # 矢印の幅の部分
+    w = 5
+    h = 10
+    ptl = (pt2[0] - uy*w - ux*h, pt2[1] + ux*w - uy*h)
+    ptr = (pt2[0] + uy*w - ux*h, pt2[1] - ux*w - uy*h)
+    # 矢印の先端を描画する
+    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
 class Cameo(object):
 
@@ -50,7 +67,7 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
-        self._shouldTrackCircle            = False
+        self._shouldTrackCircle            = True
         self._houghCircleDp                = 3
         self._houghCircleParam2            = 200
         self._centerPointOfCircle          = None
@@ -58,6 +75,7 @@ class Cameo(object):
         self._numberOfDisplayedPoints      = 50
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
+        self._shouldDrawVerocityVector     = True
 
         self._currentAdjusting             = self.HUE
 
@@ -139,28 +157,35 @@ class Cameo(object):
                     if self._shouldDrawCircle:
                         cv2.circle(frame, self._centerPointOfCircle, r, (0,255,0), 5)
 
-                if self._shouldDrawTracks:
-                    # 軌跡を描画する
-                    # 最初に円が見つかったときに初期化する
-                    if len(self._passedPoints) == 0 \
-                            and self._centerPointOfCircle is not None:
+                # 軌跡を描画する
+                # 最初に円が見つかったときに初期化する
+                if len(self._passedPoints) == 0 \
+                        and self._centerPointOfCircle is not None:
 
-                        # 最初の(x,y)でリストを埋める
-                        for i in range(self._numberOfDisplayedPoints):
-                            self._passedPoints.append(self._centerPointOfCircle)
-
-                    # 次の円を検出したら・・・
-                    elif self._centerPointOfCircle is not None:
-                        # 通過点リストの最後に要素を追加する
+                    # 最初の(x,y)でリストを埋める
+                    for i in range(self._numberOfDisplayedPoints):
                         self._passedPoints.append(self._centerPointOfCircle)
-                        self._passedPoints.pop(0)  # 最初の要素は削除する
 
-                    # 次の円が見つかっても見つからなくても・・・
-                    if len(self._passedPoints) != 0:
+                # 次の円を検出したら・・・
+                elif self._centerPointOfCircle is not None:
+                    # 通過点リストの最後に要素を追加する
+                    self._passedPoints.append(self._centerPointOfCircle)
+                    self._passedPoints.pop(0)  # 最初の要素は削除する
+
+                # 次の円が見つかっても見つからなくても・・・
+                if len(self._passedPoints) != 0:
+                    # 軌跡を描画する
+                    if self._shouldDrawTracks:
                         for i in range(self._numberOfDisplayedPoints - 1):
-                            # 軌跡を描画する
-                            cv2.line(frame, self._passedPoints[i],
-                                     self._passedPoints[i+1], (0,255,0), 5)
+                                cv2.line(frame, self._passedPoints[i],
+                                         self._passedPoints[i+1], (0,255,0), 5)
+                    if self._shouldDrawVerocityVector:
+                        pt0 = self._passedPoints[self._numberOfDisplayedPoints - 2]
+                        pt1 = self._passedPoints[self._numberOfDisplayedPoints - 1]
+                        print pt1, pt0
+                        dpt = (pt1[0] - pt0[0], pt1[1] - pt0[0])
+                        pt2 = pt1 + dpt # pt2 = pt1 + Δpt
+                        cvArrow(frame, pt1, pt2, (0,0,255))
 
             # 情報を表示する
             def putText(text, lineNumber):
@@ -275,23 +300,18 @@ class Cameo(object):
         elif keycode == 0 or keycode == 1:  # up / down arrow
             if self._currentAdjusting   == self.HUE:
                 pitch = 10 if keycode == 0 else -10
-                print 'hue: ' + str(self._hue)
             elif self._currentAdjusting == self.HUE_RANGE:
                 pitch = 10 if keycode == 0 else -10
                 self._hueRange          += pitch
-                print 'hueRange: ' + str(self._hueRange)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
                 pitch = 1  if keycode == 0 else -1
                 self._houghCircleDp     += pitch
-                print 'houghCircleDp: ' + str(self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
                 pitch = 50 if keycode == 0 else -50
                 self._houghCircleParam2 += pitch
-                print 'houghCircleParam2: ' + str(self._houghCircleParam2)
             elif self._currentAdjusting == self.GAMMA:
                 pitch = 10 if keycode == 0 else -10
                 self._gamma             += pitch
-                print 'gamma: ' + str(self._gamma)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
                 self._shouldTrackCircle = \
                     not self._shouldTrackCircle
