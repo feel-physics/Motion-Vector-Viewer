@@ -4,25 +4,10 @@ __author__ = 'weed'
 import cv2
 from datetime import datetime
 import math
+import numpy
 
 import filters
 from managers import WindowManager, CaptureManager
-
-def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
-    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
-    vx = pt2[0] - pt1[0]
-    vy = pt2[1] - pt1[1]
-    v  = math.sqrt(vx ** 2 + vy ** 2)
-    ux = vx / v
-    uy = vy / v
-    # 矢印の幅の部分
-    w = 5
-    h = 10
-    ptl = (pt2[0] - uy*w - ux*h, pt2[1] + ux*w - uy*h)
-    ptr = (pt2[0] + uy*w - ux*h, pt2[1] - ux*w - uy*h)
-    # 矢印の先端を描画する
-    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
-    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
 class Cameo(object):
 
@@ -32,6 +17,7 @@ class Cameo(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_THRESHOLD,
         GAMMA,
+        GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_TRACK_CIRCLE,
         SHOULD_MASK_BY_HUE,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
@@ -39,7 +25,7 @@ class Cameo(object):
         SHOULD_PROCESS_CLOSING,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS
-    ) = range(0, 12)
+    ) = range(0, 13)
 
     def __init__(self):
 
@@ -55,7 +41,7 @@ class Cameo(object):
         #     shouldMirrorPreview = False):
 
         ### Filtering
-        self._shouldMaskByHue              = False
+        self._shouldMaskByHue              = True
         self._hue                          = 140  # 緑
         self._hueRange                     = 60
         self._shouldPaintBackgroundBlack   = False
@@ -63,6 +49,7 @@ class Cameo(object):
         self._shouldProcessClosing         = True
         self._sThreshold                   = 5
         self._gamma                        = 100
+        self._gaussianBlurKernelSize       = 5
 
         self._timeSelfTimerStarted         = None
 
@@ -72,10 +59,9 @@ class Cameo(object):
         self._houghCircleParam2            = 200
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
-        self._numberOfDisplayedPoints      = 50
-        self._shouldDrawCircle             = False
-        self._shouldDrawTracks             = False
-        self._shouldDrawVerocityVector     = True
+        self._shouldDrawCircle             = True
+        self._shouldDrawTracks             = True
+        self._shouldDrawVerocityVector     = False
 
         self._currentAdjusting             = self.HUE
 
@@ -106,7 +92,8 @@ class Cameo(object):
                                   self._shouldProcessGaussianBlur,
                                   self._shouldPaintBackgroundBlack,
                                   self._shouldProcessClosing, 1,
-                                  self._sThreshold, self._gamma)
+                                  self._sThreshold, self._gamma,
+                                  self._gaussianBlurKernelSize)
 
             # 円を検出する
             if self._shouldTrackCircle:
@@ -114,13 +101,16 @@ class Cameo(object):
                 filters.maskByHue(frame, frameToFindCircle, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
                                   True,  # Paint Background Black
-                                  self._shouldProcessClosing)
+                                  self._shouldProcessClosing, 1,
+                                  self._sThreshold, self._gamma,
+                                  self._gaussianBlurKernelSize)
                 # グレースケール画像に変換する
                 frameToFindCircle = cv2.cvtColor(frameToFindCircle, cv2.cv.CV_BGR2GRAY)
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
-                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT, self._houghCircleDp,
-                                           height / 4,  100, self._houghCircleParam2, 100, 1)
+                circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT,
+                                           self._houghCircleDp, height / 4,  100,
+                                           self._houghCircleParam2, 100, 1)
                 # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
                 #                  minRadius[, maxRadius]]]]]) → circles
                 # ハフ変換を用いて，グレースケール画像から円を検出します．
@@ -159,33 +149,57 @@ class Cameo(object):
 
                 # 軌跡を描画する
                 # 最初に円が見つかったときに初期化する
-                if len(self._passedPoints) == 0 \
-                        and self._centerPointOfCircle is not None:
-
-                    # 最初の(x,y)でリストを埋める
-                    for i in range(self._numberOfDisplayedPoints):
-                        self._passedPoints.append(self._centerPointOfCircle)
+                # if len(self._passedPoints) == 0 \
+                #         and self._centerPointOfCircle is not None:
+                #
+                #     # 最初の(x,y)でリストを埋める
+                #     for i in range(self._numberOfDisplayedPoints):
+                #         self._passedPoints.append(self._centerPointOfCircle)
 
                 # 次の円を検出したら・・・
-                elif self._centerPointOfCircle is not None:
+                if self._centerPointOfCircle is not None:
                     # 通過点リストの最後に要素を追加する
                     self._passedPoints.append(self._centerPointOfCircle)
-                    self._passedPoints.pop(0)  # 最初の要素は削除する
+                    # self._passedPoints.pop(0)  # 最初の要素は削除する
 
                 # 次の円が見つかっても見つからなくても・・・
                 if len(self._passedPoints) != 0:
+                    numberOfPoints = len(self._passedPoints)
                     # 軌跡を描画する
                     if self._shouldDrawTracks:
-                        for i in range(self._numberOfDisplayedPoints - 1):
+                        if numberOfPoints > 1:
+                            for i in range(numberOfPoints - 1):
                                 cv2.line(frame, self._passedPoints[i],
                                          self._passedPoints[i+1], (0,255,0), 5)
                     if self._shouldDrawVerocityVector:
-                        pt0 = self._passedPoints[self._numberOfDisplayedPoints - 2]
-                        pt1 = self._passedPoints[self._numberOfDisplayedPoints - 1]
-                        print pt1, pt0
-                        dpt = (pt1[0] - pt0[0], pt1[1] - pt0[0])
-                        pt2 = pt1 + dpt # pt2 = pt1 + Δpt
-                        cvArrow(frame, pt1, pt2, (0,0,255))
+                        if numberOfPoints > 2:
+                            pt0np = numpy.array(self._passedPoints[numberOfPoints - 2])
+                            pt1np = numpy.array(self._passedPoints[numberOfPoints - 1])
+                            dptnp = pt1np - pt0np  # 移動ベクトル
+                            areSamePoint_array = (dptnp == numpy.array([0,0]))
+                            if not areSamePoint_array.all():
+                                pt2np = pt1np + dptnp  # pt2 = pt1 + Δpt
+                                pt1 = tuple(pt1np)
+                                pt2 = tuple(pt2np)
+
+                                def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
+                                    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+                                    vx = pt2[0] - pt1[0]
+                                    vy = pt2[1] - pt1[1]
+                                    v  = math.sqrt(vx ** 2 + vy ** 2)
+                                    ux = vx / v
+                                    uy = vy / v
+                                    # 矢印の幅の部分
+                                    w = 5
+                                    h = 10
+                                    ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
+                                    ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
+                                    # 矢印の先端を描画する
+                                    print pt2,ptl,color,thickness,lineType,shift
+                                    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+                                    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
+
+                                cvArrow(frame, pt1, pt2, (0,0,255), 5)
 
             # 情報を表示する
             def putText(text, lineNumber):
@@ -209,6 +223,8 @@ class Cameo(object):
                 putLabelAndValue('Hough Circle Threshold'       , self._houghCircleParam2)
             elif self._currentAdjusting == self.GAMMA:
                 putLabelAndValue('Gamma'                        , self._gamma)
+            elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+                putLabelAndValue('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
                 putLabelAndValue('Should Track Circle'          , self._shouldTrackCircle)
             elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
@@ -312,7 +328,11 @@ class Cameo(object):
             elif self._currentAdjusting == self.GAMMA:
                 pitch = 10 if keycode == 0 else -10
                 self._gamma             += pitch
+            elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+                pitch = 1  if keycode == 0 else -1
+                self._gaussianBlurKernelSize += pitch
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
+                self._passedPoints      =  []  # 軌跡を消去する
                 self._shouldTrackCircle = \
                     not self._shouldTrackCircle
             elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
@@ -337,6 +357,7 @@ class Cameo(object):
                 else:
                     self._shouldDrawCircle = False
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
+                self._passedPoints = []  # 軌跡を消去する
                 if self._shouldDrawTracks is False:
                     self._shouldTrackCircle = True
                     self._shouldDrawTracks = True

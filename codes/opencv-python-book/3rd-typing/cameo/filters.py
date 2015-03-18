@@ -353,7 +353,7 @@ def maskByHue(src, dst, hue, hueRange,
               shouldProcessGaussianBlur=False,
               shouldPaintBackgroundBlack=False,
               shouldProcessClosing=True, iterations=1,
-              sThreshold=5, gamma=96):
+              sThreshold=5, gamma=96, gaussianBlurKernelSize=5):
 
     _hue      = hue / 2
     _hueRange = hueRange / 2
@@ -380,7 +380,8 @@ def maskByHue(src, dst, hue, hueRange,
         # ガウシアンフィルタを用いて画像の平滑化を行います．
         # GaussianBlur(src, ksize, sigmaX[, dst[, sigmaY[, borderType]]]) -> dst
         # ksize must pair of odd. (5,5),(7,7),(9,9)...
-        cv2.GaussianBlur(hTarget, (9,9), 0, hTarget)
+        size = 2 * gaussianBlurKernelSize - 1
+        cv2.GaussianBlur(hTarget, (size,size), 0, hTarget)
 
     v = lightTarget(v, hTarget, gamma)
 
