@@ -349,7 +349,7 @@ def lightTarget(v, hTarget, gamma):
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
     return v
 
-def maskByHue(src, dst, hue, hueRange,
+def maskByHue(src, hue, hueRange,
               shouldProcessGaussianBlur=False,
               shouldPaintBackgroundBlack=False,
               shouldProcessClosing=True, iterations=1,
@@ -401,7 +401,8 @@ def maskByHue(src, dst, hue, hueRange,
         cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
 
     cv2.merge((hOrg, s, v), src)
-    cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
+    cv2.cvtColor(src, cv2.COLOR_HSV2BGR, src)
+    return src
 
 def equaliseHist(src, dst):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
