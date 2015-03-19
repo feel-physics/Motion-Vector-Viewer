@@ -11,7 +11,7 @@ from managers import WindowManager, CaptureManager
 
 class Cameo(object):
 
-    ADJUSTING = (
+    ADJUSTING_OPTIONS = (
         HUE,
         HUE_RANGE,
         HOUGH_CIRCLE_RESOLUTION,
@@ -19,14 +19,19 @@ class Cameo(object):
         GAMMA,
         GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_TRACK_CIRCLE,
-        SHOULD_MASK_BY_HUE,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
         SHOULD_PAINT_BACKGROUND_BLACK,
         SHOULD_PROCESS_CLOSING,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
-        SHOULD_SHOW_WHAT_COMPUTER_SEE
-    ) = range(0, 14)
+        SHOWING_FRAME
+    ) = range(0, 13)
+
+    SHOWING_FRAME_OPTIONS = (
+        ORIGINAL,
+        MASKED_BY_HUE,
+        WHAT_COMPUTER_SEE
+    ) = range(0, 3)
 
     def __init__(self):
 
@@ -66,6 +71,7 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
 
         self._currentAdjusting             = self.HUE
+        self._currentShowing               = self.ORIGINAL
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -84,38 +90,44 @@ class Cameo(object):
         while self._windowManager.isWindowCreated:
             # フレームを取得し・・・
             self._captureManager.enterFrame()
-            frame = self._captureManager.frame
-
-            # def maskByHue(src, dst, hue, hueRange,
-            #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
-            #               shouldProcessClosing=True, iterations=1):
-            if self._shouldMaskByHue:
-                filters.maskByHue(frame, frame, self._hue, self._hueRange,
-                                  self._shouldProcessGaussianBlur,
-                                  self._shouldPaintBackgroundBlack,
-                                  self._shouldProcessClosing, 1,
-                                  self._sThreshold, self._gamma,
-                                  self._gaussianBlurKernelSize)
+            frameToSee = self._captureManager.frame
 
             def _processFrameToFindCircle(self, frame):
-                maskedFrame = filters.maskByHue(frame, self._hue, self._hueRange,
+                filters.maskByHue(frame, frame, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
                                   True,  # Paint Background Black
                                   self._shouldProcessClosing, 1,
                                   self._sThreshold, self._gamma,
                                   self._gaussianBlurKernelSize)
                 # グレースケール画像に変換する
-                maskedFrame_gray = cv2.cvtColor(maskedFrame, cv2.COLOR_BGR2GRAY)
-                return maskedFrame_gray
+                frameMasked_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                return frameMasked_gray
 
-            if self._shouldShowWhatComputerSee:
-                gray = _processFrameToFindCircle(self, frame)
-                cv2.merge((gray, gray, gray), frame)
-                # TODO: mask by hue と show what computer seeと普通のビューは上下で切り替えられるようにする
+            ### 画面表示
+
+            if self._currentShowing == self.MASKED_BY_HUE:
+                # def maskByHue(src, dst, hue, hueRange,
+                #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
+                #               shouldProcessClosing=True, iterations=1):
+                filters.maskByHue(frameToSee, frameToSee, self._hue, self._hueRange,
+                                  self._shouldProcessGaussianBlur,
+                                  self._shouldPaintBackgroundBlack,
+                                  self._shouldProcessClosing, 1,
+                                  self._sThreshold, self._gamma,
+                                  self._gaussianBlurKernelSize)
+
+            elif self._currentShowing == self.WHAT_COMPUTER_SEE:
+                gray = _processFrameToFindCircle(self, frameToSee)
+                cv2.merge((gray, gray, gray), frameToSee)
+
+            # elif self._currentShowing == self.ORIGINAL:
+
+            ### 検出・描画処理
 
             # 円を検出する
             if self._shouldTrackCircle:
-                frameToFindCircle = _processFrameToFindCircle(self, frame)
+                frameToTrack = frameToSee.copy()
+                frameToFindCircle = _processFrameToFindCircle(self, frameToTrack)
 
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
@@ -156,7 +168,7 @@ class Cameo(object):
 
                     # 円を描く
                     if self._shouldDrawCircle:
-                        cv2.circle(frame, self._centerPointOfCircle, r, (0,255,0), 5)
+                        cv2.circle(frameToSee, self._centerPointOfCircle, r, (0,255,0), 5)
 
                 # 軌跡を描画する
                 # 最初に円が見つかったときに初期化する
@@ -180,7 +192,7 @@ class Cameo(object):
                     if self._shouldDrawTracks:
                         if numberOfPoints > 1:
                             for i in range(numberOfPoints - 1):
-                                cv2.line(frame, self._passedPoints[i],
+                                cv2.line(frameToSee, self._passedPoints[i],
                                          self._passedPoints[i+1], (0,255,0), 5)
                     if self._shouldDrawVerocityVector:
                         if numberOfPoints > 2:
@@ -210,12 +222,13 @@ class Cameo(object):
                                     cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
                                     cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
-                                cvArrow(frame, pt1, pt2, (0,0,255), 5)
+                                cvArrow(frameToSee, pt1, pt2, (0,0,255), 5)
+
+            ### 情報表示
 
             # 情報を表示する
-            # TODO: 関数内に変数frameが入っている
             def _putText(text, lineNumber):
-                cv2.putText(frame, text, (100, 50 + 50 * lineNumber),
+                cv2.putText(frameToSee, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
             def _putLabelAndValue(label, value):
                 _putText(label, 1)
@@ -239,8 +252,6 @@ class Cameo(object):
                 _putLabelAndValue('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
                 _putLabelAndValue('Should Track Circle'          , self._shouldTrackCircle)
-            elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
-                _putLabelAndValue('Should Mask By Hue'           , self._shouldMaskByHue)
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
                 _putLabelAndValue('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
             elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
@@ -251,8 +262,19 @@ class Cameo(object):
                 _putLabelAndValue('Should Draw Circle'           , self._shouldDrawCircle)
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
                 _putLabelAndValue('Should Draw Tracks'           , self._shouldDrawTracks)
-            elif self._currentAdjusting == self.SHOULD_SHOW_WHAT_COMPUTER_SEE:
-                _putLabelAndValue('Should Show What Computer See', self._shouldShowWhatComputerSee)
+            elif self._currentAdjusting == self.SHOWING_FRAME:
+                if   self._currentShowing == self.ORIGINAL:
+                    currentShowing = 'Original'
+                elif self._currentShowing == self.MASKED_BY_HUE:
+                    currentShowing = 'Masked By Hue'
+                elif self._currentShowing == self.WHAT_COMPUTER_SEE:
+                    currentShowing = 'What Computer See'
+                else:
+                    raise ValueError('self._currentShowing')
+
+                _putLabelAndValue('Showing Frame'                , currentShowing)
+            else:
+                raise ValueError('self._currentAdjusting')
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -318,7 +340,7 @@ class Cameo(object):
 
         ### Adjustment
         elif keycode == 3:  # right arrow
-            if not self._currentAdjusting == len(self.ADJUSTING) - 1:
+            if not self._currentAdjusting == len(self.ADJUSTING_OPTIONS) - 1:
                 self._currentAdjusting += 1
             else:
                 self._currentAdjusting = 0
@@ -326,7 +348,7 @@ class Cameo(object):
             if not self._currentAdjusting == 0:
                 self._currentAdjusting -= 1
             else:
-                self._currentAdjusting = len(self.ADJUSTING) - 1
+                self._currentAdjusting = len(self.ADJUSTING_OPTIONS) - 1
         elif keycode == 0 or keycode == 1:  # up / down arrow
             if self._currentAdjusting   == self.HUE:
                 pitch = 10 if keycode == 0 else -10
@@ -349,9 +371,6 @@ class Cameo(object):
                 self._passedPoints      =  []  # 軌跡を消去する
                 self._shouldTrackCircle = \
                     not self._shouldTrackCircle
-            elif self._currentAdjusting == self.SHOULD_MASK_BY_HUE:
-                self._shouldMaskByHue = \
-                    not self._shouldMaskByHue
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
                 self._shouldProcessGaussianBlur = \
                     not self._shouldProcessGaussianBlur
@@ -377,9 +396,17 @@ class Cameo(object):
                     self._shouldDrawTracks = True
                 else:
                     self._shouldDrawTracks = False
-            elif self._currentAdjusting == self.SHOULD_SHOW_WHAT_COMPUTER_SEE:
-                self._shouldShowWhatComputerSee = \
-                    not self._shouldShowWhatComputerSee
+            elif self._currentAdjusting == self.SHOWING_FRAME:
+                if   keycode == 0:  # up arrow
+                    if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
+                        self._currentShowing += 1
+                    else:
+                        self._currentShowing = 0
+                elif keycode == 1:  # down arrow
+                    if not self._currentShowing == 0:
+                        self._currentShowing -= 1
+                    else:
+                        self._currentShowing = len(self.SHOWING_FRAME_OPTIONS) - 1
 
             else:
                 raise ValueError('self._currentAdjusting')
