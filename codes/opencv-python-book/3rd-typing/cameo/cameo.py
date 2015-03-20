@@ -11,6 +11,8 @@ from managers import WindowManager, CaptureManager
 
 class Cameo(object):
 
+    # TODO: 色を4色の中から選べるようにする
+    # TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = (
         HUE,
         HUE_RANGE,
@@ -24,8 +26,9 @@ class Cameo(object):
         SHOULD_PROCESS_CLOSING,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
+        SHOULD_DRAW_VEROCITY_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 13)
+    ) = range(0, 14)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -61,7 +64,7 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
-        self._shouldTrackCircle            = False
+        self._shouldTrackCircle            = False  # TODO: この変数は廃止する
         self._houghCircleDp                = 3
         self._houghCircleParam2            = 200
         self._centerPointOfCircle          = None
@@ -69,6 +72,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
+        self._lengthTimesOfVerocityVector  = 3
 
         self._currentAdjusting             = self.HUE
         self._currentShowing               = self.ORIGINAL
@@ -91,8 +95,15 @@ class Cameo(object):
             # フレームを取得し・・・
             self._captureManager.enterFrame()
             frameToSee = self._captureManager.frame
+            frameToFindCircle = frameToSee.copy()  # 検出用のフレーム（ディープコピー）
+
+            ### 画面表示
 
             def _processFrameToFindCircle(self, frame):
+                """
+                後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
+                SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
+                """
                 filters.maskByHue(frame, frame, self._hue, self._hueRange,
                                   self._shouldProcessGaussianBlur,
                                   True,  # Paint Background Black
@@ -102,8 +113,6 @@ class Cameo(object):
                 # グレースケール画像に変換する
                 frameMasked_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 return frameMasked_gray
-
-            ### 画面表示
 
             if self._currentShowing == self.MASKED_BY_HUE:
                 # def maskByHue(src, dst, hue, hueRange,
@@ -126,8 +135,7 @@ class Cameo(object):
 
             # 円を検出する
             if self._shouldTrackCircle:
-                frameToTrack = frameToSee.copy()
-                frameToFindCircle = _processFrameToFindCircle(self, frameToTrack)
+                frameToFindCircle = _processFrameToFindCircle(self, frameToFindCircle)
 
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
@@ -196,9 +204,12 @@ class Cameo(object):
                                          self._passedPoints[i+1], (0,255,0), 5)
                     if self._shouldDrawVerocityVector:
                         if numberOfPoints > 2:
+                            # 最後から1個前の点 pt0
                             pt0np = numpy.array(self._passedPoints[numberOfPoints - 2])
+                            # 最後の点 pt1
                             pt1np = numpy.array(self._passedPoints[numberOfPoints - 1])
-                            dptnp = pt1np - pt0np  # 移動ベクトル
+                            # 移動ベクトル Δpt = pt1 - pt0
+                            dptnp = self._lengthTimesOfVerocityVector * (pt1np - pt0np)
                             areSamePoint_array = (dptnp == numpy.array([0,0]))
                             if not areSamePoint_array.all():
                                 pt2np = pt1np + dptnp  # pt2 = pt1 + Δpt
@@ -218,7 +229,6 @@ class Cameo(object):
                                     ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
                                     ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
                                     # 矢印の先端を描画する
-                                    print pt2,ptl,color,thickness,lineType,shift
                                     cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
                                     cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
@@ -262,6 +272,8 @@ class Cameo(object):
                 _putLabelAndValue('Should Draw Circle'           , self._shouldDrawCircle)
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
                 _putLabelAndValue('Should Draw Tracks'           , self._shouldDrawTracks)
+            elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
+                _putLabelAndValue('Should Draw Verocity Vector'  , self._shouldDrawVerocityVector)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -396,6 +408,13 @@ class Cameo(object):
                     self._shouldDrawTracks = True
                 else:
                     self._shouldDrawTracks = False
+            elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
+                self._passedPoints = []  # 軌跡を消去する
+                if self._shouldDrawVerocityVector is False:
+                    self._shouldTrackCircle = True
+                    self._shouldDrawVerocityVector = True
+                else:
+                    self._shouldDrawVerocityVector = False
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
