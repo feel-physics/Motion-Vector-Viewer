@@ -273,10 +273,11 @@ def applyLaplacian(src, dst, edgeSize = 5):
     cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
     dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)
 
-def getHsvMask(h, s, hueMin, hueMax, sThreshold=5):
+def getHsvMask(h, s, v, hueMin, hueMax, valueMin, valueMax, sThreshold=5):
 
-    hTargetLower = h.copy()
-    cv2.threshold(h, hueMax, 255, cv2.THRESH_BINARY_INV, hTargetLower)
+    # 色相
+
+    _, hTargetLower = cv2.threshold(h, hueMax, 255, cv2.THRESH_BINARY_INV)
     # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
     # Parameters:
     # src – input array (single-channel, 8-bit or 32-bit floating point).
@@ -295,8 +296,7 @@ def getHsvMask(h, s, hueMin, hueMax, sThreshold=5):
     # 255
     # 255
 
-    hTargetHigher = h.copy()
-    cv2.threshold(h, hueMin, 255, cv2.THRESH_BINARY, hTargetHigher)
+    _, hTargetHigher = cv2.threshold(h, hueMin, 255, cv2.THRESH_BINARY)
     # THRESH_BINARY
     # if src(x,y) > thresh then dst(x,y) = maxval = 255
     # if otherwise         then dst(x,y) = 0
@@ -312,7 +312,7 @@ def getHsvMask(h, s, hueMin, hueMax, sThreshold=5):
     # 0
     # 0
 
-    cv2.bitwise_and(hTargetLower, hTargetHigher, h)
+    hMask = cv2.bitwise_and(hTargetLower, hTargetHigher)
 
     # 結果
 
@@ -326,30 +326,34 @@ def getHsvMask(h, s, hueMin, hueMax, sThreshold=5):
     # 0
     # 0
 
+    # 彩度
+
     # 蛍光灯の光（黄）を除外するため、
     # 極端に彩度が低く明度が高い（つまり白い）ピクセルをターゲット範囲から除外する
-    sNotVeryLow = s.copy() # 極端に彩度が低く明度が高いところ
+    # 極端に彩度が低く明度が高いところ
+    _, sNotVeryLow = cv2.threshold(s, 2 ** sThreshold - 1, 255, cv2.THRESH_BINARY)
     # 彩度が31より高いならターゲット範囲（255）に入れる。
     # さもなくば非ターゲット範囲（0）。
-    cv2.threshold(sNotVeryLow, 2 ** sThreshold - 1, 255, cv2.THRESH_BINARY, sNotVeryLow)
 
-    # hTargetとvNotHighlightの論理積が新しいhTarget
-    # ここでhTargetが完成する
-    hTarget = h.copy()
-    cv2.bitwise_and(hTarget, sNotVeryLow, hTarget)
+    # 明度
 
-    return hTarget
+    _, vTargetLower = cv2.threshold(v, valueMax, 255, cv2.THRESH_BINARY_INV)
+    _, vTargetHigher = cv2.threshold(v, valueMin, 255, cv2.THRESH_BINARY)
+    vMask = cv2.bitwise_and(vTargetLower, vTargetHigher)
 
-def lightTarget(v, hTarget, gamma):
-    # 明度画像のコピーをとる。
-    vBrightened = v.copy()
-    # それに+96のガンマ補正をかけ、明るくする
-    cv2.addWeighted(v, 1.0-gamma/256, v, 0.0, gamma, vBrightened)
-    # 明度画像のターゲット範囲のみ、ガンマ補正済み明度画像を入れる
-    cv2.bitwise_and(vBrightened, 255, v, hTarget)
+    # 論理積をとる
+    HsMask = cv2.bitwise_and(hMask, sNotVeryLow)
+    HsvMask = cv2.bitwise_and(HsMask, vMask)
+    return HsvMask
+
+def letMaskMoreBright(v, mask, gamma):
+    # 明度画像に+gammaのガンマ補正をかけ、明るくする
+    vBrightened = cv2.addWeighted(v, 1.0-gamma/256, v, 0.0, gamma)
+    # マスク範囲のみ、ガンマ補正済み明度画像を入れる
+    cv2.bitwise_and(vBrightened, 255, v, mask)
     return v
 
-def maskByHsv(src, dst, hueMin, hueMax,
+def maskByHsv(src, dst, hueMin, hueMax, valueMin, valueMax,
               shouldPaintBackgroundBlack=False, gamma=96, sThreshold=5,
               shouldProcessGaussianBlur=False, gaussianBlurKernelSize=5,
               shouldProcessClosing=True, iterations=1):
@@ -360,11 +364,10 @@ def maskByHsv(src, dst, hueMin, hueMax,
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
     hOrg = h.copy()
-    hTarget = h.copy()
 
     # HSVで抽出する
 
-    hTarget = getHsvMask(h, s, _hueMin, _hueMax, sThreshold)
+    hTarget = getHsvMask(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
 
     # 後処理する
 
@@ -386,14 +389,13 @@ def maskByHsv(src, dst, hueMin, hueMax,
         size = 2 * gaussianBlurKernelSize - 1
         cv2.GaussianBlur(hTarget, (size,size), 0, hTarget)
 
-    v = lightTarget(v, hTarget, gamma)
+    v = letMaskMoreBright(v, hTarget, gamma)  # TODO: 別の場所に移す
 
     # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
     # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
     # さもなくば、0にセットする。
     # 要するにhMask2はhTargetマスク画像を反転させたもの。
-    hNotTarget = hTarget.copy()
-    cv2.compare(hTarget, 0, cv2.CMP_EQ, hNotTarget)
+    hNotTarget = cv2.compare(hTarget, 0, cv2.CMP_EQ)
 
     # ターゲット範囲以外は
     if shouldPaintBackgroundBlack:

@@ -15,6 +15,8 @@ class Cameo(object):
     ADJUSTING_OPTIONS = (
         HUE_MIN,
         HUE_MAX,
+        VALUE_MIN,
+        VALUE_MAX,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_THRESHOLD,
         GAMMA,
@@ -27,11 +29,11 @@ class Cameo(object):
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 14)
+    ) = range(0, 16)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
-        MASKED_BY_HUE,
+        MASKED_BY_HUE,  # TODO: 名前を変える
         WHAT_COMPUTER_SEE
     ) = range(0, 3)
 
@@ -52,6 +54,8 @@ class Cameo(object):
         self._shouldMaskByHue              = False
         self._hueMin                       = 50  # 硬式テニスボール
         self._hueMax                       = 80
+        self._valueMin                     = 0
+        self._valueMax                     = 250
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = True
         self._shouldProcessClosing         = True
@@ -73,8 +77,8 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._lengthTimesOfVerocityVector  = 3
 
-        self._currentAdjusting             = self.HUE_MIN
-        self._currentShowing               = self.ORIGINAL
+        self._currentAdjusting             = self.VALUE_MIN
+        self._currentShowing               = self.MASKED_BY_HUE
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -103,7 +107,9 @@ class Cameo(object):
                 後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
                 SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
                 """
-                filters.maskByHsv(frame, frame, self._hueMin, self._hueMax,
+                filters.maskByHsv(frame, frame,
+                                  self._hueMin, self._hueMax,
+                                  self._valueMin, self._valueMax,
                                   True, self._gamma, self._sThreshold,
                                   self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
                                   self._shouldProcessClosing, 1)
@@ -115,7 +121,9 @@ class Cameo(object):
                 # def maskByHue(src, dst, hue, hueRange,
                 #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
                 #               shouldProcessClosing=True, iterations=1):
-                filters.maskByHsv(frameToDisplay, frameToDisplay, self._hueMin, self._hueMax,
+                filters.maskByHsv(frameToDisplay, frameToDisplay,
+                                  self._hueMin, self._hueMax,
+                                  self._valueMin, self._valueMax,
                                   self._shouldPaintBackgroundBlack, self._gamma, self._sThreshold,
                                   self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
                                   self._shouldProcessClosing, 1)
@@ -247,6 +255,10 @@ class Cameo(object):
                 _put('Hue Min'                      , self._hueMin)
             elif self._currentAdjusting == self.HUE_MAX:
                 _put('Hue Max'                      , self._hueMax)
+            elif self._currentAdjusting == self.VALUE_MIN:
+                _put('Value Min'                    , self._valueMin)
+            elif self._currentAdjusting == self.VALUE_MAX:
+                _put('Value Max'                    , self._valueMax)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
                 _put('Hough Circle Resolution'      , self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
@@ -363,6 +375,12 @@ class Cameo(object):
             elif self._currentAdjusting == self.HUE_MAX:
                 pitch = 10 if keycode == 0 else -10
                 self._hueMax            += pitch
+            elif self._currentAdjusting == self.VALUE_MIN:
+                pitch = 10 if keycode == 0 else -10
+                self._valueMin          += pitch
+            elif self._currentAdjusting == self.VALUE_MAX:
+                pitch = 10 if keycode == 0 else -10
+                self._valueMax          += pitch
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
                 pitch = 1  if keycode == 0 else -1
                 self._houghCircleDp     += pitch
