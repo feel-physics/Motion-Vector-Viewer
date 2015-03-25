@@ -273,10 +273,10 @@ def applyLaplacian(src, dst, edgeSize = 5):
     cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
     dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)
 
-def getHueMask(h, s, hue, hueRange, sThreshold = 5):
+def getHsvMask(h, s, hueMin, hueMax, sThreshold=5):
 
     hTargetLower = h.copy()
-    cv2.threshold(h, hue + hueRange, 255, cv2.THRESH_BINARY_INV, hTargetLower)
+    cv2.threshold(h, hueMax, 255, cv2.THRESH_BINARY_INV, hTargetLower)
     # Python: cv2.threshold(src, thresh, maxval, type[, dst]) → retval, dst
     # Parameters:
     # src – input array (single-channel, 8-bit or 32-bit floating point).
@@ -296,7 +296,7 @@ def getHueMask(h, s, hue, hueRange, sThreshold = 5):
     # 255
 
     hTargetHigher = h.copy()
-    cv2.threshold(h, hue - hueRange, 255, cv2.THRESH_BINARY, hTargetHigher)
+    cv2.threshold(h, hueMin, 255, cv2.THRESH_BINARY, hTargetHigher)
     # THRESH_BINARY
     # if src(x,y) > thresh then dst(x,y) = maxval = 255
     # if otherwise         then dst(x,y) = 0
@@ -349,21 +349,24 @@ def lightTarget(v, hTarget, gamma):
     cv2.bitwise_and(vBrightened, 255, v, hTarget)
     return v
 
-def maskByHue(src, dst, hue, hueRange,
-              shouldProcessGaussianBlur=False,
-              shouldPaintBackgroundBlack=False,
-              shouldProcessClosing=True, iterations=1,
-              sThreshold=5, gamma=96, gaussianBlurKernelSize=5):
+def maskByHsv(src, dst, hueMin, hueMax,
+              shouldPaintBackgroundBlack=False, gamma=96, sThreshold=5,
+              shouldProcessGaussianBlur=False, gaussianBlurKernelSize=5,
+              shouldProcessClosing=True, iterations=1):
 
-    _hue      = hue / 2
-    _hueRange = hueRange / 2
+    _hueMin = hueMin / 2
+    _hueMax = hueMax / 2
 
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
     hOrg = h.copy()
     hTarget = h.copy()
 
-    hTarget = getHueMask(h, s, _hue, _hueRange, sThreshold)
+    # HSVで抽出する
+
+    hTarget = getHsvMask(h, s, _hueMin, _hueMax, sThreshold)
+
+    # 後処理する
 
     if shouldProcessClosing:
         # 8近傍

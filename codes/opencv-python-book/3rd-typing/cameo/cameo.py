@@ -3,19 +3,18 @@ __author__ = 'weed'
 
 import cv2
 from datetime import datetime
-import math
 import numpy
+import math
 
 import filters
 from managers import WindowManager, CaptureManager
 
 class Cameo(object):
 
-    # TODO: 色を4色の中から選べるようにする
     # TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = (
-        HUE,
-        HUE_RANGE,
+        HUE_MIN,
+        HUE_MAX,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_THRESHOLD,
         GAMMA,
@@ -51,8 +50,8 @@ class Cameo(object):
 
         ### Filtering
         self._shouldMaskByHue              = False
-        self._hue                          = 140  # 緑
-        self._hueRange                     = 60
+        self._hueMin                       = 50  # 硬式テニスボール
+        self._hueMax                       = 80
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = True
         self._shouldProcessClosing         = True
@@ -65,7 +64,7 @@ class Cameo(object):
 
         ### Ball Tracking ###
         self._shouldTrackCircle            = False  # TODO: この変数は廃止する
-        self._houghCircleDp                = 3
+        self._houghCircleDp                = 4
         self._houghCircleParam2            = 200
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
@@ -74,7 +73,7 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._lengthTimesOfVerocityVector  = 3
 
-        self._currentAdjusting             = self.HUE
+        self._currentAdjusting             = self.HUE_MIN
         self._currentShowing               = self.ORIGINAL
 
     def _takeScreenShot(self):
@@ -94,8 +93,8 @@ class Cameo(object):
         while self._windowManager.isWindowCreated:
             # フレームを取得し・・・
             self._captureManager.enterFrame()
-            frameToSee = self._captureManager.frame
-            frameToFindCircle = frameToSee.copy()  # 検出用のフレーム（ディープコピー）
+            frameToDisplay = self._captureManager.frame
+            frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
             ### 画面表示
 
@@ -104,12 +103,10 @@ class Cameo(object):
                 後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
                 SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
                 """
-                filters.maskByHue(frame, frame, self._hue, self._hueRange,
-                                  self._shouldProcessGaussianBlur,
-                                  True,  # Paint Background Black
-                                  self._shouldProcessClosing, 1,
-                                  self._sThreshold, self._gamma,
-                                  self._gaussianBlurKernelSize)
+                filters.maskByHsv(frame, frame, self._hueMin, self._hueMax,
+                                  True, self._gamma, self._sThreshold,
+                                  self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
+                                  self._shouldProcessClosing, 1)
                 # グレースケール画像に変換する
                 frameMasked_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 return frameMasked_gray
@@ -118,16 +115,14 @@ class Cameo(object):
                 # def maskByHue(src, dst, hue, hueRange,
                 #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
                 #               shouldProcessClosing=True, iterations=1):
-                filters.maskByHue(frameToSee, frameToSee, self._hue, self._hueRange,
-                                  self._shouldProcessGaussianBlur,
-                                  self._shouldPaintBackgroundBlack,
-                                  self._shouldProcessClosing, 1,
-                                  self._sThreshold, self._gamma,
-                                  self._gaussianBlurKernelSize)
+                filters.maskByHsv(frameToDisplay, frameToDisplay, self._hueMin, self._hueMax,
+                                  self._shouldPaintBackgroundBlack, self._gamma, self._sThreshold,
+                                  self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
+                                  self._shouldProcessClosing, 1)
 
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                gray = _processFrameToFindCircle(self, frameToSee)
-                cv2.merge((gray, gray, gray), frameToSee)
+                gray = _processFrameToFindCircle(self, frameToDisplay)
+                cv2.merge((gray, gray, gray), frameToDisplay)
 
             # elif self._currentShowing == self.ORIGINAL:
 
@@ -176,7 +171,7 @@ class Cameo(object):
 
                     # 円を描く
                     if self._shouldDrawCircle:
-                        cv2.circle(frameToSee, self._centerPointOfCircle, r, (0,255,0), 5)
+                        cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
 
                 # 軌跡を描画する
                 # 最初に円が見つかったときに初期化する
@@ -200,7 +195,7 @@ class Cameo(object):
                     if self._shouldDrawTracks:
                         if numberOfPoints > 1:
                             for i in range(numberOfPoints - 1):
-                                cv2.line(frameToSee, self._passedPoints[i],
+                                cv2.line(frameToDisplay, self._passedPoints[i],
                                          self._passedPoints[i+1], (0,255,0), 5)
                     if self._shouldDrawVerocityVector:
                         if numberOfPoints > 2:
@@ -232,15 +227,15 @@ class Cameo(object):
                                     cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
                                     cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
-                                cvArrow(frameToSee, pt1, pt2, (0,0,255), 5)
+                                cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
 
             ### 情報表示
 
             # 情報を表示する
             def _putText(text, lineNumber):
-                cv2.putText(frameToSee, text, (100, 50 + 50 * lineNumber),
+                cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
-            def _putLabelAndValue(label, value):
+            def _put(label, value):
                 _putText(label, 1)
                 if value is True:
                     value = 'True'
@@ -248,32 +243,32 @@ class Cameo(object):
                     value = 'False'
                 _putText(str(value), 2)
 
-            if   self._currentAdjusting == self.HUE:
-                _putLabelAndValue('Hue'                          , self._hue)
-            elif self._currentAdjusting == self.HUE_RANGE:
-                _putLabelAndValue('Hue Range'                    , self._hueRange)
+            if   self._currentAdjusting == self.HUE_MIN:
+                _put('Hue Min'                      , self._hueMin)
+            elif self._currentAdjusting == self.HUE_MAX:
+                _put('Hue Max'                      , self._hueMax)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-                _putLabelAndValue('Hough Circle Resolution'      , self._houghCircleDp)
+                _put('Hough Circle Resolution'      , self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_THRESHOLD:
-                _putLabelAndValue('Hough Circle Threshold'       , self._houghCircleParam2)
+                _put('Hough Circle Threshold'       , self._houghCircleParam2)
             elif self._currentAdjusting == self.GAMMA:
-                _putLabelAndValue('Gamma'                        , self._gamma)
+                _put('Gamma'                        , self._gamma)
             elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-                _putLabelAndValue('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
+                _put('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
-                _putLabelAndValue('Should Track Circle'          , self._shouldTrackCircle)
+                _put('Should Track Circle'          , self._shouldTrackCircle)
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-                _putLabelAndValue('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
+                _put('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
             elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
-                _putLabelAndValue('Should Paint Background Black', self._shouldPaintBackgroundBlack)
+                _put('Should Paint Background Black', self._shouldPaintBackgroundBlack)
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
-                _putLabelAndValue('Should Process Closing'       , self._shouldProcessClosing)
+                _put('Should Process Closing'       , self._shouldProcessClosing)
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-                _putLabelAndValue('Should Draw Circle'           , self._shouldDrawCircle)
+                _put('Should Draw Circle'           , self._shouldDrawCircle)
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                _putLabelAndValue('Should Draw Tracks'           , self._shouldDrawTracks)
+                _put('Should Draw Tracks'           , self._shouldDrawTracks)
             elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                _putLabelAndValue('Should Draw Verocity Vector'  , self._shouldDrawVerocityVector)
+                _put('Should Draw Verocity Vector'  , self._shouldDrawVerocityVector)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -284,7 +279,7 @@ class Cameo(object):
                 else:
                     raise ValueError('self._currentShowing')
 
-                _putLabelAndValue('Showing Frame'                , currentShowing)
+                _put('Showing Frame'                , currentShowing)
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -325,7 +320,7 @@ class Cameo(object):
                 # ファイルに書き出すのを始めて・・・
                 self._captureManager.startWritingVideo(
                     datetime.now().strftime('%y%m%d-%H%M%S')
-                    + 'screencast.avi')
+                    + '-screencast.avi')
             # 書き出し中であれば・・・
             else:
                 # ・・・書き出しを終える
@@ -335,17 +330,17 @@ class Cameo(object):
 
         ### Hue Filter ###
         elif keycode == ord('B'):
-            self._hue      = 220
-            self._hueRange = 20
+            self._hueMin = 200
+            self._hueMax = 240
         elif keycode == ord('G'):
-            self._hue      = 140
-            self._hueRange = 60
+            self._hueMin = 80
+            self._hueMax = 200
         elif keycode == ord('R'):
-            self._hue      = 10
-            self._hueRange = 10
+            self._hueMin = 0
+            self._hueMax = 20
         elif keycode == ord('Y'):
-            self._hue      = 60
-            self._hueRange = 30
+            self._hueMin = 50
+            self._hueMax = 80
 
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
@@ -362,11 +357,12 @@ class Cameo(object):
             else:
                 self._currentAdjusting = len(self.ADJUSTING_OPTIONS) - 1
         elif keycode == 0 or keycode == 1:  # up / down arrow
-            if self._currentAdjusting   == self.HUE:
+            if self._currentAdjusting   == self.HUE_MIN:
                 pitch = 10 if keycode == 0 else -10
-            elif self._currentAdjusting == self.HUE_RANGE:
+                self._hueMin            += pitch
+            elif self._currentAdjusting == self.HUE_MAX:
                 pitch = 10 if keycode == 0 else -10
-                self._hueRange          += pitch
+                self._hueMax            += pitch
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
                 pitch = 1  if keycode == 0 else -1
                 self._houghCircleDp     += pitch
