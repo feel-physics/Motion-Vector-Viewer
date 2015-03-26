@@ -25,11 +25,12 @@ class Cameo(object):
         SHOULD_PROCESS_GAUSSIAN_BLUR,
         SHOULD_PAINT_BACKGROUND_BLACK,
         SHOULD_PROCESS_CLOSING,
+        CLOSING_ITERATIONS,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 16)
+    ) = range(0, 17)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -54,11 +55,12 @@ class Cameo(object):
         self._shouldMaskByHue              = False
         self._hueMin                       = 50  # 硬式テニスボール
         self._hueMax                       = 80
-        self._valueMin                     = 0
-        self._valueMax                     = 250
+        self._valueMin                     = 80
+        self._valueMax                     = 230
         self._shouldPaintBackgroundBlack   = False
         self._shouldProcessGaussianBlur    = True
         self._shouldProcessClosing         = True
+        self._closingIterations            = 2
         self._sThreshold                   = 5
         self._gamma                        = 100
         self._gaussianBlurKernelSize       = 5
@@ -112,11 +114,12 @@ class Cameo(object):
                                   self._valueMin, self._valueMax,
                                   True, self._gamma, self._sThreshold,
                                   self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
-                                  self._shouldProcessClosing, 1)
+                                  self._shouldProcessClosing, self._closingIterations)
                 # グレースケール画像に変換する
                 frameMasked_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 return frameMasked_gray
 
+            # TODO: 一つにまとめる
             if self._currentShowing == self.MASKED_BY_HUE:
                 # def maskByHue(src, dst, hue, hueRange,
                 #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
@@ -126,7 +129,7 @@ class Cameo(object):
                                   self._valueMin, self._valueMax,
                                   self._shouldPaintBackgroundBlack, self._gamma, self._sThreshold,
                                   self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
-                                  self._shouldProcessClosing, 1)
+                                  self._shouldProcessClosing, self._closingIterations)
 
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                 gray = _processFrameToFindCircle(self, frameToDisplay)
@@ -275,6 +278,8 @@ class Cameo(object):
                 _put('Should Paint Background Black', self._shouldPaintBackgroundBlack)
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
                 _put('Should Process Closing'       , self._shouldProcessClosing)
+            elif self._currentAdjusting == self.CLOSING_ITERATIONS:
+                _put('Closing Iterations'           , self._closingIterations)
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
                 _put('Should Draw Circle'           , self._shouldDrawCircle)
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
@@ -409,6 +414,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
                 self._shouldProcessClosing = \
                     not self._shouldProcessClosing
+            elif self._currentAdjusting == self.CLOSING_ITERATIONS:
+                pitch = 1  if keycode == 0 else -1
+                self._closingIterations += pitch
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
                 if self._shouldDrawCircle is False:
                     self._shouldTrackCircle = True
