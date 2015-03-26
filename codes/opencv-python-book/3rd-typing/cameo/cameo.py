@@ -21,16 +21,14 @@ class Cameo(object):
         HOUGH_CIRCLE_THRESHOLD,
         GAMMA,
         GAUSSIAN_BLUR_KERNEL_SIZE,
-        SHOULD_TRACK_CIRCLE,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
-        SHOULD_PAINT_BACKGROUND_BLACK,
         SHOULD_PROCESS_CLOSING,
         CLOSING_ITERATIONS,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 17)
+    ) = range(0, 15)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -104,35 +102,43 @@ class Cameo(object):
 
             ### 画面表示
 
-            def _processFrameToFindCircle(self, frame):
+            def _getMaskToFindCircle(self, frame):
                 """
                 後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
                 SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
                 """
-                filters.maskByHsv(frame, frame,
-                                  self._hueMin, self._hueMax,
-                                  self._valueMin, self._valueMax,
-                                  True, self._gamma, self._sThreshold,
-                                  self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
-                                  self._shouldProcessClosing, self._closingIterations)
-                # グレースケール画像に変換する
-                frameMasked_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                return frameMasked_gray
+                mask = filters.getMaskByHsv(frame, self._hueMin, self._hueMax, self._valueMin, self._valueMax,
+                                            self._gamma, self._sThreshold, self._shouldProcessGaussianBlur,
+                                            self._gaussianBlurKernelSize, self._shouldProcessClosing,
+                                            self._closingIterations)
+                return mask
 
-            # TODO: 一つにまとめる
             if self._currentShowing == self.MASKED_BY_HUE:
-                # def maskByHue(src, dst, hue, hueRange,
-                #               shouldProcessGaussianBlur=False, shouldPaintBackgroundBlack=False,
-                #               shouldProcessClosing=True, iterations=1):
-                filters.maskByHsv(frameToDisplay, frameToDisplay,
-                                  self._hueMin, self._hueMax,
-                                  self._valueMin, self._valueMax,
-                                  self._shouldPaintBackgroundBlack, self._gamma, self._sThreshold,
-                                  self._shouldProcessGaussianBlur, self._gaussianBlurKernelSize,
-                                  self._shouldProcessClosing, self._closingIterations)
+                mask = _getMaskToFindCircle(self, frameToDisplay)
+
+                # カメラ画像をHSVチャンネルに分離し・・・
+                frame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
+                h, s, v = cv2.split(frame)
+
+                # マスク部分の明度をガンマ補正し・・・
+                v = filters.letMaskMoreBright(v, mask, self._gamma)
+
+                # マスク部分以外は・・・
+
+                # mask（1チャンネル画像）の該当ピクセルが0のとき、
+                # notMask（1チャンネル画像）の該当ピクセルを255にセットする。
+                # さもなくば、0にセットする。
+                # 要するにnotMaskはmaskを反転させたもの。
+                notMask = cv2.compare(mask, 0, cv2.CMP_EQ)
+
+                # 彩度を0にする
+                cv2.bitwise_and(s, 0, s, notMask) # 論理積
+
+                frame = cv2.merge((h, s, v))
+                cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
 
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                gray = _processFrameToFindCircle(self, frameToDisplay)
+                gray = _getMaskToFindCircle(self, frameToDisplay)
                 cv2.merge((gray, gray, gray), frameToDisplay)
 
             # elif self._currentShowing == self.ORIGINAL:
@@ -141,7 +147,7 @@ class Cameo(object):
 
             # 円を検出する
             if self._shouldTrackCircle:
-                frameToFindCircle = _processFrameToFindCircle(self, frameToFindCircle)
+                frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
 
                 # Hough変換で円を検出する
                 height, width = frameToFindCircle.shape
@@ -270,12 +276,8 @@ class Cameo(object):
                 _put('Gamma'                        , self._gamma)
             elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
                 _put('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
-            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
-                _put('Should Track Circle'          , self._shouldTrackCircle)
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
                 _put('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
-            elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
-                _put('Should Paint Background Black', self._shouldPaintBackgroundBlack)
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
                 _put('Should Process Closing'       , self._shouldProcessClosing)
             elif self._currentAdjusting == self.CLOSING_ITERATIONS:
@@ -398,19 +400,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
                 pitch = 1  if keycode == 0 else -1
                 self._gaussianBlurKernelSize += pitch
-            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
-                self._passedPoints      =  []  # 軌跡を消去する
-                self._shouldTrackCircle = \
-                    not self._shouldTrackCircle
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
                 self._shouldProcessGaussianBlur = \
                     not self._shouldProcessGaussianBlur
-            elif self._currentAdjusting == self.SHOULD_PAINT_BACKGROUND_BLACK:
-                if self._shouldPaintBackgroundBlack is False:
-                    self._shouldMaskByHue = True
-                    self._shouldPaintBackgroundBlack = True
-                else:
-                    self._shouldPaintBackgroundBlack = False
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
                 self._shouldProcessClosing = \
                     not self._shouldProcessClosing

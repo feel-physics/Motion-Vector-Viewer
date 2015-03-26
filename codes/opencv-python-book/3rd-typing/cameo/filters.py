@@ -273,7 +273,7 @@ def applyLaplacian(src, dst, edgeSize = 5):
     cv2.Laplacian(graySrc, cv2.cv.CV_8U, graySrc, ksize=edgeSize)
     dst[:] = cv2.cvtColor(graySrc, cv2.COLOR_GRAY2BGR)
 
-def getHsvMask(h, s, v, hueMin, hueMax, valueMin, valueMax, sThreshold=5):
+def getSimpleMaskByHsv(h, s, v, hueMin, hueMax, valueMin, valueMax, sThreshold=5):
 
     # 色相
 
@@ -353,8 +353,7 @@ def letMaskMoreBright(v, mask, gamma):
     cv2.bitwise_and(vBrightened, 255, v, mask)
     return v
 
-def maskByHsv(src, dst, hueMin, hueMax, valueMin, valueMax,
-              shouldPaintBackgroundBlack=False, gamma=96, sThreshold=5,
+def getMaskByHsv(src, hueMin, hueMax, valueMin, valueMax, gamma=96, sThreshold=5,
               shouldProcessGaussianBlur=False, gaussianBlurKernelSize=5,
               shouldProcessClosing=True, iterations=1):
 
@@ -363,11 +362,10 @@ def maskByHsv(src, dst, hueMin, hueMax, valueMin, valueMax,
 
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)
-    hOrg = h.copy()
 
     # HSVで抽出する
 
-    hTarget = getHsvMask(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
+    mask = getSimpleMaskByHsv(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
 
     # 後処理する
 
@@ -378,7 +376,7 @@ def maskByHsv(src, dst, hueMin, hueMax, valueMin, valueMax,
                                 [1,1,1]], numpy.uint8)
         # クロージング
         # cv2.morphologyEx(hTarget, cv2.MORPH_CLOSE, element8, hTarget, None, iterations)
-        cv2.morphologyEx(hTarget, cv2.MORPH_OPEN, element8, hTarget, None, iterations)
+        cv2.morphologyEx(mask, cv2.MORPH_OPEN, element8, mask, None, iterations)
         # anchor – アンカー点．
         # デフォルト値は(-1,-1) で、アンカーがカーネルの中心にあることを意味します
 
@@ -387,26 +385,9 @@ def maskByHsv(src, dst, hueMin, hueMax, valueMin, valueMax,
         # GaussianBlur(src, ksize, sigmaX[, dst[, sigmaY[, borderType]]]) -> dst
         # ksize must pair of odd. (5,5),(7,7),(9,9)...
         size = 2 * gaussianBlurKernelSize - 1
-        cv2.GaussianBlur(hTarget, (size,size), 0, hTarget)
+        cv2.GaussianBlur(mask, (size,size), 0, mask)
 
-    v = letMaskMoreBright(v, hTarget, gamma)  # TODO: 別の場所に移す
-
-    # hTarget（1チャンネル画像）の該当ピクセルが0のとき、
-    # hNotTarget（1チャンネル画像）の該当ピクセルを255にセットする。
-    # さもなくば、0にセットする。
-    # 要するにhMask2はhTargetマスク画像を反転させたもの。
-    hNotTarget = cv2.compare(hTarget, 0, cv2.CMP_EQ)
-
-    # ターゲット範囲以外は
-    if shouldPaintBackgroundBlack:
-        # 黒くする
-        cv2.bitwise_and(v, 0, v, hNotTarget) # 論理積
-    else:
-        # 彩度を0にする
-        cv2.bitwise_and(s, 0, s, hNotTarget) # 論理積
-
-    cv2.merge((hOrg, s, v), src)
-    cv2.cvtColor(src, cv2.COLOR_HSV2BGR, dst)
+    return mask
 
 def equaliseHist(src, dst):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
