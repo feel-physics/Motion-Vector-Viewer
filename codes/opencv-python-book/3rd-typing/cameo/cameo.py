@@ -17,23 +17,23 @@ class Cameo(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
+        SHOULD_PROCESS_GAUSSIAN_BLUR,
+        GAUSSIAN_BLUR_KERNEL_SIZE,
+        SHOULD_PROCESS_CLOSING,
+        CLOSING_ITERATIONS,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-        GAMMA,
-        GAUSSIAN_BLUR_KERNEL_SIZE,
-        SHOULD_PROCESS_GAUSSIAN_BLUR,
-        SHOULD_PROCESS_CLOSING,
-        CLOSING_ITERATIONS,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
+        SHOULD_DRAW_ACCELERATION_VECTOR,
         SHOWING_FRAME
     ) = range(0, 16)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
-        MASKED_BY_HUE,  # TODO: 名前を変える
+        GRAY_SCALE,
         WHAT_COMPUTER_SEE
     ) = range(0, 3)
 
@@ -54,33 +54,31 @@ class Cameo(object):
         self._shouldMaskByHue              = False
         self._hueMin                       = 50  # 硬式テニスボール
         self._hueMax                       = 80
-        self._valueMin                     = 80
+        self._valueMin                     = 60
         self._valueMax                     = 260
-        self._shouldPaintBackgroundBlack   = False
-        self._shouldProcessGaussianBlur    = True
-        self._shouldProcessClosing         = True
-        self._closingIterations            = 2
         self._sThreshold                   = 5
         self._gamma                        = 100
-        self._gaussianBlurKernelSize       = 5
-        self._shouldShowWhatComputerSee    = True
+        self._shouldProcessGaussianBlur    = True
+        self._gaussianBlurKernelSize       = 20
+        self._shouldProcessClosing         = True
+        self._closingIterations            = 2
 
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
-        self._shouldTrackCircle            = False  # TODO: この変数は廃止する
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
-        self._houghCircleParam2            = 200
+        self._houghCircleParam2            = 150
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
-        self._shouldDrawCircle             = False
+        self._shouldDrawCircle             = True
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
         self._lengthTimesOfVerocityVector  = 3
+        self._shouldDrawAccelerationVector = True
 
         self._currentAdjusting             = self.VALUE_MIN
-        self._currentShowing               = self.MASKED_BY_HUE
+        self._currentShowing               = self.GRAY_SCALE
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -115,7 +113,7 @@ class Cameo(object):
                                             self._closingIterations)
                 return mask
 
-            if self._currentShowing == self.MASKED_BY_HUE:
+            if self._currentShowing == self.GRAY_SCALE:
                 mask = _getMaskToFindCircle(self, frameToDisplay)
 
                 # カメラ画像をHSVチャンネルに分離し・・・
@@ -147,17 +145,12 @@ class Cameo(object):
 
             ### 検出・描画処理
 
-            # 円を検出する
             frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
-
-            # Hough変換で円を検出する
             height, width = frameToFindCircle.shape
 
-            # circle_storage = cv.CreateMat(256, 1, cv.CV_32FC3) # CV_32FC3 == (x, y, radius)
-
+            # Hough変換で円を検出する
             circles = cv2.HoughCircles(
                 frameToFindCircle,        # 画像
-                # circle_storage,         # 結果を受けとるバッファ
                 cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
                 self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
                 width / 10,               # 円同士の間の最小距離
@@ -166,10 +159,6 @@ class Cameo(object):
                 100,                      # 円の最小半径
                 1)                        # 円の最大半径
 
-            # circles = cv2.HoughCircles(frameToFindCircle, cv2.cv.CV_HOUGH_GRADIENT,
-            #                            self._houghCircleDp, height / 4,
-            #                            self._houghCircleParam1,
-            #                            self._houghCircleParam2, 100, 1)
             # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
             #                  minRadius[, maxRadius]]]]]) → circles
             # ハフ変換を用いて，グレースケール画像から円を検出します．
@@ -206,15 +195,6 @@ class Cameo(object):
                 if self._shouldDrawCircle:
                     cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
 
-            # 軌跡を描画する
-            # 最初に円が見つかったときに初期化する
-            # if len(self._passedPoints) == 0 \
-            #         and self._centerPointOfCircle is not None:
-            #
-            #     # 最初の(x,y)でリストを埋める
-            #     for i in range(self._numberOfDisplayedPoints):
-            #         self._passedPoints.append(self._centerPointOfCircle)
-
             # 次の円を検出したら・・・
             if self._centerPointOfCircle is not None:
                 # 通過点リストの最後に要素を追加する
@@ -224,42 +204,77 @@ class Cameo(object):
             # 次の円が見つかっても見つからなくても・・・
             if len(self._passedPoints) != 0:
                 numberOfPoints = len(self._passedPoints)
+
                 # 軌跡を描画する
                 if self._shouldDrawTracks:
                     if numberOfPoints > 1:
                         for i in range(numberOfPoints - 1):
                             cv2.line(frameToDisplay, self._passedPoints[i],
                                      self._passedPoints[i+1], (0,255,0), 5)
-                if self._shouldDrawVerocityVector:
-                    if numberOfPoints > 2:
-                        # 最後から1個前の点 pt0
-                        pt0np = numpy.array(self._passedPoints[numberOfPoints - 2])
-                        # 最後の点 pt1
-                        pt1np = numpy.array(self._passedPoints[numberOfPoints - 1])
-                        # 移動ベクトル Δpt = pt1 - pt0
-                        dptnp = self._lengthTimesOfVerocityVector * (pt1np - pt0np)
-                        areSamePoint_array = (dptnp == numpy.array([0,0]))
+
+                def getVerocityVector(passedPoints, lengthTimesOfVerocityVector=3, index=0):
+                    # 最後から1個前の点 pt0
+                    pt0np = numpy.array(passedPoints[-(2 + index)])
+                    # 最後の点 pt1
+                    pt1np = numpy.array(passedPoints[-(1 + index)])
+                    # 移動ベクトル Δpt = pt1 - pt0
+                    dptnp = lengthTimesOfVerocityVector * (pt1np - pt0np)
+                    # 移動してなければNoneを返す
+                    areSamePoint_array = (dptnp == numpy.array([0,0]))
+                    if areSamePoint_array.all():
+                        return None
+                    else:
+                        vector = tuple(dptnp)
+                        return vector
+
+                def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
+                    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+                    vx = pt2[0] - pt1[0]
+                    vy = pt2[1] - pt1[1]
+                    v  = math.sqrt(vx ** 2 + vy ** 2)
+                    ux = vx / v
+                    uy = vy / v
+                    # 矢印の幅の部分
+                    w = 5
+                    h = 10
+                    ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
+                    ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
+                    # 矢印の先端を描画する
+                    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+                    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
+
+                # 速度ベクトルを描画する
+                if self._shouldDrawVerocityVector \
+                    and numberOfPoints >= 2 \
+                    and self._passedPoints[-1] is not None \
+                    and self._passedPoints[-2] is not None:
+
+                    vector = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
+                    if vector is not None:
+                        pt1 = self._passedPoints[-1]
+                        pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
+
+                        cvArrow(frameToDisplay, pt1, pt2, (255,0,0), 5)
+
+                # 加速度ベクトルを描画する
+                if self._shouldDrawAccelerationVector \
+                    and numberOfPoints >= 3 \
+                    and self._passedPoints[-1] is not None \
+                    and self._passedPoints[-2] is not None \
+                    and self._passedPoints[-3] is not None:
+
+                    verocity0 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector, 1)
+                    verocity1 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
+                    if verocity0 is not None and verocity1 is not None:
+                        v0np = numpy.array(verocity0)
+                        v1np = numpy.array(verocity1)
+                        dvnp = v1np - v0np  # v1 - v0 = Δv
+                        # 速度変化してなければNoneを返す
+                        areSamePoint_array = (dvnp == numpy.array([0,0]))
                         if not areSamePoint_array.all():
-                            pt2np = pt1np + dptnp  # pt2 = pt1 + Δpt
-                            pt1 = tuple(pt1np)
-                            pt2 = tuple(pt2np)
-
-                            def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
-                                cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
-                                vx = pt2[0] - pt1[0]
-                                vy = pt2[1] - pt1[1]
-                                v  = math.sqrt(vx ** 2 + vy ** 2)
-                                ux = vx / v
-                                uy = vy / v
-                                # 矢印の幅の部分
-                                w = 5
-                                h = 10
-                                ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
-                                ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
-                                # 矢印の先端を描画する
-                                cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
-                                cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
-
+                            vector = tuple(dvnp)
+                            pt1 = self._passedPoints[-1]
+                            pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
                             cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
 
             ### 情報表示
@@ -277,40 +292,40 @@ class Cameo(object):
                 _putText(str(value), 2)
 
             if   self._currentAdjusting == self.HUE_MIN:
-                _put('Hue Min'                      , self._hueMin)
+                _put('Hue Min'                            , self._hueMin)
             elif self._currentAdjusting == self.HUE_MAX:
-                _put('Hue Max'                      , self._hueMax)
+                _put('Hue Max'                            , self._hueMax)
             elif self._currentAdjusting == self.VALUE_MIN:
-                _put('Value Min'                    , self._valueMin)
+                _put('Value Min'                          , self._valueMin)
             elif self._currentAdjusting == self.VALUE_MAX:
-                _put('Value Max'                    , self._valueMax)
+                _put('Value Max'                          , self._valueMax)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-                _put('Hough Circle Resolution'      , self._houghCircleDp)
+                _put('Hough Circle Resolution'            , self._houghCircleDp)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-                _put('Hough Circle Canny Threshold' , self._houghCircleParam1)
+                _put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
             elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
                 _put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
-            elif self._currentAdjusting == self.GAMMA:
-                _put('Gamma'                        , self._gamma)
             elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-                _put('Gaussian Blur Kernel Size'    , self._gaussianBlurKernelSize)
+                _put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
             elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-                _put('Should Process Gaussian Blur' , self._shouldProcessGaussianBlur)
+                _put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
             elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
-                _put('Should Process Closing'       , self._shouldProcessClosing)
+                _put('Process Closing'                    , self._shouldProcessClosing)
             elif self._currentAdjusting == self.CLOSING_ITERATIONS:
-                _put('Closing Iterations'           , self._closingIterations)
+                _put('Closing Iterations'                 , self._closingIterations)
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-                _put('Should Draw Circle'           , self._shouldDrawCircle)
+                _put('Draw Circle'                        , self._shouldDrawCircle)
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                _put('Should Draw Tracks'           , self._shouldDrawTracks)
+                _put('Draw Tracks'                        , self._shouldDrawTracks)
             elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                _put('Should Draw Verocity Vector'  , self._shouldDrawVerocityVector)
+                _put('Draw Verocity Vector'               , self._shouldDrawVerocityVector)
+            elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
+                _put('Draw Acceleration Vector'           , self._shouldDrawAccelerationVectorVector)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
-                elif self._currentShowing == self.MASKED_BY_HUE:
-                    currentShowing = 'Masked By Hue'
+                elif self._currentShowing == self.GRAY_SCALE:
+                    currentShowing = 'Gray Scale'
                 elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                     currentShowing = 'What Computer See'
                 else:
@@ -415,9 +430,6 @@ class Cameo(object):
             elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
                 pitch = 50 if keycode == 0 else -50
                 self._houghCircleParam2 += pitch
-            elif self._currentAdjusting == self.GAMMA:
-                pitch = 10 if keycode == 0 else -10
-                self._gamma             += pitch
             elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
                 pitch = 1  if keycode == 0 else -1
                 self._gaussianBlurKernelSize += pitch
@@ -441,6 +453,10 @@ class Cameo(object):
                 self._passedPoints = []  # 軌跡を消去する
                 self._shouldDrawVerocityVector = \
                     not self._shouldDrawVerocityVector
+            elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
+                self._passedPoints = []  # 軌跡を消去する
+                self._shouldDrawAccelerationVector = \
+                    not self._shouldDrawAccelerationVector
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
