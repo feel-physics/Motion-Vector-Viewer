@@ -25,12 +25,13 @@ class Cameo(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
+        SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 17)
+    ) = range(0, 18)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -73,14 +74,16 @@ class Cameo(object):
         self._houghCircleParam2            = 150
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
-        self._shouldDrawCircle             = True
+        self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
         self._lengthTimesOfVerocityVector  = 3
-        self._shouldDrawAccelerationVector = True
+        self._shouldDrawAccelerationVector = False
 
-        self._currentAdjusting             = self.VALUE_MIN
-        self._currentShowing               = self.GRAY_SCALE
+        self._shouldTrackCircle            = False
+
+        self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
+        self._currentShowing               = self.ORIGINAL
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -326,6 +329,8 @@ class Cameo(object):
                 _put('Draw Acceleration Vector'           , self._shouldDrawAccelerationVector)
             elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
                 _put('Should Find Circle'                 , self._shouldFindCircle)
+            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
+                _put('Should Track Circle'                , self._shouldTrackCircle)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -475,6 +480,12 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
                 self._shouldFindCircle = \
                     not self._shouldFindCircle
+            elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
+                if  self._shouldTrackCircle:
+                    self._shouldTrackCircle = False
+                else:
+                    self._shouldFindCircle  = False
+                    self._shouldTrackCircle = True
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
