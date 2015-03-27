@@ -21,6 +21,7 @@ class Cameo(object):
         GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_PROCESS_CLOSING,
         CLOSING_ITERATIONS,
+        SHOULD_FIND_CIRCLE,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
@@ -29,7 +30,7 @@ class Cameo(object):
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         SHOWING_FRAME
-    ) = range(0, 16)
+    ) = range(0, 17)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -66,6 +67,7 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
+        self._shouldFindCircle             = False
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
@@ -145,137 +147,138 @@ class Cameo(object):
 
             ### 検出・描画処理
 
-            frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
-            height, width = frameToFindCircle.shape
+            if self._shouldFindCircle:
+                frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
+                height, width = frameToFindCircle.shape
 
-            # Hough変換で円を検出する
-            circles = cv2.HoughCircles(
-                frameToFindCircle,        # 画像
-                cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
-                self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
-                width / 10,               # 円同士の間の最小距離
-                self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
-                self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
-                100,                      # 円の最小半径
-                1)                        # 円の最大半径
+                # Hough変換で円を検出する
+                circles = cv2.HoughCircles(
+                    frameToFindCircle,        # 画像
+                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
+                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
+                    width / 10,               # 円同士の間の最小距離
+                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
+                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
+                    100,                      # 円の最小半径
+                    1)                        # 円の最大半径
 
-            # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
-            #                  minRadius[, maxRadius]]]]]) → circles
-            # ハフ変換を用いて，グレースケール画像から円を検出します．
-            # パラメタ:
-            # image – 8ビット，シングルチャンネル，グレースケールの入力画像．
-            # circles – 検出された円を出力するベクトル．
-            #   各ベクトルは，3要素の浮動小数点型ベクトル  (x, y, radius) としてエンコードされます．
-            # method – 現在のところ， CV_HOUGH_GRADIENT メソッドのみが実装されています．
-            #   基本的には 2段階ハフ変換 で，これについては Yuen90 で述べられています．
-            # dp – 画像分解能に対する投票分解能の比率の逆数．
-            #   例えば， dp=1 の場合は，投票空間は入力画像と同じ分解能をもちます．
-            #   また dp=2 の場合は，投票空間の幅と高さは半分になります．
-            # minDist – 検出される円の中心同士の最小距離．
-            #   このパラメータが小さすぎると，正しい円の周辺に別の円が複数誤って検出されることになります．
-            #   逆に大きすぎると，検出できない円がでてくる可能性があります．
-            # param1 – 手法依存の 1 番目のパラメータ．
-            #   CV_HOUGH_GRADIENT の場合は，
-            #   Canny() エッジ検出器に渡される2つの閾値の内，大きい方の閾値を表します
-            #   （小さい閾値は，この値の半分になります）．
-            # param2 – 手法依存の 2 番目のパラメータ．
-            #   CV_HOUGH_GRADIENT の場合は，円の中心を検出する際の投票数の閾値を表します．
-            #   これが小さくなるほど，より多くの誤検出が起こる可能性があります．
-            #   より多くの投票を獲得した円が，最初に出力されます．
-            # minRadius – 円の半径の最小値．
-            # maxRadius – 円の半径の最大値．
+                # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
+                #                  minRadius[, maxRadius]]]]]) → circles
+                # ハフ変換を用いて，グレースケール画像から円を検出します．
+                # パラメタ:
+                # image – 8ビット，シングルチャンネル，グレースケールの入力画像．
+                # circles – 検出された円を出力するベクトル．
+                #   各ベクトルは，3要素の浮動小数点型ベクトル  (x, y, radius) としてエンコードされます．
+                # method – 現在のところ， CV_HOUGH_GRADIENT メソッドのみが実装されています．
+                #   基本的には 2段階ハフ変換 で，これについては Yuen90 で述べられています．
+                # dp – 画像分解能に対する投票分解能の比率の逆数．
+                #   例えば， dp=1 の場合は，投票空間は入力画像と同じ分解能をもちます．
+                #   また dp=2 の場合は，投票空間の幅と高さは半分になります．
+                # minDist – 検出される円の中心同士の最小距離．
+                #   このパラメータが小さすぎると，正しい円の周辺に別の円が複数誤って検出されることになります．
+                #   逆に大きすぎると，検出できない円がでてくる可能性があります．
+                # param1 – 手法依存の 1 番目のパラメータ．
+                #   CV_HOUGH_GRADIENT の場合は，
+                #   Canny() エッジ検出器に渡される2つの閾値の内，大きい方の閾値を表します
+                #   （小さい閾値は，この値の半分になります）．
+                # param2 – 手法依存の 2 番目のパラメータ．
+                #   CV_HOUGH_GRADIENT の場合は，円の中心を検出する際の投票数の閾値を表します．
+                #   これが小さくなるほど，より多くの誤検出が起こる可能性があります．
+                #   より多くの投票を獲得した円が，最初に出力されます．
+                # minRadius – 円の半径の最小値．
+                # maxRadius – 円の半径の最大値．
 
-            # もし円を見つけたら・・・
-            if circles is not None:
-                # 中心座標と半径を取得して・・・
-                x, y, r = circles[0][0]
-                self._centerPointOfCircle = (x,y)
+                # もし円を見つけたら・・・
+                if circles is not None:
+                    # 中心座標と半径を取得して・・・
+                    x, y, r = circles[0][0]
+                    self._centerPointOfCircle = (x,y)
 
-                # 円を描く
-                if self._shouldDrawCircle:
-                    cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
+                    # 円を描く
+                    if self._shouldDrawCircle:
+                        cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
 
-            # 次の円を検出したら・・・
-            if self._centerPointOfCircle is not None:
-                # 通過点リストの最後に要素を追加する
-                self._passedPoints.append(self._centerPointOfCircle)
-                # self._passedPoints.pop(0)  # 最初の要素は削除する
+                # 次の円を検出したら・・・
+                if self._centerPointOfCircle is not None:
+                    # 通過点リストの最後に要素を追加する
+                    self._passedPoints.append(self._centerPointOfCircle)
+                    # self._passedPoints.pop(0)  # 最初の要素は削除する
 
-            # 次の円が見つかっても見つからなくても・・・
-            if len(self._passedPoints) != 0:
-                numberOfPoints = len(self._passedPoints)
+                # 次の円が見つかっても見つからなくても・・・
+                if len(self._passedPoints) != 0:
+                    numberOfPoints = len(self._passedPoints)
 
-                # 軌跡を描画する
-                if self._shouldDrawTracks:
-                    if numberOfPoints > 1:
-                        for i in range(numberOfPoints - 1):
-                            cv2.line(frameToDisplay, self._passedPoints[i],
-                                     self._passedPoints[i+1], (0,255,0), 5)
+                    # 軌跡を描画する
+                    if self._shouldDrawTracks:
+                        if numberOfPoints > 1:
+                            for i in range(numberOfPoints - 1):
+                                cv2.line(frameToDisplay, self._passedPoints[i],
+                                         self._passedPoints[i+1], (0,255,0), 5)
 
-                def getVerocityVector(passedPoints, lengthTimesOfVerocityVector=3, index=0):
-                    # 最後から1個前の点 pt0
-                    pt0np = numpy.array(passedPoints[-(2 + index)])
-                    # 最後の点 pt1
-                    pt1np = numpy.array(passedPoints[-(1 + index)])
-                    # 移動ベクトル Δpt = pt1 - pt0
-                    dptnp = lengthTimesOfVerocityVector * (pt1np - pt0np)
-                    # 移動してなければNoneを返す
-                    areSamePoint_array = (dptnp == numpy.array([0,0]))
-                    if areSamePoint_array.all():
-                        return None
-                    else:
-                        vector = tuple(dptnp)
-                        return vector
+                    def getVerocityVector(passedPoints, lengthTimesOfVerocityVector=3, index=0):
+                        # 最後から1個前の点 pt0
+                        pt0np = numpy.array(passedPoints[-(2 + index)])
+                        # 最後の点 pt1
+                        pt1np = numpy.array(passedPoints[-(1 + index)])
+                        # 移動ベクトル Δpt = pt1 - pt0
+                        dptnp = lengthTimesOfVerocityVector * (pt1np - pt0np)
+                        # 移動してなければNoneを返す
+                        areSamePoint_array = (dptnp == numpy.array([0,0]))
+                        if areSamePoint_array.all():
+                            return None
+                        else:
+                            vector = tuple(dptnp)
+                            return vector
 
-                def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
-                    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
-                    vx = pt2[0] - pt1[0]
-                    vy = pt2[1] - pt1[1]
-                    v  = math.sqrt(vx ** 2 + vy ** 2)
-                    ux = vx / v
-                    uy = vy / v
-                    # 矢印の幅の部分
-                    w = 5
-                    h = 10
-                    ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
-                    ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
-                    # 矢印の先端を描画する
-                    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
-                    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
+                    def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
+                        cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+                        vx = pt2[0] - pt1[0]
+                        vy = pt2[1] - pt1[1]
+                        v  = math.sqrt(vx ** 2 + vy ** 2)
+                        ux = vx / v
+                        uy = vy / v
+                        # 矢印の幅の部分
+                        w = 5
+                        h = 10
+                        ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
+                        ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
+                        # 矢印の先端を描画する
+                        cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+                        cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
-                # 速度ベクトルを描画する
-                if self._shouldDrawVerocityVector \
-                    and numberOfPoints >= 2 \
-                    and self._passedPoints[-1] is not None \
-                    and self._passedPoints[-2] is not None:
+                    # 速度ベクトルを描画する
+                    if self._shouldDrawVerocityVector \
+                        and numberOfPoints >= 2 \
+                        and self._passedPoints[-1] is not None \
+                        and self._passedPoints[-2] is not None:
 
-                    vector = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
-                    if vector is not None:
-                        pt1 = self._passedPoints[-1]
-                        pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
-
-                        cvArrow(frameToDisplay, pt1, pt2, (255,0,0), 5)
-
-                # 加速度ベクトルを描画する
-                if self._shouldDrawAccelerationVector \
-                    and numberOfPoints >= 3 \
-                    and self._passedPoints[-1] is not None \
-                    and self._passedPoints[-2] is not None \
-                    and self._passedPoints[-3] is not None:
-
-                    verocity0 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector, 1)
-                    verocity1 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
-                    if verocity0 is not None and verocity1 is not None:
-                        v0np = numpy.array(verocity0)
-                        v1np = numpy.array(verocity1)
-                        dvnp = v1np - v0np  # v1 - v0 = Δv
-                        # 速度変化してなければNoneを返す
-                        areSamePoint_array = (dvnp == numpy.array([0,0]))
-                        if not areSamePoint_array.all():
-                            vector = tuple(dvnp)
+                        vector = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
+                        if vector is not None:
                             pt1 = self._passedPoints[-1]
                             pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
-                            cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
+
+                            cvArrow(frameToDisplay, pt1, pt2, (255,0,0), 5)
+
+                    # 加速度ベクトルを描画する
+                    if self._shouldDrawAccelerationVector \
+                        and numberOfPoints >= 3 \
+                        and self._passedPoints[-1] is not None \
+                        and self._passedPoints[-2] is not None \
+                        and self._passedPoints[-3] is not None:
+
+                        verocity0 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector, 1)
+                        verocity1 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
+                        if verocity0 is not None and verocity1 is not None:
+                            v0np = numpy.array(verocity0)
+                            v1np = numpy.array(verocity1)
+                            dvnp = v1np - v0np  # v1 - v0 = Δv
+                            # 速度変化してなければNoneを返す
+                            areSamePoint_array = (dvnp == numpy.array([0,0]))
+                            if not areSamePoint_array.all():
+                                vector = tuple(dvnp)
+                                pt1 = self._passedPoints[-1]
+                                pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
+                                cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
 
             ### 情報表示
 
@@ -320,7 +323,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
                 _put('Draw Verocity Vector'               , self._shouldDrawVerocityVector)
             elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
-                _put('Draw Acceleration Vector'           , self._shouldDrawAccelerationVectorVector)
+                _put('Draw Acceleration Vector'           , self._shouldDrawAccelerationVector)
+            elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
+                _put('Should Find Circle'                 , self._shouldFindCircle)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -443,20 +448,33 @@ class Cameo(object):
                 pitch = 1  if keycode == 0 else -1
                 self._closingIterations += pitch
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-                self._shouldDrawCircle = \
-                    not self._shouldDrawCircle
+                if  self._shouldDrawCircle:
+                    self._shouldDrawCircle = False
+                else:
+                    self._shouldFindCircle = True
+                    self._shouldDrawCircle = True
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                self._passedPoints = []  # 軌跡を消去する
-                self._shouldDrawTracks = \
-                    not self._shouldDrawTracks
+                if  self._shouldDrawTracks:
+                    self._shouldDrawTracks = False
+                else:
+                    self._shouldFindCircle = True
+                    self._passedPoints = []  # 軌跡を消去する
+                    self._shouldDrawTracks = True
             elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                self._passedPoints = []  # 軌跡を消去する
-                self._shouldDrawVerocityVector = \
-                    not self._shouldDrawVerocityVector
+                if  self._shouldDrawVerocityVector:
+                    self._shouldDrawVerocityVector = False
+                else:
+                    self._shouldFindCircle = True
+                    self._shouldDrawVerocityVector = True
             elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
-                self._passedPoints = []  # 軌跡を消去する
-                self._shouldDrawAccelerationVector = \
-                    not self._shouldDrawAccelerationVector
+                if  self._shouldDrawAccelerationVector:
+                    self._shouldDrawAccelerationVector = False
+                else:
+                    self._shouldFindCircle = True
+                    self._shouldDrawAccelerationVector = True
+            elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
+                self._shouldFindCircle = \
+                    not self._shouldFindCircle
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
