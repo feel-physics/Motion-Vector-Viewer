@@ -80,7 +80,7 @@ class Cameo(object):
         self._lengthTimesOfVerocityVector  = 3
         self._shouldDrawAccelerationVector = False
 
-        self._shouldTrackCircle            = False
+        self._shouldTrackCircle            = True
 
         self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
         self._currentShowing               = self.ORIGINAL
@@ -282,6 +282,92 @@ class Cameo(object):
                                 pt1 = self._passedPoints[-1]
                                 pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
                                 cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
+
+            if self._shouldTrackCircle:
+                frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
+                height, width = frameToFindCircle.shape
+
+                # Hough変換で円を検出する
+                circles = cv2.HoughCircles(
+                    frameToFindCircle,        # 画像
+                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
+                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
+                    width / 10,               # 円同士の間の最小距離
+                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
+                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
+                    100,                      # 円の最小半径
+                    1)                        # 円の最大半径
+
+                # もし円を見つけたら・・・
+                if circles is not None:
+                    # x, y, w, h = rect
+                    # subImage = image[y:y+h, x:x+w]
+
+                    # 中心座標と半径を取得して・・・
+                    x, y, r = circles[0][0]
+                    # 整数にする
+                    x, y ,r = int(x), int(y), int(r)
+                    # 画面外にはみ出す場合は扱わない
+                    if y-r < 0 or x-r < 0 or height < y+r or width < x+r:
+                        return
+                    else:
+                        # 追跡したい領域の初期設定
+                        track_window = (x-r, y-r, 2*r, 2*r)
+                        # 追跡のためのROIを設定
+                        roi = frameToDisplay[y-r:y+r, x-r:x+r]  # TODO: ROIって何？
+                        # HSV色空間に変換
+                        hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+                        def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
+                            """
+                            入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
+                            :param src:     入力画像
+                            :type  src:     numpy.ndarray
+                            :param dst:     出力画像
+                            :type  dst:     numpy.ndarray
+                            :param srcRect: (x, y, w, h)
+                            :type  srcRect: tuple
+                            :param dstRect: (x, y, w, h)
+                            :type  dstRect: tuple
+                            :param interpolation: 補完方法
+                            :return: None
+                            """
+
+                            height, width, _ = frameToPaste.shape
+                            # x0, y0, w0, h0 = 0, 0, width, height
+
+                            x1, y1, w1, h1 = dstRect
+
+                            # コピー元の部分矩形画像をリサイズしてコピー先の部分矩形に貼り付ける
+                            src[y1:y1+h1, x1:x1+w1] = \
+                                cv2.resize(frameToPaste[0:height, 0:width], (w1, h1), interpolation = interpolation)
+                            # Python: cv.Resize(src, dst, interpolation=CV_INTER_LINEAR) → None
+                            # Parameters:
+                            # src – input image.
+                            # dst – output image; it has the size dsize (when it is non-zero) or
+                            # the size computed from src.size(), fx, and fy; the type of dst is the same as of src.
+                            # dsize –
+                            # output image size; if it equals zero, it is computed as:
+                            # dsize = Size(round(fx*src.cols), round(fy*src.rows))
+                            # Either dsize or both fx and fy must be non-zero.
+                            # fx –
+                            # scale factor along the horizontal axis; when it equals 0, it is computed as
+                            # (double)dsize.width/src.cols
+                            # fy –
+                            # scale factor along the vertical axis; when it equals 0, it is computed as
+                            # (double)dsize.height/src.rows
+                            # interpolation –
+                            # interpolation method:
+                            # INTER_NEAREST - a nearest-neighbor interpolation
+                            # INTER_LINEAR - a bilinear interpolation (used by default)
+                            # INTER_AREA - resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire’-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
+                            # INTER_CUBIC - a bicubic interpolation over 4x4 pixel neighborhood
+                            # INTER_LANCZOS4 - a Lanczos interpolation over 8x8 pixel neighborhood
+
+                            dst[:] = src
+
+                        if hsv_roi is not None and track_window is not None:
+                            pasteRect(frameToDisplay, frameToDisplay, hsv_roi, track_window)
 
             ### 情報表示
 
