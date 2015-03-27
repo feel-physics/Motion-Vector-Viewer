@@ -76,7 +76,7 @@ def copyRect(src, dst, srcRect, dstRect,
     """
 
     x0, y0, w0, h0 = srcRect
-    x1, y1, w1, h1 = srcRect
+    x1, y1, w1, h1 = dstRect
 
     # コピー元の部分矩形画像をリサイズしてコピー先の部分矩形に貼り付ける
     dst[y1:y1+h1, x1:x1+w1] = \
