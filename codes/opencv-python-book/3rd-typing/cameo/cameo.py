@@ -11,7 +11,7 @@ from managers import WindowManager, CaptureManager
 
 class Cameo(object):
 
-    # TODO: 不要になったオプションは廃止する
+    ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = (
         HUE_MIN,
         HUE_MAX,
@@ -30,8 +30,9 @@ class Cameo(object):
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
+        SHOULD_DRAW_CANNY_EDGE,
         SHOWING_FRAME
-    ) = range(0, 18)
+    ) = range(0, 19)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -80,9 +81,10 @@ class Cameo(object):
         self._lengthTimesOfVerocityVector  = 3
         self._shouldDrawAccelerationVector = False
 
-        self._shouldTrackCircle            = True
+        self._shouldTrackCircle            = False
+        self._shouldDrawCannyEdge          = False
 
-        self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
+        self._currentAdjusting             = self.SHOULD_DRAW_CANNY_EDGE
         self._currentShowing               = self.ORIGINAL
 
     def _takeScreenShot(self):
@@ -105,7 +107,9 @@ class Cameo(object):
             frameToDisplay = self._captureManager.frame
             frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
-            ### 画面表示
+
+            ### 画面表示 ###
+
 
             def _getMaskToFindCircle(self, frame):
                 """
@@ -148,7 +152,9 @@ class Cameo(object):
 
             # elif self._currentShowing == self.ORIGINAL:
 
-            ### 検出・描画処理
+
+            ### 検出・描画処理 ###
+
 
             if self._shouldFindCircle:
                 frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
@@ -283,10 +289,6 @@ class Cameo(object):
                                 pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
                                 cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
 
-            if self._shouldTrackCircle:
-                frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
-                height, width = frameToFindCircle.shape
-
                 # Hough変換で円を検出する
                 circles = cv2.HoughCircles(
                     frameToFindCircle,        # 画像
@@ -314,7 +316,7 @@ class Cameo(object):
                         # 追跡したい領域の初期設定
                         track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROIを設定
-                        roi = frameToDisplay[y-r:y+r, x-r:x+r]  # TODO: ROIって何？
+                        roi = frameToDisplay[y-r:y+r, x-r:x+r]  ##### TODO: ROIって何？
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
@@ -369,7 +371,15 @@ class Cameo(object):
                         if hsv_roi is not None and track_window is not None:
                             pasteRect(frameToDisplay, frameToDisplay, hsv_roi, track_window)
 
-            ### 情報表示
+            # Cannyエッジ検出
+            if self._shouldDrawCannyEdge:
+                gray = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
+                edge = cv2.Canny(gray, 50, 100)  ##### TODO: self._houghCircleParam1を使う
+                cv2.merge((edge, edge, edge), frameToDisplay)
+
+
+            ### 情報表示 ###
+
 
             # 情報を表示する
             def _putText(text, lineNumber):
@@ -417,6 +427,8 @@ class Cameo(object):
                 _put('Should Find Circle'                 , self._shouldFindCircle)
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
                 _put('Should Track Circle'                , self._shouldTrackCircle)
+            elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
+                _put('Should Draw Canny Edge'              , self._shouldDrawCannyEdge)
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -424,6 +436,8 @@ class Cameo(object):
                     currentShowing = 'Gray Scale'
                 elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                     currentShowing = 'What Computer See'
+                elif self._currentShowing == self.CANNY_EDGE:
+                    currentShowing = 'Canny Edge'
                 else:
                     raise ValueError('self._currentShowing')
 
@@ -455,7 +469,10 @@ class Cameo(object):
         :return: None
         """
 
-        ### 基本操作
+
+        ### 基本操作 ###
+
+
         if keycode == 32:  # スペース
             self._captureManager.paused = \
                 not self._captureManager.paused
@@ -476,7 +493,10 @@ class Cameo(object):
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
 
+
         ### Hue Filter ###
+
+
         elif keycode == ord('B'):
             self._hueMin = 200
             self._hueMax = 240
@@ -493,7 +513,10 @@ class Cameo(object):
         elif keycode == ord('p'):
              self._timeSelfTimerStarted = datetime.now()
 
-        ### Adjustment
+
+        ### Adjustment ###
+
+
         elif keycode == 3:  # right arrow
             if not self._currentAdjusting == len(self.ADJUSTING_OPTIONS) - 1:
                 self._currentAdjusting += 1
@@ -572,6 +595,9 @@ class Cameo(object):
                 else:
                     self._shouldFindCircle  = False
                     self._shouldTrackCircle = True
+            elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
+                self._shouldDrawCannyEdge = \
+                    not self._shouldDrawCannyEdge
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
