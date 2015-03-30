@@ -25,12 +25,12 @@ class Cameo(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-        SHOULD_TRACK_CIRCLE,
+        SHOULD_DRAW_CANNY_EDGE,
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
-        SHOULD_DRAW_CANNY_EDGE,
+        SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
     ) = range(0, 19)
 
@@ -54,12 +54,11 @@ class Cameo(object):
         #     shouldMirrorPreview = False):
 
         ### Filtering
-        self._shouldMaskByHue              = False
         self._hueMin                       = 50  # 硬式テニスボール
         self._hueMax                       = 80
+        self._sThreshold                   = 5
         self._valueMin                     = 60
         self._valueMax                     = 260
-        self._sThreshold                   = 5
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -69,12 +68,15 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
-        self._shouldFindCircle             = False
+        self._shouldFindCircle             = True
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
+
         self._centerPointOfCircle          = None
         self._passedPoints                 = []
+
+        self._shouldDrawCannyEdge          = False
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
@@ -82,9 +84,8 @@ class Cameo(object):
         self._shouldDrawAccelerationVector = False
 
         self._shouldTrackCircle            = False
-        self._shouldDrawCannyEdge          = False
 
-        self._currentAdjusting             = self.SHOULD_DRAW_CANNY_EDGE
+        self._currentAdjusting             = self.GRAY_SCALE
         self._currentShowing               = self.ORIGINAL
 
     def _takeScreenShot(self):
@@ -150,8 +151,8 @@ class Cameo(object):
                 gray = _getMaskToFindCircle(self, frameToDisplay)
                 cv2.merge((gray, gray, gray), frameToDisplay)
 
-            # elif self._currentShowing == self.ORIGINAL:
-
+            elif self._currentShowing == self.ORIGINAL:
+                pass
 
             ### 検出・描画処理 ###
 
@@ -309,9 +310,10 @@ class Cameo(object):
                     x, y, r = circles[0][0]
                     # 整数にする
                     x, y ,r = int(x), int(y), int(r)
-                    # 画面外にはみ出す場合は扱わない
-                    if y-r < 0 or x-r < 0 or height < y+r or width < x+r:
-                        return
+                    # 画面外にはみ出す場合は・・・
+                    m = 10  # マージン
+                    if x < r+m or width < x+r+m or y < r+m or height < y+r+m:
+                        pass
                     else:
                         # 追跡したい領域の初期設定
                         track_window = (x-r, y-r, 2*r, 2*r)
@@ -319,6 +321,15 @@ class Cameo(object):
                         roi = frameToDisplay[y-r:y+r, x-r:x+r]  ##### TODO: ROIって何？
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                        # マスク画像の作成
+                        mask = cv2.inRange(hsv_roi, numpy.array((
+                            self._hueMin / 2,           # H最小値
+                            2 ** self._sThreshold - 1,  # S最小値
+                            self._valueMin              # V最小値
+                        )), numpy.array((
+                            self._hueMax / 2,           # H最大値
+                            255,                        # S最大値
+                            self._valueMax)))           # V最大値
 
                         def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
                             """
@@ -368,8 +379,9 @@ class Cameo(object):
 
                             dst[:] = src
 
-                        if hsv_roi is not None and track_window is not None:
-                            pasteRect(frameToDisplay, frameToDisplay, hsv_roi, track_window)
+                        mask3Channel = cv2.merge((mask, mask, mask))
+                        if mask is not None and track_window is not None:
+                            pasteRect(frameToDisplay, frameToDisplay, mask3Channel, track_window)
 
             # Cannyエッジ検出
             if self._shouldDrawCannyEdge:
