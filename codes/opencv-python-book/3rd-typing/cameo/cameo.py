@@ -12,6 +12,9 @@ import utils
 class Cameo(object):
 
     ##### TODO: 不要になったオプションは廃止する
+    ##### TODO: FPSを表示する
+    ##### TODO: cv2.inRange関数を使う
+    ##### TODO: 追跡にgetMaskToFindCircleで得られるマスク画像を使う
     ADJUSTING_OPTIONS = (
         HUE_MIN,
         HUE_MAX,
@@ -42,16 +45,9 @@ class Cameo(object):
 
     def __init__(self):
 
-        self._windowManager = WindowManager('Cameo',
-                                            self.onKeypress)
-        """:type : managers.WindowManager"""
-        # def __init__(self, windowName, keypressCallback = None):
-
+        self._windowManager = WindowManager('Cameo', self.onKeypress)
         self._captureManager = CaptureManager(
             cv2.VideoCapture(0), self._windowManager, False)
-        """:type : managers.CaptureManager"""
-        # def __init__(self, capture, previewWindowManager = None,
-        #     shouldMirrorPreview = False):
 
         ### Filtering
         self._hueMin                       = 50  # 硬式テニスボール
@@ -64,8 +60,6 @@ class Cameo(object):
         self._gaussianBlurKernelSize       = 20
         self._shouldProcessClosing         = True
         self._closingIterations            = 2
-
-        self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
         self._shouldFindCircle             = False
@@ -92,6 +86,8 @@ class Cameo(object):
         self._track_window                 = None
         self._roi_hist                     = None
         self._term_crit                    = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+
+        self._timeSelfTimerStarted         = None
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -225,8 +221,8 @@ class Cameo(object):
                     if self._shouldDrawAccelerationVector:
                         vector = utils.getAccelerationVector(self._passedPoints)
                         if vector is not None:
-                            pt1 = self._passedPoints[-1]
-                            utils.cvArrow(frameToDisplay, pt1, vector, 3, (0,0,255), 5)
+                            pt = self._passedPoints[-1]
+                            utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
 
             if not self._isTracking:
                 # 検出用フレームをつくる
@@ -245,8 +241,8 @@ class Cameo(object):
                     else:
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
-                        # 追跡のためのROIを設定
-                        roi = frameToDisplay[y-r:y+r, x-r:x+r]  ##### TODO: ROIって何？
+                        # 追跡のためのROI関心領域（Region of Interest)を設定
+                        roi = frameToDisplay[y-r:y+r, x-r:x+r]
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
                         # マスク画像の作成
