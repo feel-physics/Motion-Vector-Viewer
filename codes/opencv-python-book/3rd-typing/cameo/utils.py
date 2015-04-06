@@ -3,169 +3,115 @@ __author__ = 'weed'
 
 import cv2
 import numpy
-import scipy.interpolate
+import math
 
-def isGray(image):
-    """
-    画像がグレースケール画像ならTrueを返す
-    :param image: 画像
-    :type  image: numpy.ndarray
-    :return: 真偽値
-    """
-    return image.ndim < 3
-    # ndarray.ndim
-    # Number of array dimensions.
-    #
-    # Examples
-    #
-    # >>>
-    # >>> x = np.array([1, 2, 3])
-    # >>> x.ndim
-    # 1
-    # >>> y = np.zeros((2, 3, 4))
-    # >>> y.ndim
-    # 3
-
-def widthHeightDividedBy(image, divisor):
-    """
-    分割した画像の幅と高さを返す
-    :param image: 画像
-    :type  image: numpy.ndarray
-    :param divisor: 分割する数
-    :type  divisor: int
-    :return: (分割された幅,分割された高さ)
-    """
-    h, w = image.shape[:2]
-    # ndarray.shape
-    # Tuple of array dimensions.
-    #
-    # Examples
-    #
-    # >>>
-    # >>> x = np.array([1, 2, 3, 4])
-    # >>> x.shape
-    # (4,)
-    # >>> y = np.zeros((2, 3, 4))
-    # >>> y.shape
-    # (2, 3, 4)
-    # >>> y.shape = (3, 8)
-    # >>> y
-    # array([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-    #        [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.],
-    #        [ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.]])
-    # >>> y.shape = (3, 6)
-    # Traceback (most recent call last):
-    #   File "<stdin>", line 1, in <module>
-    # ValueError: total size of new array must be unchanged
-
-    return (w/divisor, h/divisor)
-
-def createCurveFunc(points):
-    """
-    制御点を元にした関数を返す
-    xが入力、yが出力なので制御点(128, 160)はより明るくする
-    :param points: 制御点
-    :type  points: list[tuple]
-    :return 補完された1次元の関数
-    :rtype function
-    """
-    if points is None:
+def getVelocityVector(passedPoints, indexRewind=0):
+    # indexRewindは加速度を求めるのに使う
+    if len(passedPoints) < 2 \
+            or passedPoints[-1] is None \
+            or passedPoints[-2] is None:
         return None
-    numPoints = len(points)
-    if numPoints < 2:
-        return None
-    xs, ys = zip(*points)
-    # Works like itertools.izip().
-    # TODO: 仮説(x1,y1),(x2,y2),(x3,y3)->(x1,x2,x3),(y1,y2,y3)
-    if numPoints < 4:
-        kind = 'linear'
-        # 'quadratic'（ベジェ曲線のようなもの） is not implemented
     else:
-        kind = 'cubic' # ベジェ曲線
-    return scipy.interpolate.interp1d(xs, ys, kind,
-                                      bounds_error=False)
-    # class scipy.interpolate.interp1d(x, y, kind='linear')
-    # Interpolate a 1-D function.
-    #
-    # x and y are arrays of values used to approximate some function f: y = f(x).
-    # This class returns a function whose call method uses interpolation to find the value of new points.
+        # 最後から1個前の点 pt0
+        pt0np = numpy.array(passedPoints[-(2 + indexRewind)])
+        # 最後の点 pt1
+        pt1np = numpy.array(passedPoints[-(1 + indexRewind)])
+        # 移動ベクトル Δpt = pt1 - pt0
+        dptnp = pt1np - pt0np
+        # 移動してなければNoneを返す
+        areSamePoint_array = (dptnp == numpy.array([0,0]))
+        if areSamePoint_array.all():
+            return None
+        else:
+            vector = tuple(dptnp)
+            return vector
 
-def createLookupArray(func, length = 256):
-    """
-    ピクセルごとにcreateCurveFuncしていたら大変なので
-    1から256の入力に対する出力を変換用配列にしておく。
-    :param func:   カーブ関数
-    :param length: 入力の段階数
-    :return: LookupArray
-    """
-    if func is None:
+def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+    pt1 = pt
+    pt2 = (int(pt1[0] + vector[0]*lengthTimes),
+           int(pt1[1] + vector[1]*lengthTimes))
+    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+    vx = pt2[0] - pt1[0]
+    vy = pt2[1] - pt1[1]
+    v  = math.sqrt(vx ** 2 + vy ** 2)
+    ux = vx / v
+    uy = vy / v
+    # 矢印の幅の部分
+    w = 5
+    h = 10
+    ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
+    ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
+    # 矢印の先端を描画する
+    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
+
+def getAccelerationVector(passedPoints):
+    if len(passedPoints) < 3 \
+            or passedPoints[-1] is None \
+            or passedPoints[-2] is None \
+            or passedPoints[-3] is None:
         return None
-    lookupArray = numpy.empty(length)
-    i = 0
-    while i < length:
-        func_i = func(i)
-        func_i = max(0, func_i) # 出力値は0以上
-        func_i = min(func_i, length - 1) # 出力値の最大はlength-1
-        lookupArray[i] = func_i
-        i += 1
-    return lookupArray
+    else:
+        # 最後から1個前の点 pt0
+        velocity0 = getVelocityVector(passedPoints, 1)
+        # 最後の点 pt1
+        velocity1 = getVelocityVector(passedPoints)
+        if velocity0 is not None and velocity1 is not None:
+            v0np = numpy.array(velocity0)
+            v1np = numpy.array(velocity1)
+            dvnp = v1np - v0np  # v1 - v0 = Δv
+            # 速度変化してなければNoneを返す
+            areSamePoint_array = (dvnp == numpy.array([0,0]))
+            if areSamePoint_array.all():
+                return None
+            else:
+                vector = tuple(dvnp)
+                return vector
 
-def applyLookupArray(lookupArray, src, dst):
+def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
-    LookupArrayを使って入力画像から出力画像を求める
-    :param lookupArray: あらかじめカーブ関数を変換用配列にしたもの
-    :param src: グレースケールもしくはBGR形式の入力画像
-    :param dst: グレースケールもしくはBGR形式の出力画像
+    入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
+    :param src:     入力画像
+    :type  src:     numpy.ndarray
+    :param dst:     出力画像
+    :type  dst:     numpy.ndarray
+    :param srcRect: (x, y, w, h)
+    :type  srcRect: tuple
+    :param dstRect: (x, y, w, h)
+    :type  dstRect: tuple
+    :param interpolation: 補完方法
     :return: None
     """
-    if lookupArray is None:
-        return
-    dst[:] = lookupArray[src]
-    # 左辺にスライスを付けているのはidを変えないため
-    # スライスが付いていないと左辺のidが右辺のidによって上書きされてしまう。
 
-def createCompositeFunc(func0, func1):
-    """
-    カーブ関数をあらかじめ合成する
-    そうしておいてLookupArrayをつくる方が、
-    何回もLookupArrayを適用するよりも効率的かつ正確になる
-    :param func0: カーブ関数0
-    :type  func0: function
-    :param func1: カーブ関数1
-    :type  func1: function
-    :return: 合成されたカーブ関数
-    :rtype : function
-    """
-    if func0 is None:
-        return func1
-    if func1 is None:
-        return func0
-    return lambda x: func0(func1(x))
-    # >>> def make_incrementor(n):
-    # ...     return lambda x: x + n
-    # ...
-    # >>> f = make_incrementor(42)
-    # >>> f(0)
-    # 42
-    # >>> f(1)
-    # 43
-    #
-    # >>> pairs = [(1, 'one'), (2, 'two'), (3, 'three'), (4, 'four')]
-    # >>> pairs.sort(key=lambda pair: pair[1])
-    # >>> pairs
-    # [(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
+    height, width, _ = frameToPaste.shape
+    # x0, y0, w0, h0 = 0, 0, width, height
 
-# 何をしているのか不明。なくても動く。現在は使用してない。
-def createFlatView(array):
-    """
-    入力された配列（何次元でも良い）の、1次元のビューを返す
-    :param array: 配列
-    :return: 1次元のビュー
-    """
-    flatView = array.view()
-    # numpy.chararray.view
-    # New view of array with the same data.
-    # 同じデータの配列の新しいビュー
-    # view()は型変換や要素型変換に使う
-    flatView.shape = array.size
-    return flatView
+    x1, y1, w1, h1 = dstRect
+
+    # コピー元の部分矩形画像をリサイズしてコピー先の部分矩形に貼り付ける
+    src[y1:y1+h1, x1:x1+w1] = \
+        cv2.resize(frameToPaste[0:height, 0:width], (w1, h1), interpolation = interpolation)
+    # Python: cv.Resize(src, dst, interpolation=CV_INTER_LINEAR) → None
+    # Parameters:
+    # src – input image.
+    # dst – output image; it has the size dsize (when it is non-zero) or
+    # the size computed from src.size(), fx, and fy; the type of dst is the same as of src.
+    # dsize –
+    # output image size; if it equals zero, it is computed as:
+    # dsize = Size(round(fx*src.cols), round(fy*src.rows))
+    # Either dsize or both fx and fy must be non-zero.
+    # fx –
+    # scale factor along the horizontal axis; when it equals 0, it is computed as
+    # (double)dsize.width/src.cols
+    # fy –
+    # scale factor along the vertical axis; when it equals 0, it is computed as
+    # (double)dsize.height/src.rows
+    # interpolation –
+    # interpolation method:
+    # INTER_NEAREST - a nearest-neighbor interpolation
+    # INTER_LINEAR - a bilinear interpolation (used by default)
+    # INTER_AREA - resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire’-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
+    # INTER_CUBIC - a bicubic interpolation over 4x4 pixel neighborhood
+    # INTER_LANCZOS4 - a Lanczos interpolation over 8x8 pixel neighborhood
+
+    dst[:] = src

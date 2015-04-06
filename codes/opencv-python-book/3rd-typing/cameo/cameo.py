@@ -4,10 +4,10 @@ __author__ = 'weed'
 import cv2
 from datetime import datetime
 import numpy
-import math
 
 import filters
 from managers import WindowManager, CaptureManager
+import utils
 
 class Cameo(object):
 
@@ -128,6 +128,23 @@ class Cameo(object):
                                             self._closingIterations)
                 return mask
 
+            def getCircles(self, frame):
+                """
+                Hough変換で円を検出する
+                :return: 検出した円のx,y,r
+                """
+                height, width = frame.shape
+                circles = cv2.HoughCircles(
+                    frame,        # 画像
+                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
+                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
+                    width / 10,               # 円同士の間の最小距離
+                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
+                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
+                    100,                      # 円の最小半径
+                    1)                        # 円の最大半径
+                return circles
+
             if self._currentShowing == self.GRAY_SCALE:
                 mask = getMaskToFindCircle(self, frameToDisplay)
 
@@ -166,44 +183,8 @@ class Cameo(object):
             if self._shouldFindCircle:
                 # 検出用フレームをつくる
                 frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
-                height, width = frameToFindCircle.shape
-
-                # Hough変換で円を検出する
-                circles = cv2.HoughCircles(
-                    frameToFindCircle,        # 画像
-                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
-                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
-                    width / 10,               # 円同士の間の最小距離
-                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
-                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
-                    100,                      # 円の最小半径
-                    1)                        # 円の最大半径
-
-                # cv2.HoughCircles(image, method, dp, minDist[, circles[, param1[, param2[,
-                #                  minRadius[, maxRadius]]]]]) → circles
-                # ハフ変換を用いて，グレースケール画像から円を検出します．
-                # パラメタ:
-                # image – 8ビット，シングルチャンネル，グレースケールの入力画像．
-                # circles – 検出された円を出力するベクトル．
-                #   各ベクトルは，3要素の浮動小数点型ベクトル  (x, y, radius) としてエンコードされます．
-                # method – 現在のところ， CV_HOUGH_GRADIENT メソッドのみが実装されています．
-                #   基本的には 2段階ハフ変換 で，これについては Yuen90 で述べられています．
-                # dp – 画像分解能に対する投票分解能の比率の逆数．
-                #   例えば， dp=1 の場合は，投票空間は入力画像と同じ分解能をもちます．
-                #   また dp=2 の場合は，投票空間の幅と高さは半分になります．
-                # minDist – 検出される円の中心同士の最小距離．
-                #   このパラメータが小さすぎると，正しい円の周辺に別の円が複数誤って検出されることになります．
-                #   逆に大きすぎると，検出できない円がでてくる可能性があります．
-                # param1 – 手法依存の 1 番目のパラメータ．
-                #   CV_HOUGH_GRADIENT の場合は，
-                #   Canny() エッジ検出器に渡される2つの閾値の内，大きい方の閾値を表します
-                #   （小さい閾値は，この値の半分になります）．
-                # param2 – 手法依存の 2 番目のパラメータ．
-                #   CV_HOUGH_GRADIENT の場合は，円の中心を検出する際の投票数の閾値を表します．
-                #   これが小さくなるほど，より多くの誤検出が起こる可能性があります．
-                #   より多くの投票を獲得した円が，最初に出力されます．
-                # minRadius – 円の半径の最小値．
-                # maxRadius – 円の半径の最大値．
+                # 円を検出する
+                circles = getCircles(self, frameToFindCircle)
 
                 # もし円を見つけたら・・・
                 if circles is not None:
@@ -232,97 +213,31 @@ class Cameo(object):
                                 cv2.line(frameToDisplay, self._passedPoints[i],
                                          self._passedPoints[i+1], (0,255,0), 5)
 
-                    def getVerocityVector(passedPoints, lengthTimesOfVerocityVector=3, index=0):
-                        # 最後から1個前の点 pt0
-                        pt0np = numpy.array(passedPoints[-(2 + index)])
-                        # 最後の点 pt1
-                        pt1np = numpy.array(passedPoints[-(1 + index)])
-                        # 移動ベクトル Δpt = pt1 - pt0
-                        dptnp = lengthTimesOfVerocityVector * (pt1np - pt0np)
-                        # 移動してなければNoneを返す
-                        areSamePoint_array = (dptnp == numpy.array([0,0]))
-                        if areSamePoint_array.all():
-                            return None
-                        else:
-                            vector = tuple(dptnp)
-                            return vector
-
-                    def cvArrow(img, pt1, pt2, color, thickness=1, lineType=8, shift=0):
-                        cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
-                        vx = pt2[0] - pt1[0]
-                        vy = pt2[1] - pt1[1]
-                        v  = math.sqrt(vx ** 2 + vy ** 2)
-                        ux = vx / v
-                        uy = vy / v
-                        # 矢印の幅の部分
-                        w = 5
-                        h = 10
-                        ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
-                        ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
-                        # 矢印の先端を描画する
-                        cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
-                        cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
-
                     # 速度ベクトルを描画する
-                    if self._shouldDrawVerocityVector \
-                        and numberOfPoints >= 2 \
-                        and self._passedPoints[-1] is not None \
-                        and self._passedPoints[-2] is not None:
-
-                        vector = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
+                    if self._shouldDrawVerocityVector:
+                        vector = utils.getVelocityVector(self._passedPoints)
                         if vector is not None:
-                            pt1 = self._passedPoints[-1]
-                            pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
-
-                            cvArrow(frameToDisplay, pt1, pt2, (255,0,0), 5)
+                            pt = self._passedPoints[-1]
+                            utils.cvArrow(frameToDisplay, pt, vector,
+                                          self._lengthTimesOfVerocityVector, (255,0,0), 5)
 
                     # 加速度ベクトルを描画する
-                    if self._shouldDrawAccelerationVector \
-                        and numberOfPoints >= 3 \
-                        and self._passedPoints[-1] is not None \
-                        and self._passedPoints[-2] is not None \
-                        and self._passedPoints[-3] is not None:
-
-                        verocity0 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector, 1)
-                        verocity1 = getVerocityVector(self._passedPoints, self._lengthTimesOfVerocityVector)
-                        if verocity0 is not None and verocity1 is not None:
-                            v0np = numpy.array(verocity0)
-                            v1np = numpy.array(verocity1)
-                            dvnp = v1np - v0np  # v1 - v0 = Δv
-                            # 速度変化してなければNoneを返す
-                            areSamePoint_array = (dvnp == numpy.array([0,0]))
-                            if not areSamePoint_array.all():
-                                vector = tuple(dvnp)
-                                pt1 = self._passedPoints[-1]
-                                pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
-                                cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
+                    if self._shouldDrawAccelerationVector:
+                        vector = utils.getAccelerationVector(self._passedPoints)
+                        if vector is not None:
+                            pt1 = self._passedPoints[-1]
+                            utils.cvArrow(frameToDisplay, pt1, vector, 3, (0,0,255), 5)
 
             if not self._isTracking:
                 # 検出用フレームをつくる
                 frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
-                height, width = frameToFindCircle.shape
+                circles = getCircles(self, frameToFindCircle)  # 円を検出する
 
-                # Hough変換で円を検出する
-                circles = cv2.HoughCircles(
-                    frameToFindCircle,        # 画像
-                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
-                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
-                    width / 10,               # 円同士の間の最小距離
-                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
-                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
-                    100,                      # 円の最小半径
-                    1)                        # 円の最大半径
-
-                # もし円を見つけたら・・・
-                if circles is not None:
-                    # x, y, w, h = rect
-                    # subImage = image[y:y+h, x:x+w]
-
-                    # 中心座標と半径を取得して・・・
-                    x, y, r = circles[0][0]
-                    # 整数にする
-                    x, y ,r = int(x), int(y), int(r)
+                if circles is not None:  # もし円を見つけたら・・・
+                    x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・
+                    x, y ,r = int(x), int(y), int(r)  # 整数にする
                     # 画面外にはみ出す場合は・・・
+                    height, width = frameToFindCircle.shape
                     m = 10  # マージン
                     if x < r+m or width < x+r+m or y < r+m or height < y+r+m:
                         pass
@@ -348,59 +263,11 @@ class Cameo(object):
                         # ヒストグラムの正規化
                         cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
 
+                        mask3Channel = cv2.merge((mask, mask, mask))
+                        if mask is not None and self._track_window is not None:
+                            utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
+
                         self._isTracking = True
-
-                        def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
-                            """
-                            入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
-                            :param src:     入力画像
-                            :type  src:     numpy.ndarray
-                            :param dst:     出力画像
-                            :type  dst:     numpy.ndarray
-                            :param srcRect: (x, y, w, h)
-                            :type  srcRect: tuple
-                            :param dstRect: (x, y, w, h)
-                            :type  dstRect: tuple
-                            :param interpolation: 補完方法
-                            :return: None
-                            """
-
-                            height, width, _ = frameToPaste.shape
-                            # x0, y0, w0, h0 = 0, 0, width, height
-
-                            x1, y1, w1, h1 = dstRect
-
-                            # コピー元の部分矩形画像をリサイズしてコピー先の部分矩形に貼り付ける
-                            src[y1:y1+h1, x1:x1+w1] = \
-                                cv2.resize(frameToPaste[0:height, 0:width], (w1, h1), interpolation = interpolation)
-                            # Python: cv.Resize(src, dst, interpolation=CV_INTER_LINEAR) → None
-                            # Parameters:
-                            # src – input image.
-                            # dst – output image; it has the size dsize (when it is non-zero) or
-                            # the size computed from src.size(), fx, and fy; the type of dst is the same as of src.
-                            # dsize –
-                            # output image size; if it equals zero, it is computed as:
-                            # dsize = Size(round(fx*src.cols), round(fy*src.rows))
-                            # Either dsize or both fx and fy must be non-zero.
-                            # fx –
-                            # scale factor along the horizontal axis; when it equals 0, it is computed as
-                            # (double)dsize.width/src.cols
-                            # fy –
-                            # scale factor along the vertical axis; when it equals 0, it is computed as
-                            # (double)dsize.height/src.rows
-                            # interpolation –
-                            # interpolation method:
-                            # INTER_NEAREST - a nearest-neighbor interpolation
-                            # INTER_LINEAR - a bilinear interpolation (used by default)
-                            # INTER_AREA - resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire’-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
-                            # INTER_CUBIC - a bicubic interpolation over 4x4 pixel neighborhood
-                            # INTER_LANCZOS4 - a Lanczos interpolation over 8x8 pixel neighborhood
-
-                            dst[:] = src
-
-                        # mask3Channel = cv2.merge((mask, mask, mask))
-                        # if mask is not None and track_window is not None:
-                        #     pasteRect(frameToDisplay, frameToDisplay, mask3Channel, track_window)
 
             # if self._shouldFindCircle:
             # if not self._isTracking:
@@ -426,68 +293,66 @@ class Cameo(object):
 
 
             # 情報を表示する
-            def _putText(text, lineNumber):
+            def putText(text, lineNumber):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
-            def _put(label, value):
-                _putText(label, 1)
+            def put(label, value):
+                putText(label, 1)
                 if value is True:
                     value = 'True'
                 elif value is False:
                     value = 'False'
-                _putText(str(value), 2)
+                putText(str(value), 2)
 
-            _cur = self._currentAdjusting
+            cur = self._currentAdjusting
 
-            if   _cur == self.HUE_MIN:
-                _put('Hue Min'                            , self._hueMin)
-            elif _cur == self.HUE_MAX:
-                _put('Hue Max'                            , self._hueMax)
-            elif _cur == self.VALUE_MIN:
-                _put('Value Min'                          , self._valueMin)
-            elif _cur == self.VALUE_MAX:
-                _put('Value Max'                          , self._valueMax)
-            elif _cur == self.HOUGH_CIRCLE_RESOLUTION:
-                _put('Hough Circle Resolution'            , self._houghCircleDp)
-            elif _cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-                _put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
-            elif _cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
-                _put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
-            elif _cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-                _put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
-            elif _cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-                _put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
-            elif _cur == self.SHOULD_PROCESS_CLOSING:
-                _put('Process Closing'                    , self._shouldProcessClosing)
-            elif _cur == self.CLOSING_ITERATIONS:
-                _put('Closing Iterations'                 , self._closingIterations)
-            elif _cur == self.SHOULD_DRAW_CIRCLE:
-                _put('Should Draw Circle'                 , self._shouldDrawCircle)
-            elif _cur == self.SHOULD_DRAW_TRACKS:
-                _put('Should Draw Tracks'                 , self._shouldDrawTracks)
-            elif _cur == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                _put('Should Draw Verocity Vector'        , self._shouldDrawVerocityVector)
-            elif _cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
-                _put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
-            elif _cur == self.SHOULD_FIND_CIRCLE:
-                _put('Should Find Circle'                 , self._shouldFindCircle)
-            elif _cur == self.SHOULD_TRACK_CIRCLE:
-                _put('Should Track Circle'                , self._shouldTrackCircle)
-            elif _cur == self.SHOULD_DRAW_CANNY_EDGE:
-                _put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
-            elif _cur == self.SHOWING_FRAME:
+            if   cur == self.HUE_MIN:
+                put('Hue Min'                            , self._hueMin)
+            elif cur == self.HUE_MAX:
+                put('Hue Max'                            , self._hueMax)
+            elif cur == self.VALUE_MIN:
+                put('Value Min'                          , self._valueMin)
+            elif cur == self.VALUE_MAX:
+                put('Value Max'                          , self._valueMax)
+            elif cur == self.HOUGH_CIRCLE_RESOLUTION:
+                put('Hough Circle Resolution'            , self._houghCircleDp)
+            elif cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
+                put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
+            elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
+                put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
+            elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+                put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
+            elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+                put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
+            elif cur == self.SHOULD_PROCESS_CLOSING:
+                put('Process Closing'                    , self._shouldProcessClosing)
+            elif cur == self.CLOSING_ITERATIONS:
+                put('Closing Iterations'                 , self._closingIterations)
+            elif cur == self.SHOULD_DRAW_CIRCLE:
+                put('Should Draw Circle'                 , self._shouldDrawCircle)
+            elif cur == self.SHOULD_DRAW_TRACKS:
+                put('Should Draw Tracks'                 , self._shouldDrawTracks)
+            elif cur == self.SHOULD_DRAW_VEROCITY_VECTOR:
+                put('Should Draw Verocity Vector'        , self._shouldDrawVerocityVector)
+            elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
+                put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
+            elif cur == self.SHOULD_FIND_CIRCLE:
+                put('Should Find Circle'                 , self._shouldFindCircle)
+            elif cur == self.SHOULD_TRACK_CIRCLE:
+                put('Should Track Circle'                , self._shouldTrackCircle)
+            elif cur == self.SHOULD_DRAW_CANNY_EDGE:
+                put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
+            elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
                 elif self._currentShowing == self.GRAY_SCALE:
                     currentShowing = 'Gray Scale'
                 elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                     currentShowing = 'What Computer See'
-                elif self._currentShowing == self.CANNY_EDGE:
-                    currentShowing = 'Canny Edge'
                 else:
                     raise ValueError('self._currentShowing')
 
-                _put('Showing Frame'                , currentShowing)
+                put('Showing Frame'                , currentShowing)
             else:
                 raise ValueError('self._currentAdjusting')
 
