@@ -68,7 +68,7 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         ### Ball Tracking ###
-        self._shouldFindCircle             = True
+        self._shouldFindCircle             = False
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
@@ -87,6 +87,11 @@ class Cameo(object):
 
         self._currentAdjusting             = self.GRAY_SCALE
         self._currentShowing               = self.ORIGINAL
+
+        self._isTracking                   = False
+        self._track_window                 = None
+        self._roi_hist                     = None
+        self._term_crit                    = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -112,7 +117,7 @@ class Cameo(object):
             ### 画面表示 ###
 
 
-            def _getMaskToFindCircle(self, frame):
+            def getMaskToFindCircle(self, frame):
                 """
                 後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
                 SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
@@ -124,7 +129,7 @@ class Cameo(object):
                 return mask
 
             if self._currentShowing == self.GRAY_SCALE:
-                mask = _getMaskToFindCircle(self, frameToDisplay)
+                mask = getMaskToFindCircle(self, frameToDisplay)
 
                 # カメラ画像をHSVチャンネルに分離し・・・
                 frame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
@@ -148,17 +153,19 @@ class Cameo(object):
                 cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
 
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                gray = _getMaskToFindCircle(self, frameToDisplay)
+                gray = getMaskToFindCircle(self, frameToDisplay)
                 cv2.merge((gray, gray, gray), frameToDisplay)
 
             elif self._currentShowing == self.ORIGINAL:
                 pass
 
+
             ### 検出・描画処理 ###
 
 
             if self._shouldFindCircle:
-                frameToFindCircle = _getMaskToFindCircle(self, frameToFindCircle)
+                # 検出用フレームをつくる
+                frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
                 height, width = frameToFindCircle.shape
 
                 # Hough変換で円を検出する
@@ -290,6 +297,11 @@ class Cameo(object):
                                 pt2 = (pt1[0]+vector[0], pt1[1]+vector[1])
                                 cvArrow(frameToDisplay, pt1, pt2, (0,0,255), 5)
 
+            if not self._isTracking:
+                # 検出用フレームをつくる
+                frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
+                height, width = frameToFindCircle.shape
+
                 # Hough変換で円を検出する
                 circles = cv2.HoughCircles(
                     frameToFindCircle,        # 画像
@@ -314,9 +326,10 @@ class Cameo(object):
                     m = 10  # マージン
                     if x < r+m or width < x+r+m or y < r+m or height < y+r+m:
                         pass
+                    # 画面の中に収まる場合は・・・
                     else:
                         # 追跡したい領域の初期設定
-                        track_window = (x-r, y-r, 2*r, 2*r)
+                        self._track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROIを設定
                         roi = frameToDisplay[y-r:y+r, x-r:x+r]  ##### TODO: ROIって何？
                         # HSV色空間に変換
@@ -330,6 +343,12 @@ class Cameo(object):
                             self._hueMax / 2,           # H最大値
                             255,                        # S最大値
                             self._valueMax)))           # V最大値
+                        # ヒストグラムの計算
+                        self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+                        # ヒストグラムの正規化
+                        cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
+
+                        self._isTracking = True
 
                         def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
                             """
@@ -379,9 +398,22 @@ class Cameo(object):
 
                             dst[:] = src
 
-                        mask3Channel = cv2.merge((mask, mask, mask))
-                        if mask is not None and track_window is not None:
-                            pasteRect(frameToDisplay, frameToDisplay, mask3Channel, track_window)
+                        # mask3Channel = cv2.merge((mask, mask, mask))
+                        # if mask is not None and track_window is not None:
+                        #     pasteRect(frameToDisplay, frameToDisplay, mask3Channel, track_window)
+
+            # if self._shouldFindCircle:
+            # if not self._isTracking:
+            else:
+                # HSV色空間に変換
+                hsv = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
+                # バックプロジェクションの計算
+                dst = cv2.calcBackProject([hsv],[0],self._roi_hist,[0,180],1)
+                # 新しい場所を取得するためにmeanshiftを適用
+                ret, self._track_window = cv2.meanShift(dst, self._track_window, self._term_crit)
+                # 追跡している領域を描く
+                x,y,w,h = self._track_window
+                cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),2)
 
             # Cannyエッジ検出
             if self._shouldDrawCannyEdge:
