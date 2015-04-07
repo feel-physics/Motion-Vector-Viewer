@@ -12,7 +12,6 @@ import utils
 class Cameo(object):
 
     ##### TODO: 不要になったオプションは廃止する
-    ##### TODO: FPSを表示する
     ##### TODO: cv2.inRange関数を使う
     ##### TODO: 追跡にgetMaskToFindCircleで得られるマスク画像を使う
     ADJUSTING_OPTIONS = (
@@ -88,6 +87,7 @@ class Cameo(object):
         self._term_crit                    = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
         self._timeSelfTimerStarted         = None
+        self._timeArrayToCalcFps           = []
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -102,6 +102,8 @@ class Cameo(object):
         """
         # ウィンドウをつくる
         self._windowManager.createWindow()
+        # FPS計算用の時刻
+        self._timeArrayToCalcFps.append(datetime.now())
         # ウィンドウが存在する限り・・・
         while self._windowManager.isWindowCreated:
             # フレームを取得し・・・
@@ -224,7 +226,7 @@ class Cameo(object):
                             pt = self._passedPoints[-1]
                             utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
 
-            if not self._isTracking:
+            if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
                 frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
                 circles = getCircles(self, frameToFindCircle)  # 円を検出する
@@ -267,7 +269,7 @@ class Cameo(object):
 
             # if self._shouldFindCircle:
             # if not self._isTracking:
-            else:
+            elif self._shouldTrackCircle and self._isTracking:
                 # HSV色空間に変換
                 hsv = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
                 # バックプロジェクションの計算
@@ -288,17 +290,28 @@ class Cameo(object):
             ### 情報表示 ###
 
 
+            # FPSを計算する
+            if len(self._timeArrayToCalcFps) < 10:
+                self._timeArrayToCalcFps.append(datetime.now())
+                fps = -1
+            else:
+                self._timeArrayToCalcFps.append(datetime.now())
+                self._timeArrayToCalcFps.pop(0)
+                timeElapsed = self._timeArrayToCalcFps[9] - self._timeArrayToCalcFps[0]
+                fps = 10 / (timeElapsed.seconds + timeElapsed.microseconds / 1000000.0)
+
             # 情報を表示する
             def putText(text, lineNumber):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
             def put(label, value):
-                putText(label, 1)
+                putText('FPS ' + "{0:.1f}".format(fps), 1)
+                putText(label, 2)
                 if value is True:
                     value = 'True'
                 elif value is False:
                     value = 'False'
-                putText(str(value), 2)
+                putText(str(value), 3)
 
             cur = self._currentAdjusting
 
@@ -351,6 +364,10 @@ class Cameo(object):
                 put('Showing Frame'                , currentShowing)
             else:
                 raise ValueError('self._currentAdjusting')
+
+
+            ### 1フレーム終了 ###
+
 
             # フレームを解放する
             self._captureManager.exitFrame()
@@ -497,11 +514,11 @@ class Cameo(object):
                 self._shouldFindCircle = \
                     not self._shouldFindCircle
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
-                if  self._shouldTrackCircle:
+                if self._shouldTrackCircle:
                     self._shouldTrackCircle = False
                 else:
-                    self._shouldFindCircle  = True
                     self._shouldTrackCircle = True
+                    self._shouldFindCircle = False
             elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
                 self._shouldDrawCannyEdge = \
                     not self._shouldDrawCannyEdge
