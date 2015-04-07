@@ -361,11 +361,20 @@ def getMaskByHsv(src, hueMin, hueMax, valueMin, valueMax, gamma=96, sThreshold=5
     _hueMax = hueMax / 2
 
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(src)
+    # h, s, v = cv2.split(src)
 
     # HSVで抽出する
 
-    mask = getSimpleMaskByHsv(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
+    # mask = getSimpleMaskByHsv(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
+
+    mask = cv2.inRange(src, numpy.array((
+        _hueMin,              # H最小値
+        2 ** sThreshold - 1,  # S最小値
+        valueMin              # V最小値
+    )), numpy.array((
+        _hueMax,              # H最大値
+        255,                  # S最大値
+        valueMax)))           # V最大値
 
     # 後処理する
 
