@@ -76,15 +76,14 @@ class Cameo(object):
         self._lengthTimesOfVerocityVector  = 3
         self._shouldDrawAccelerationVector = False
 
-        self._shouldTrackCircle            = False
+        self._shouldTrackCircle            = True
 
-        self._currentAdjusting             = self.GRAY_SCALE
+        self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
         self._currentShowing               = self.ORIGINAL
 
         self._isTracking                   = False
         self._track_window                 = None
         self._roi_hist                     = None
-        self._term_crit                    = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -168,8 +167,9 @@ class Cameo(object):
                 cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
 
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                gray = getMaskToFindCircle(self, frameToDisplay)
-                cv2.merge((gray, gray, gray), frameToDisplay)
+                pass
+                # gray = getMaskToFindCircle(self, frameToDisplay)
+                # cv2.merge((gray, gray, gray), frameToDisplay)
 
             elif self._currentShowing == self.ORIGINAL:
                 pass
@@ -178,58 +178,63 @@ class Cameo(object):
             ### 検出・描画処理 ###
 
 
-            if self._shouldFindCircle:
-                # 検出用フレームをつくる
-                frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
-                # 円を検出する
-                circles = getCircles(self, frameToFindCircle)
-
-                # もし円を見つけたら・・・
-                if circles is not None:
-                    # 中心座標と半径を取得して・・・
-                    x, y, r = circles[0][0]
-                    self._centerPointOfCircle = (x,y)
-
-                    # 円を描く
-                    if self._shouldDrawCircle:
-                        cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
-
-                # 次の円を検出したら・・・
-                if self._centerPointOfCircle is not None:
-                    # 通過点リストの最後に要素を追加する
-                    self._passedPoints.append(self._centerPointOfCircle)
-                    # self._passedPoints.pop(0)  # 最初の要素は削除する
-
-                # 次の円が見つかっても見つからなくても・・・
-                if len(self._passedPoints) != 0:
-                    numberOfPoints = len(self._passedPoints)
-
-                    # 軌跡を描画する
-                    if self._shouldDrawTracks:
-                        if numberOfPoints > 1:
-                            for i in range(numberOfPoints - 1):
-                                cv2.line(frameToDisplay, self._passedPoints[i],
-                                         self._passedPoints[i+1], (0,255,0), 5)
-
-                    # 速度ベクトルを描画する
-                    if self._shouldDrawVerocityVector:
-                        vector = utils.getVelocityVector(self._passedPoints)
-                        if vector is not None:
-                            pt = self._passedPoints[-1]
-                            utils.cvArrow(frameToDisplay, pt, vector,
-                                          self._lengthTimesOfVerocityVector, (255,0,0), 5)
-
-                    # 加速度ベクトルを描画する
-                    if self._shouldDrawAccelerationVector:
-                        vector = utils.getAccelerationVector(self._passedPoints)
-                        if vector is not None:
-                            pt = self._passedPoints[-1]
-                            utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
+            # if self._shouldFindCircle:
+            #     # 検出用フレームをつくる
+            #     frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
+            #     # 円を検出する
+            #     circles = getCircles(self, frameToFindCircle)
+            #
+            #     # もし円を見つけたら・・・
+            #     if circles is not None:
+            #         # 中心座標と半径を取得して・・・
+            #         x, y, r = circles[0][0]
+            #         self._centerPointOfCircle = (x,y)
+            #
+            #         # 円を描く
+            #         if self._shouldDrawCircle:
+            #             cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
+            #
+            #     # 次の円を検出したら・・・
+            #     if self._centerPointOfCircle is not None:
+            #         # 通過点リストの最後に要素を追加する
+            #         self._passedPoints.append(self._centerPointOfCircle)
+            #         # self._passedPoints.pop(0)  # 最初の要素は削除する
+            #
+            #     # 次の円が見つかっても見つからなくても・・・
+            #     if len(self._passedPoints) != 0:
+            #         numberOfPoints = len(self._passedPoints)
+            #
+            #         # 軌跡を描画する
+            #         if self._shouldDrawTracks:
+            #             if numberOfPoints > 1:
+            #                 for i in range(numberOfPoints - 1):
+            #                     cv2.line(frameToDisplay, self._passedPoints[i],
+            #                              self._passedPoints[i+1], (0,255,0), 5)
+            #
+            #         # 速度ベクトルを描画する
+            #         if self._shouldDrawVerocityVector:
+            #             vector = utils.getVelocityVector(self._passedPoints)
+            #             if vector is not None:
+            #                 pt = self._passedPoints[-1]
+            #                 utils.cvArrow(frameToDisplay, pt, vector,
+            #                               self._lengthTimesOfVerocityVector, (255,0,0), 5)
+            #
+            #         # 加速度ベクトルを描画する
+            #         if self._shouldDrawAccelerationVector:
+            #             vector = utils.getAccelerationVector(self._passedPoints)
+            #             if vector is not None:
+            #                 pt = self._passedPoints[-1]
+            #                 utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
 
             if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
                 frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
                 circles = getCircles(self, frameToFindCircle)  # 円を検出する
+
+                # TODO:ここが動かない
+                # if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                #     gray = getMaskToFindCircle(self, frameToDisplay)
+                #     cv2.merge((gray, gray, gray), frameToDisplay)
 
                 if circles is not None:  # もし円を見つけたら・・・
                     x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・
@@ -261,24 +266,67 @@ class Cameo(object):
                         # ヒストグラムの正規化
                         cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
 
-                        mask3Channel = cv2.merge((mask, mask, mask))
-                        if mask is not None and self._track_window is not None:
-                            utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
+                        # # maskを描画するコード（デバッグ用）
+                        # mask3Channel = cv2.merge((mask, mask, mask))
+                        # if mask is not None and self._track_window is not None:
+                        #     utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
 
                         self._isTracking = True
 
             # if self._shouldFindCircle:
-            # if not self._isTracking:
+            # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle and self._isTracking:
                 # HSV色空間に変換
                 hsv = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
                 # バックプロジェクションの計算
                 dst = cv2.calcBackProject([hsv],[0],self._roi_hist,[0,180],1)
+
+                # バックプロジェクションを描画するコード（デバッグ用）
+                if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                    cv2.merge((dst, dst, dst), frameToDisplay)
+
                 # 新しい場所を取得するためにmeanshiftを適用
-                ret, self._track_window = cv2.meanShift(dst, self._track_window, self._term_crit)
+                ret, self._track_window = cv2.meanShift(dst, self._track_window,
+                                                        ( cv2.TERM_CRITERIA_EPS |
+                                                          cv2.TERM_CRITERIA_COUNT, 10, 1 ))
                 # 追跡している領域を描く
                 x,y,w,h = self._track_window
-                cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),2)
+
+                if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                    cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),5)
+
+                # 次の円を検出したら・・・
+                if self._track_window is not None:
+                    # 通過点リストの最後に要素を追加する
+                    self._passedPoints.append((x+w/2, y+h/2))
+                    # self._passedPoints.pop(0)  # 最初の要素は削除する
+
+                # 次の円が見つかっても見つからなくても・・・
+                if len(self._passedPoints) != 0:
+                    numberOfPoints = len(self._passedPoints)
+
+                    # 軌跡を描画する
+                    if self._shouldDrawTracks:
+                        if numberOfPoints > 1:
+                            for i in range(numberOfPoints - 1):
+                                cv2.line(frameToDisplay, self._passedPoints[i],
+                                         self._passedPoints[i+1], (0,255,0), 5)
+
+                    # 速度ベクトルを描画する
+                    if self._shouldDrawVerocityVector:
+                        vector = utils.getVelocityVector(self._passedPoints)
+                        if vector is not None:
+                            pt = self._passedPoints[-1]
+                            utils.cvArrow(frameToDisplay, pt, vector,
+                                          self._lengthTimesOfVerocityVector, (255,0,0), 5)
+
+                    # 加速度ベクトルを描画する
+                    if self._shouldDrawAccelerationVector:
+                        vector = utils.getAccelerationVector(self._passedPoints)
+                        if vector is not None:
+                            pt = self._passedPoints[-1]
+                            utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
+
 
             # Cannyエッジ検出
             if self._shouldDrawCannyEdge:
