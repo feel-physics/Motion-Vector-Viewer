@@ -5,17 +5,18 @@ import cv2
 import numpy
 import math
 
-def getVelocityVector(passedPoints, indexRewind=0):
+def getVelocityVector(passedPoints, population=1, numDelayFrames=0):
+    # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
     # indexRewindは加速度を求めるのに使う
-    if len(passedPoints) < 2 \
-            or passedPoints[-1] is None \
-            or passedPoints[-2] is None:
+    if len(passedPoints) < population+numDelayFrames+1 \
+            or passedPoints[-1-numDelayFrames] is None \
+            or passedPoints[-1-population-numDelayFrames] is None:
         return None
     else:
-        # 最後から1個前の点 pt0
-        pt0np = numpy.array(passedPoints[-(2 + indexRewind)])
+        # 最後からpopulation個前の点 pt0
+        pt0np = numpy.array(passedPoints[-(1+population+numDelayFrames)])
         # 最後の点 pt1
-        pt1np = numpy.array(passedPoints[-(1 + indexRewind)])
+        pt1np = numpy.array(passedPoints[-(1+numDelayFrames)])
         # 移動ベクトル Δpt = pt1 - pt0
         dptnp = pt1np - pt0np
         # 移動してなければNoneを返す
@@ -23,39 +24,22 @@ def getVelocityVector(passedPoints, indexRewind=0):
         if areSamePoint_array.all():
             return None
         else:
+            dptnp = dptnp / population
             vector = tuple(dptnp)
             return vector
 
-def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
-    pt1 = pt
-    pt2 = (int(pt1[0] + vector[0]*lengthTimes),
-           int(pt1[1] + vector[1]*lengthTimes))
-    cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
-    vx = pt2[0] - pt1[0]
-    vy = pt2[1] - pt1[1]
-    v  = math.sqrt(vx ** 2 + vy ** 2)
-    ux = vx / v
-    uy = vy / v
-    # 矢印の幅の部分
-    w = 5
-    h = 10
-    ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
-    ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
-    # 矢印の先端を描画する
-    cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
-    cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
-
-def getAccelerationVector(passedPoints):
-    if len(passedPoints) < 3 \
+def getAccelerationVector(passedPoints, population=2):
+    pop = int(population / 2)  # 切り捨て
+    if len(passedPoints) < 1+2*pop \
             or passedPoints[-1] is None \
-            or passedPoints[-2] is None \
-            or passedPoints[-3] is None:
+            or passedPoints[-1-pop] is None \
+            or passedPoints[-1-2*pop] is None:
         return None
     else:
-        # 最後から1個前の点 pt0
-        velocity0 = getVelocityVector(passedPoints, 1)
-        # 最後の点 pt1
-        velocity1 = getVelocityVector(passedPoints)
+        # [-1-pop]から[-1-2*pop]のときの速度
+        velocity0 = getVelocityVector(passedPoints, pop, pop)
+        # [-1]から[-1-pop]のときの速度
+        velocity1 = getVelocityVector(passedPoints, pop)
         if velocity0 is not None and velocity1 is not None:
             v0np = numpy.array(velocity0)
             v1np = numpy.array(velocity1)
@@ -67,6 +51,28 @@ def getAccelerationVector(passedPoints):
             else:
                 vector = tuple(dvnp)
                 return vector
+
+def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+    if vector == (0, 0):
+        pass
+    else:
+        pt1 = pt
+        pt2 = (int(pt1[0] + vector[0]*lengthTimes),
+               int(pt1[1] + vector[1]*lengthTimes))
+        cv2.line(img,pt1,pt2,color,thickness,lineType,shift)
+        vx = pt2[0] - pt1[0]
+        vy = pt2[1] - pt1[1]
+        v  = math.sqrt(vx ** 2 + vy ** 2)
+        ux = vx / v
+        uy = vy / v
+        # 矢印の幅の部分
+        w = 5
+        h = 10
+        ptl = (int(pt2[0] - uy*w - ux*h), int(pt2[1] + ux*w - uy*h))
+        ptr = (int(pt2[0] + uy*w - ux*h), int(pt2[1] - ux*w - uy*h))
+        # 矢印の先端を描画する
+        cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
+        cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """

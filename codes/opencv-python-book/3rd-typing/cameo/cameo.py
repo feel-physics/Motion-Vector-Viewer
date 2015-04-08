@@ -73,7 +73,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
-        self._lengthTimesOfVerocityVector  = 3
+        self._lengthTimesOfVerocityVector  = 4
         self._shouldDrawAccelerationVector = False
 
         self._shouldTrackCircle            = True
@@ -84,6 +84,8 @@ class Cameo(object):
         self._isTracking                   = False
         self._track_window                 = None
         self._roi_hist                     = None
+        self._numFramesDelay               = 10
+        self._enteredFrames                = []
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -108,7 +110,16 @@ class Cameo(object):
             # フレームを取得し・・・
             self._captureManager.enterFrame()
             frameToDisplay = self._captureManager.frame
-            frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
+
+            frameNow = frameToDisplay.copy()
+            self._enteredFrames.append(frameToDisplay.copy())  # ディープコピーしないと参照を持って行かれる
+            if len(self._enteredFrames) < self._numFramesDelay:
+                pass
+            else:
+                self._enteredFrames.pop(0)
+            frameToDisplay[:] = self._enteredFrames[0]
+
+            # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
 
             ### 画面表示 ###
@@ -228,7 +239,7 @@ class Cameo(object):
 
             if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
-                frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
+                frameToFindCircle = getMaskToFindCircle(self, frameNow)
                 circles = getCircles(self, frameToFindCircle)  # 円を検出する
 
                 # TODO:ここが動かない
@@ -249,7 +260,7 @@ class Cameo(object):
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROI関心領域（Region of Interest)を設定
-                        roi = frameToDisplay[y-r:y+r, x-r:x+r]
+                        roi = frameNow[y-r:y+r, x-r:x+r]
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
                         # マスク画像の作成
@@ -277,7 +288,7 @@ class Cameo(object):
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle and self._isTracking:
                 # HSV色空間に変換
-                hsv = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
+                hsv = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
                 # バックプロジェクションの計算
                 dst = cv2.calcBackProject([hsv],[0],self._roi_hist,[0,180],1)
 
@@ -302,29 +313,31 @@ class Cameo(object):
                     # self._passedPoints.pop(0)  # 最初の要素は削除する
 
                 # 次の円が見つかっても見つからなくても・・・
-                if len(self._passedPoints) != 0:
-                    numberOfPoints = len(self._passedPoints)
+                if len(self._passedPoints) - self._numFramesDelay > 0:
+                    numPointsVisible = len(self._passedPoints) - self._numFramesDelay
 
                     # 軌跡を描画する
                     if self._shouldDrawTracks:
-                        if numberOfPoints > 1:
-                            for i in range(numberOfPoints - 1):
-                                cv2.line(frameToDisplay, self._passedPoints[i],
-                                         self._passedPoints[i+1], (0,255,0), 5)
+                        for i in range(numPointsVisible - 1):
+                            cv2.line(frameToDisplay, self._passedPoints[i],
+                                     self._passedPoints[i+1], (0,255,0), 5)
+                            # # 軌跡ではなく打点する（デバッグ用）
+                            # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (0,255,0), 5)
+
+                    pt = self._passedPoints[numPointsVisible]
 
                     # 速度ベクトルを描画する
                     if self._shouldDrawVerocityVector:
-                        vector = utils.getVelocityVector(self._passedPoints)
+                        vector = utils.getVelocityVector(self._passedPoints, self._numFramesDelay,
+                                                         int(self._numFramesDelay/2))
                         if vector is not None:
-                            pt = self._passedPoints[-1]
                             utils.cvArrow(frameToDisplay, pt, vector,
                                           self._lengthTimesOfVerocityVector, (255,0,0), 5)
 
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
-                        vector = utils.getAccelerationVector(self._passedPoints)
+                        vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if vector is not None:
-                            pt = self._passedPoints[-1]
                             utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
 
 
