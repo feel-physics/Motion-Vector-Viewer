@@ -32,9 +32,10 @@ class Cameo(object):
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
+        SHOULD_DRAW_FORCE_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 19)
+    ) = range(0, 20)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -73,8 +74,8 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawVerocityVector     = False
-        self._lengthTimesOfVerocityVector  = 4
         self._shouldDrawAccelerationVector = False
+        self._shouldDrawForceVector        = False
 
         self._shouldTrackCircle            = True
 
@@ -84,7 +85,7 @@ class Cameo(object):
         self._isTracking                   = False
         self._track_window                 = None
         self._roi_hist                     = None
-        self._numFramesDelay               = 10
+        self._numFramesDelay               = 6
         self._enteredFrames                = []
 
         self._timeSelfTimerStarted         = None
@@ -111,13 +112,16 @@ class Cameo(object):
             self._captureManager.enterFrame()
             frameToDisplay = self._captureManager.frame
 
-            frameNow = frameToDisplay.copy()
+            # 数フレームを配列にためて、
+            # 新しいフレームを末尾に追加し、
+            # 最初のフレームを取り出して表示する。
+            frameNow = frameToDisplay.copy()  # 本当の現在のフレーム
             self._enteredFrames.append(frameToDisplay.copy())  # ディープコピーしないと参照を持って行かれる
-            if len(self._enteredFrames) < self._numFramesDelay:
+            frameToDisplay[:] = self._enteredFrames[0]  # ためたフレームの最初のものを表示する
+            if len(self._enteredFrames) <= self._numFramesDelay:  # 最初はためる
                 pass
             else:
-                self._enteredFrames.pop(0)
-            frameToDisplay[:] = self._enteredFrames[0]
+                self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
             # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
@@ -186,56 +190,8 @@ class Cameo(object):
                 pass
 
 
-            ### 検出・描画処理 ###
+            ### 物体追跡・描画処理 ###
 
-
-            # if self._shouldFindCircle:
-            #     # 検出用フレームをつくる
-            #     frameToFindCircle = getMaskToFindCircle(self, frameToFindCircle)
-            #     # 円を検出する
-            #     circles = getCircles(self, frameToFindCircle)
-            #
-            #     # もし円を見つけたら・・・
-            #     if circles is not None:
-            #         # 中心座標と半径を取得して・・・
-            #         x, y, r = circles[0][0]
-            #         self._centerPointOfCircle = (x,y)
-            #
-            #         # 円を描く
-            #         if self._shouldDrawCircle:
-            #             cv2.circle(frameToDisplay, self._centerPointOfCircle, r, (0,255,0), 5)
-            #
-            #     # 次の円を検出したら・・・
-            #     if self._centerPointOfCircle is not None:
-            #         # 通過点リストの最後に要素を追加する
-            #         self._passedPoints.append(self._centerPointOfCircle)
-            #         # self._passedPoints.pop(0)  # 最初の要素は削除する
-            #
-            #     # 次の円が見つかっても見つからなくても・・・
-            #     if len(self._passedPoints) != 0:
-            #         numberOfPoints = len(self._passedPoints)
-            #
-            #         # 軌跡を描画する
-            #         if self._shouldDrawTracks:
-            #             if numberOfPoints > 1:
-            #                 for i in range(numberOfPoints - 1):
-            #                     cv2.line(frameToDisplay, self._passedPoints[i],
-            #                              self._passedPoints[i+1], (0,255,0), 5)
-            #
-            #         # 速度ベクトルを描画する
-            #         if self._shouldDrawVerocityVector:
-            #             vector = utils.getVelocityVector(self._passedPoints)
-            #             if vector is not None:
-            #                 pt = self._passedPoints[-1]
-            #                 utils.cvArrow(frameToDisplay, pt, vector,
-            #                               self._lengthTimesOfVerocityVector, (255,0,0), 5)
-            #
-            #         # 加速度ベクトルを描画する
-            #         if self._shouldDrawAccelerationVector:
-            #             vector = utils.getAccelerationVector(self._passedPoints)
-            #             if vector is not None:
-            #                 pt = self._passedPoints[-1]
-            #                 utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
 
             if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
@@ -250,12 +206,12 @@ class Cameo(object):
                 if circles is not None:  # もし円を見つけたら・・・
                     x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・
                     x, y ,r = int(x), int(y), int(r)  # 整数にする
-                    # 画面外にはみ出す場合は・・・
+                    # 画面外に円がはみ出す場合は・・・
                     height, width = frameToFindCircle.shape
                     m = 10  # マージン
                     if x < r+m or width < x+r+m or y < r+m or height < y+r+m:
                         pass
-                    # 画面の中に収まる場合は・・・
+                    # 画面の中に円が収まる場合は・・・
                     else:
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
@@ -300,9 +256,9 @@ class Cameo(object):
                 ret, self._track_window = cv2.meanShift(dst, self._track_window,
                                                         ( cv2.TERM_CRITERIA_EPS |
                                                           cv2.TERM_CRITERIA_COUNT, 10, 1 ))
-                # 追跡している領域を描く
                 x,y,w,h = self._track_window
 
+                # 追跡している領域を描く
                 if self._currentShowing == self.WHAT_COMPUTER_SEE:
                     cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),5)
 
@@ -320,9 +276,9 @@ class Cameo(object):
                     if self._shouldDrawTracks:
                         for i in range(numPointsVisible - 1):
                             cv2.line(frameToDisplay, self._passedPoints[i],
-                                     self._passedPoints[i+1], (0,255,0), 5)
+                                     self._passedPoints[i+1], (255,255,255), 5)
                             # # 軌跡ではなく打点する（デバッグ用）
-                            # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (0,255,0), 5)
+                            # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (255,255,255), 5)
 
                     pt = self._passedPoints[numPointsVisible]
 
@@ -331,14 +287,24 @@ class Cameo(object):
                         vector = utils.getVelocityVector(self._passedPoints, self._numFramesDelay,
                                                          int(self._numFramesDelay/2))
                         if vector is not None:
-                            utils.cvArrow(frameToDisplay, pt, vector,
-                                          self._lengthTimesOfVerocityVector, (255,0,0), 5)
+                            utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
 
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
                         vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if vector is not None:
-                            utils.cvArrow(frameToDisplay, pt, vector, 3, (0,0,255), 5)
+                            utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
+
+                    yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
+                    ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
+                    # 力ベクトルを描画する
+                    if self._shouldDrawForceVector:
+                        aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        if aclVector is None:
+                            aclVector = (0,0)
+                        vector = utils.getForceVector(aclVector)
+                        if vector is not None:
+                            utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
 
 
             # Cannyエッジ検出
@@ -406,6 +372,8 @@ class Cameo(object):
                 put('Should Draw Verocity Vector'        , self._shouldDrawVerocityVector)
             elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
+            elif cur == self.SHOULD_DRAW_FORCE_VECTOR:
+                put('Should Draw Force Vector'           , self._shouldDrawForceVector)
             elif cur == self.SHOULD_FIND_CIRCLE:
                 put('Should Find Circle'                 , self._shouldFindCircle)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -547,6 +515,7 @@ class Cameo(object):
                 pitch = 1  if keycode == 0 else -1
                 self._closingIterations += pitch
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
+                self._shouldFindCircle = True
                 if  self._shouldDrawCircle:
                     self._shouldDrawCircle = False
                 else:
@@ -571,6 +540,12 @@ class Cameo(object):
                 else:
                     self._shouldFindCircle = True
                     self._shouldDrawAccelerationVector = True
+            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR:
+                if  self._shouldDrawForceVector:
+                    self._shouldDrawForceVector = False
+                else:
+                    self._shouldFindCircle = True
+                    self._shouldDrawForceVector = True
             elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
                 self._shouldFindCircle = \
                     not self._shouldFindCircle
