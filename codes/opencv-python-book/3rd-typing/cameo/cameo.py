@@ -32,9 +32,10 @@ class Cameo(object):
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         SHOULD_DRAW_FORCE_VECTOR,
+        SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 21)
+    ) = range(0, 22)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -81,6 +82,7 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVector        = False
+        self._shouldDrawSynthesizedVector  = False
 
         self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
         self._currentShowing               = self.ORIGINAL
@@ -303,9 +305,9 @@ class Cameo(object):
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
 
+                    # 力ベクトルを描画する
                     yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
                     ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
-                    # 力ベクトルを描画する
                     if self._shouldDrawForceVector:
                         aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
@@ -313,6 +315,24 @@ class Cameo(object):
                         vector = utils.getForceVector(aclVector)
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
+
+                    # 力ベクトルの合成を描画する
+                    if self._shouldDrawSynthesizedVector:
+                        # 手による接触力
+                        aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        if aclVector is None:
+                            aclVector = (0,0)
+                        contactForceVector = utils.getForceVector(aclVector)
+                        if contactForceVector is not None:
+                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (0,0,255), 5)
+                        # 重力
+                        gravityForceVector = (0, 200)
+                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,0,255), 5)
+                        # 合力
+                        synthesizedVector = utils.getAccelerationVector(self._passedPoints,
+                                                                        self._numFramesDelay*2)
+                        if synthesizedVector is not None:
+                            utils.cvArrow(frameToDisplay, pt, synthesizedVector, 1, (0,0,255), 5)
 
 
             # Cannyエッジ検出
@@ -384,6 +404,8 @@ class Cameo(object):
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
             elif cur == self.SHOULD_DRAW_FORCE_VECTOR:
                 put('Should Draw Force Vector'           , self._shouldDrawForceVector)
+            elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
+                put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_FIND_CIRCLE:
                 put('Should Find Circle'                 , self._shouldFindCircle)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -558,6 +580,11 @@ class Cameo(object):
                     self._shouldDrawForceVector = False
                 else:
                     self._shouldDrawForceVector = True
+            elif self._currentAdjusting == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
+                if  self._shouldDrawSynthesizedVector:
+                    self._shouldDrawSynthesizedVector = False
+                else:
+                    self._shouldDrawSynthesizedVector = True
             elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
                 self._shouldFindCircle = \
                     not self._shouldFindCircle

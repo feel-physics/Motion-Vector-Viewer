@@ -58,7 +58,7 @@ def getForceVector(accelerationVector):
     return vector
 
 def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
-    if int(vector[0]) == 0 and int(vector[1] == 0):
+    if int(vector[0]) == 0 and int(vector[1]) == 0:
         pass
     else:
         pt1 = pt
