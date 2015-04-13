@@ -53,10 +53,6 @@ def getAccelerationVector(passedPoints, population=2):
                 vector = tuple(dvnp)
                 return vector
 
-def getForceVector(accelerationVector):
-    vector = accelerationVector[0], accelerationVector[1] - 200
-    return vector
-
 def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
     if int(vector[0]) == 0 and int(vector[1]) == 0:
         pass

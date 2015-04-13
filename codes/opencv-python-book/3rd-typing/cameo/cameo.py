@@ -82,6 +82,7 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVector        = False
+        self._gravityStrength              = 100
         self._shouldDrawSynthesizedVector  = False
 
         self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
@@ -312,7 +313,8 @@ class Cameo(object):
                         aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
                             aclVector = (0,0)
-                        vector = utils.getForceVector(aclVector)
+                        vector = (aclVector[0], aclVector[1] - self._gravityStrength)
+
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
 
@@ -322,12 +324,12 @@ class Cameo(object):
                         aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
                             aclVector = (0,0)
-                        contactForceVector = utils.getForceVector(aclVector)
+                        contactForceVector = (aclVector[0], aclVector[1] - self._gravityStrength)
                         if contactForceVector is not None:
-                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (0,0,255), 5)
+                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (0,0,255), 2)
                         # 重力
-                        gravityForceVector = (0, 200)
-                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,0,255), 5)
+                        gravityForceVector = (0, self._gravityStrength)
+                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,0,255), 2)
                         # 合力
                         synthesizedVector = utils.getAccelerationVector(self._passedPoints,
                                                                         self._numFramesDelay*2)
