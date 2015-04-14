@@ -31,11 +31,12 @@ class Cameo(object):
         SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
+        GRAVITY_STRENGTH,
         SHOULD_DRAW_FORCE_VECTOR,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 22)
+    ) = range(0, 23)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -85,7 +86,7 @@ class Cameo(object):
         self._gravityStrength              = 100
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.SHOULD_TRACK_CIRCLE
+        self._currentAdjusting             = self.GRAVITY_STRENGTH
         self._currentShowing               = self.ORIGINAL
 
         self._numFramesDelay               = 6
@@ -404,6 +405,8 @@ class Cameo(object):
                 put('Should Draw Verocity Vector'        , self._shouldDrawVerocityVector)
             elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
+            elif cur == self.GRAVITY_STRENGTH:
+                put('Gravity Strength'                   , self._gravityStrength)
             elif cur == self.SHOULD_DRAW_FORCE_VECTOR:
                 put('Should Draw Force Vector'           , self._shouldDrawForceVector)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
@@ -577,6 +580,9 @@ class Cameo(object):
                     self._shouldDrawAccelerationVector = False
                 else:
                     self._shouldDrawAccelerationVector = True
+            elif self._currentAdjusting == self.GRAVITY_STRENGTH:
+                pitch = 50  if keycode == 0 else -50
+                self._gravityStrength += pitch
             elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR:
                 if  self._shouldDrawForceVector:
                     self._shouldDrawForceVector = False
