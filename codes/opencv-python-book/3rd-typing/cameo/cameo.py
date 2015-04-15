@@ -21,7 +21,6 @@ class Cameo(object):
         GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_PROCESS_CLOSING,
         CLOSING_ITERATIONS,
-        SHOULD_FIND_CIRCLE,
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
@@ -36,7 +35,7 @@ class Cameo(object):
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 23)
+    ) = range(0, 22)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -63,7 +62,6 @@ class Cameo(object):
         self._closingIterations            = 2
 
         ### Ball Tracking ###
-        self._shouldFindCircle             = False
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
@@ -81,7 +79,7 @@ class Cameo(object):
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
         self._shouldDrawVerocityVector     = False
-        self._shouldDrawAccelerationVector = False
+        self._shouldDrawAccelerationVector = True
         self._shouldDrawForceVector        = False
         self._gravityStrength              = 100
         self._shouldDrawSynthesizedVector  = False
@@ -244,7 +242,6 @@ class Cameo(object):
 
                         self._isTracking = True
 
-            # if self._shouldFindCircle:
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle and self._isTracking:
                 # HSV色空間に変換
@@ -299,11 +296,13 @@ class Cameo(object):
                         vector = utils.getVelocityVector(self._passedPoints, self._numFramesDelay,
                                                          int(self._numFramesDelay/2))
                         if vector is not None:
+                            print int(vector[0]), int(vector[1])
                             utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
 
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
-                        vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
 
@@ -336,6 +335,15 @@ class Cameo(object):
                                                                         self._numFramesDelay*2)
                         if synthesizedVector is not None:
                             utils.cvArrow(frameToDisplay, pt, synthesizedVector, 1, (0,0,255), 5)
+                            # 接触力ベクトルと加速度ベクトルのあいだに線を引く
+                            ptSV = (pt[0]+synthesizedVector[0], pt[1]+synthesizedVector[1])
+                            if contactForceVector is not None:
+                                ptCF = (pt[0]+contactForceVector[0], pt[1]+contactForceVector[1])
+                                utils.cvLine(frameToDisplay, ptSV, ptCF, (0,0,255), 1)
+                            # 重力ベクトルと加速度ベクトルのあいだに線を引く
+                            ptGF = (pt[0], pt[1]+self._gravityStrength)
+                            utils.cvLine(frameToDisplay, ptSV, ptGF, (0,0,255), 1)
+
 
 
             # Cannyエッジ検出
@@ -411,8 +419,6 @@ class Cameo(object):
                 put('Should Draw Force Vector'           , self._shouldDrawForceVector)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
-            elif cur == self.SHOULD_FIND_CIRCLE:
-                put('Should Find Circle'                 , self._shouldFindCircle)
             elif cur == self.SHOULD_TRACK_CIRCLE:
                 put('Should Track Circle'                , self._shouldTrackCircle)
             elif cur == self.SHOULD_DRAW_CANNY_EDGE:
@@ -552,17 +558,14 @@ class Cameo(object):
                 pitch = 1  if keycode == 0 else -1
                 self._closingIterations += pitch
             elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-                self._shouldFindCircle = True
                 if  self._shouldDrawCircle:
                     self._shouldDrawCircle = False
                 else:
-                    self._shouldFindCircle = True
                     self._shouldDrawCircle = True
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
                 if  self._shouldDrawTracks:
                     self._shouldDrawTracks = False
                 else:
-                    self._shouldFindCircle = True
                     self._passedPoints = []  # 軌跡を消去する
                     self._shouldDrawTracks = True
             elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
@@ -593,9 +596,6 @@ class Cameo(object):
                     self._shouldDrawSynthesizedVector = False
                 else:
                     self._shouldDrawSynthesizedVector = True
-            elif self._currentAdjusting == self.SHOULD_FIND_CIRCLE:
-                self._shouldFindCircle = \
-                    not self._shouldFindCircle
             elif self._currentAdjusting == self.SHOULD_TRACK_CIRCLE:
                 if self._shouldTrackCircle:
                     self._shouldTrackCircle = False

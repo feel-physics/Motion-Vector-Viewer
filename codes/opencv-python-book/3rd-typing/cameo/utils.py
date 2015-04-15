@@ -28,19 +28,23 @@ def getVelocityVector(passedPoints, population=1, numDelayFrames=0):
             vector = tuple(dptnp)
             return vector
 
-def getAccelerationVector(passedPoints, population=2):
+def getAccelerationVector(passedPoints, population=2, numDelayFrames=0):
     pop = int(population / 2)  # 切り捨て
-    if len(passedPoints) < 1+2*pop \
-            or passedPoints[-1] is None \
-            or passedPoints[-1-pop] is None \
-            or passedPoints[-1-2*pop] is None:
+    if len(passedPoints) < 1+2*pop+numDelayFrames \
+            or passedPoints[-1-numDelayFrames] is None \
+            or passedPoints[-1-pop-numDelayFrames] is None \
+            or passedPoints[-1-2*pop-numDelayFrames] is None:
         return None
     else:
         # [-1-pop]から[-1-2*pop]のときの速度
-        velocity0 = getVelocityVector(passedPoints, pop, pop)
+        velocity0 = getVelocityVector(passedPoints, pop, pop+numDelayFrames)
         # [-1]から[-1-pop]のときの速度
-        velocity1 = getVelocityVector(passedPoints, pop)
+        velocity1 = getVelocityVector(passedPoints, pop, numDelayFrames)
         if velocity0 is not None and velocity1 is not None:
+
+            printVector('v0', velocity0)
+            printVector('v1', velocity1)
+
             v0np = numpy.array(velocity0)
             v1np = numpy.array(velocity1)
             dvnp = v1np - v0np  # v1 - v0 = Δv
@@ -51,7 +55,26 @@ def getAccelerationVector(passedPoints, population=2):
             else:
                 dvnp = dvnp * 10.0 / pop
                 vector = tuple(dvnp)
+
+                printVector('a ', vector)
+
                 return vector
+
+def printVector(name, tuple):
+    tupleInt = (int(tuple[0]), int(tuple[1]))
+    # print name + ': ' + str(tupleInt)
+
+def getAccelerationVectorVelocitySensitive(passedPoints):
+    # passedPoints[-6]とpassedPoints[-7]の
+    # あいだの距離が40ピクセル以上のときは母数2で加速度を求める
+    vVector = getVelocityVector(passedPoints, 1, 5)
+    if vVector is None:
+        pass
+    elif 40 < math.sqrt(vVector[0]**2 + vVector[1]**2):
+        # print '40 < v'
+        return getAccelerationVector(passedPoints, 6, 3)
+    else:
+        return getAccelerationVector(passedPoints, 12, 0)
 
 def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
     if int(vector[0]) == 0 and int(vector[1]) == 0:
@@ -74,6 +97,11 @@ def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=
         # 矢印の先端を描画する
         cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
         cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
+
+def cvLine(img, pt1, pt2, color, thickness=1):
+    pt1 = (int(pt1[0]), int(pt1[1]))
+    pt2 = (int(pt2[0]), int(pt2[1]))
+    cv2.line(img, pt1, pt2, color, thickness)
 
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
