@@ -49,8 +49,8 @@ def getAccelerationVector(passedPoints, population=2, numDelayFrames=0):
             v1np = numpy.array(velocity1)
             dvnp = v1np - v0np  # v1 - v0 = Δv
             # 速度変化してなければNoneを返す
-            areSamePoint_array = (dvnp == numpy.array([0,0]))
-            if areSamePoint_array.all():
+            areSameVelocity_array = (dvnp == numpy.array([0,0]))
+            if areSameVelocity_array.all():
                 return None
             else:
                 dvnp = dvnp * 10.0 / pop
@@ -59,6 +59,38 @@ def getAccelerationVector(passedPoints, population=2, numDelayFrames=0):
                 printVector('a ', vector)
 
                 return vector
+
+def getAccelerationVectorFirFilter(passedPoints, population=2, numDelayFrames=5):
+    # at frame 12: a6 = v7 - v6 = ((Pt7 - Pt2) - (Pt6 - Pt1))
+    # at frame 12: a7 = v8 - v6 = ((Pt8 - Pt3) - (Pt6 - Pt1)) / 2
+    # at frame 12: a8 = v9 - v6 = ((Pt9 - Pt4) - (Pt6 - Pt1)) / 3
+    v1 = getVelocityVector(passedPoints, 6, 6-population)
+    v0 = getVelocityVector(passedPoints, 6, 6)
+    if v1 is None or v0 is None:
+        pass
+    # # TODO: 次の3行はHard Coded
+    # if len(passedPoints) < 2*population+numDelayFrames \
+    #         or passedPoints[1-population*2-numDelayFrames] is None \
+    #         or passedPoints[2-population*2-numDelayFrames] is None \
+    #         or passedPoints[  population  -numDelayFrames] is None \
+    #         or passedPoints[1-population  -numDelayFrames] is None:
+    #     return None
+    else:
+        v1np = numpy.array(v1)
+        v0np = numpy.array(v0)
+        # pt1np = numpy.array(passedPoints[1-population*2-numDelayFrames])  # 12-11=1
+        # pt2np = numpy.array(passedPoints[2-population*2-numDelayFrames])  # 12-10=2
+        # pt6np = numpy.array(passedPoints[ -population  -numDelayFrames])  # 12-6 =6
+        # pt7np = numpy.array(passedPoints[1-population  -numDelayFrames])  # 12-5 =7
+        # a6np  = ((pt7np - pt2np) - (pt6np - pt1np)) * 10.0 / population
+        anp = (v1np - v0np) * 50.0 / population
+        # 加速度が0ならNoneを返す
+        areSameVelocity_array = (anp == numpy.array([0,0]))
+        if areSameVelocity_array.all():
+            return None
+        else:
+            vector = tuple(anp)
+            return vector
 
 def printVector(name, tuple):
     tupleInt = (int(tuple[0]), int(tuple[1]))

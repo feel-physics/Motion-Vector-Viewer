@@ -273,6 +273,13 @@ class Cameo(object):
                 if len(self._passedPoints) - self._numFramesDelay > 0:
                     numPointsVisible = len(self._passedPoints) - self._numFramesDelay
 
+                    # if numPointsVisible >= 2:
+                    #     print self._passedPoints[numPointsVisible-1][0] \
+                    #         - self._passedPoints[numPointsVisible-2][0], \
+                    #         + self._passedPoints[numPointsVisible-1][1] \
+                    #         - self._passedPoints[numPointsVisible-2][1]
+
+
                     # 軌跡を描画する
                     if self._shouldDrawTracks:
                         for i in range(numPointsVisible - 1):
@@ -296,13 +303,13 @@ class Cameo(object):
                         vector = utils.getVelocityVector(self._passedPoints, self._numFramesDelay,
                                                          int(self._numFramesDelay/2))
                         if vector is not None:
-                            print int(vector[0]), int(vector[1])
                             utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
 
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
                         # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
+                        # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
+                        vector = utils.getAccelerationVectorFirFilter(self._passedPoints, 6, 6)
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
 
