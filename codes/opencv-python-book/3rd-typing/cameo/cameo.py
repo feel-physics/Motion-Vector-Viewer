@@ -87,8 +87,10 @@ class Cameo(object):
         self._currentAdjusting             = self.GRAVITY_STRENGTH
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 6
+        self._numFramesDelay               = 5
         self._enteredFrames                = []
+        self._populationVelocity           = 6
+        self._populationAcceleration       = 6
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -300,8 +302,8 @@ class Cameo(object):
 
                     # 速度ベクトルを描画する
                     if self._shouldDrawVerocityVector:
-                        vector = utils.getVelocityVector(self._passedPoints, self._numFramesDelay,
-                                                         int(self._numFramesDelay/2))
+                        vector = utils.getVelocityVector(self._passedPoints, self._populationVelocity,
+                                                         int(self._populationVelocity/2))
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
 
@@ -309,7 +311,8 @@ class Cameo(object):
                     if self._shouldDrawAccelerationVector:
                         # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
-                        vector = utils.getAccelerationVectorFirFilter(self._passedPoints, 6, 6)
+                        vector = utils.getAccelerationVectorFirFilter(self._passedPoints,
+                                                                      self._populationAcceleration, 3)
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
 
