@@ -64,12 +64,12 @@ def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3)
 
     ### 静止判定
 
-    v6 = getVelocityVector(passedPoints, 6, 0)
-    v5 = getVelocityVector(passedPoints, 6, 1)
-    v4 = getVelocityVector(passedPoints, 6, 2)
-    v3 = getVelocityVector(passedPoints, 6, 3)
-    v2 = getVelocityVector(passedPoints, 6, 4)
-    v1 = getVelocityVector(passedPoints, 6, 5)
+    v6 = getVelocityVector(passedPoints, 1, 0)
+    v5 = getVelocityVector(passedPoints, 1, 1)
+    v4 = getVelocityVector(passedPoints, 1, 2)
+    v3 = getVelocityVector(passedPoints, 1, 3)
+    v2 = getVelocityVector(passedPoints, 1, 4)
+    v1 = getVelocityVector(passedPoints, 1, 5)
 
     v6np = numpy.array([0,0]) if v6 is None else numpy.array(v6)
     v5np = numpy.array([0,0]) if v5 is None else numpy.array(v5)
@@ -82,8 +82,8 @@ def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3)
     vNpBefore = (v3np + v2np + v1np) / 3
     vSizeAfter  = math.sqrt(vNpAfter[0] **2 + vNpAfter[1] **2)
     vSizeBefore = math.sqrt(vNpBefore[0]**2 + vNpBefore[1]**2)
-    if math.fabs(vSizeAfter - vSizeBefore) > 20:
-        print '静止／急発進した ' + str(int(vSizeAfter - vSizeBefore))
+    if 20 < math.fabs(vSizeAfter - vSizeBefore):
+        # print '静止／急発進した ' + str(int(vSizeAfter - vSizeBefore))
         anp = (vNpAfter - vNpBefore) * 50.0 / 3
         # 加速度が0ならNoneを返す
         areSameVelocity_array = (anp == numpy.array([0,0]))
@@ -92,6 +92,12 @@ def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3)
         else:
             vector = tuple(anp)
             return vector
+    elif vSizeAfter < 10:
+        print '静止（After）'
+        return None
+    elif vSizeBefore < 10:
+        print '静止（Before）'
+        return None
 
     ### メイン
 
