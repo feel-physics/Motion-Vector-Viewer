@@ -92,6 +92,8 @@ class Cameo(object):
         self._populationVelocity           = 6
         self._populationAcceleration       = 6
 
+        self._numZeroMeanShift             = 0
+
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
 
@@ -259,6 +261,11 @@ class Cameo(object):
                 ret, self._track_window = cv2.meanShift(dst, self._track_window,
                                                         ( cv2.TERM_CRITERIA_EPS |
                                                           cv2.TERM_CRITERIA_COUNT, 10, 1 ))
+
+                if 7 <= ret:
+                        self._isTracking = False
+                        print '7 <= ret'
+
                 x,y,w,h = self._track_window
 
                 # 追跡している領域を描く

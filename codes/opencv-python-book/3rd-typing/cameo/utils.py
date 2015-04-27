@@ -93,10 +93,10 @@ def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3)
             vector = tuple(anp)
             return vector
     elif vSizeAfter < 10:
-        print '静止（After）'
+        # print '静止（After）'
         return None
     elif vSizeBefore < 10:
-        print '静止（Before）'
+        # print '静止（Before）'
         return None
 
     ### メイン
