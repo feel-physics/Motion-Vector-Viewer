@@ -7,7 +7,7 @@ import math
 
 def getVelocityVector(passedPoints, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
-    # indexRewindは加速度を求めるのに使う
+    # populationが3の場合はvはPt[-1],Pt[-4]を参照する。
     if len(passedPoints) < population+numFramesDelay+1 \
             or passedPoints[-1-numFramesDelay] is None \
             or passedPoints[-1-population-numFramesDelay] is None:
@@ -60,48 +60,37 @@ def getAccelerationVector(passedPoints, population=2, numFramesDelay=0):
 
                 return vector
 
-def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3):
+def getAccelerationVectorStartStop(passedPoints, population=6, numFramesDelay=3):
 
     ### 静止判定
 
-    v6 = getVelocityVector(passedPoints, 1, 0)
-    v5 = getVelocityVector(passedPoints, 1, 1)
-    v4 = getVelocityVector(passedPoints, 1, 2)
-    v3 = getVelocityVector(passedPoints, 1, 3)
-    v2 = getVelocityVector(passedPoints, 1, 4)
-    v1 = getVelocityVector(passedPoints, 1, 5)
+    # v6 - v3 = Δv3 = a3
+    #
+    v6 = getVelocityVector(passedPoints, 3, 0+numFramesDelay)
+    v3 = getVelocityVector(passedPoints, 3, 3+numFramesDelay)
 
     v6np = numpy.array([0,0]) if v6 is None else numpy.array(v6)
-    v5np = numpy.array([0,0]) if v5 is None else numpy.array(v5)
-    v4np = numpy.array([0,0]) if v4 is None else numpy.array(v4)
     v3np = numpy.array([0,0]) if v3 is None else numpy.array(v3)
-    v2np = numpy.array([0,0]) if v2 is None else numpy.array(v2)
-    v1np = numpy.array([0,0]) if v1 is None else numpy.array(v1)
 
-    vNpAfter  = (v6np + v5np + v4np) / 3
-    vNpBefore = (v3np + v2np + v1np) / 3
-    vSizeAfter  = math.sqrt(vNpAfter[0] **2 + vNpAfter[1] **2)
-    vSizeBefore = math.sqrt(vNpBefore[0]**2 + vNpBefore[1]**2)
-    if 20 < math.fabs(vSizeAfter - vSizeBefore):
+    v6size = math.sqrt(v6np[0]**2 + v6np[1]**2)
+    v3size = math.sqrt(v3np[0]**2 + v3np[1]**2)
+
+    if 20 < math.fabs(v6size - v3size):
         # print '静止／急発進した ' + str(int(vSizeAfter - vSizeBefore))
-        anp = (vNpAfter - vNpBefore) * 50.0 / 3
+        a3np = (v6np - v3np) * 50.0 / 3
         # 加速度が0ならNoneを返す
-        areSameVelocity_array = (anp == numpy.array([0,0]))
+        areSameVelocity_array = (a3np == numpy.array([0,0]))
         if areSameVelocity_array.all():
             return None
         else:
-            vector = tuple(anp)
-            return vector
-    elif vSizeAfter < 10:
-        # print '静止（After）'
-        return None
-    elif vSizeBefore < 10:
-        # print '静止（Before）'
-        return None
+            vector = tuple(a3np)
+            return 'startStop', vector
+    else:
+        return 'usual'
 
-    ### メイン
-
+def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3):
     # populationVelocityは6
+    # v_6 - v_0 = Δv0 = a_0
     v11 = getVelocityVector(passedPoints, 6, numFramesDelay)
     v10 = getVelocityVector(passedPoints, 6, population+numFramesDelay)
     if v11 is None or v10 is None:

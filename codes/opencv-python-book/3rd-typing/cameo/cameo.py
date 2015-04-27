@@ -81,16 +81,17 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._shouldDrawAccelerationVector = True
         self._shouldDrawForceVector        = False
-        self._gravityStrength              = 100
+        self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
         self._currentAdjusting             = self.GRAVITY_STRENGTH
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 5
+        self._numFramesDelay               = 6
         self._enteredFrames                = []
         self._populationVelocity           = 6
         self._populationAcceleration       = 6
+        self._indexStartStop               = None
 
         self._numZeroMeanShift             = 0
 
@@ -264,6 +265,7 @@ class Cameo(object):
 
                 if 7 <= ret:
                         self._isTracking = False
+                        self._passedPoints = []  # 軌跡を消去する
                         print '7 <= ret'
 
                 x,y,w,h = self._track_window
@@ -314,20 +316,34 @@ class Cameo(object):
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
 
+                    # 加速度ベクトルを求める
+                    # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                    # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
+                    aclVector = None
+                    result = utils.getAccelerationVectorStartStop(
+                        self._passedPoints, self._populationAcceleration, 3
+                    )
+                    if result[0] is 'startStop':
+                        self._indexStartStop = len(self._passedPoints)
+                        aclVector = result[1]
+                    # 急発進／静止後3フレームは通常の加速度を表示しない
+                    elif result == 'usual' \
+                            and self._indexStartStop is not None \
+                            and self._indexStartStop+4 < numPointsVisible:
+                        aclVector = utils.getAccelerationVectorFirFilter(
+                            self._passedPoints, self._populationAcceleration, 0
+                        )
+
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
-                        # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
-                        vector = utils.getAccelerationVectorFirFilter(self._passedPoints,
-                                                                      self._populationAcceleration, 3)
-                        if vector is not None:
-                            utils.cvArrow(frameToDisplay, pt, vector, 1, (0,255,0), 5)
+                        if aclVector is not None:
+                            utils.cvArrow(frameToDisplay, pt, aclVector, 1, (0,255,0), 5)
 
                     # 力ベクトルを描画する
                     yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
                     ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
                     if self._shouldDrawForceVector:
-                        aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
                             aclVector = (0,0)
                         vector = (aclVector[0], aclVector[1] - self._gravityStrength)
@@ -338,7 +354,7 @@ class Cameo(object):
                     # 力ベクトルの合成を描画する
                     if self._shouldDrawSynthesizedVector:
                         # 手による接触力
-                        aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
                             aclVector = (0,0)
                         contactForceVector = (aclVector[0], aclVector[1] - self._gravityStrength)
@@ -348,8 +364,9 @@ class Cameo(object):
                         gravityForceVector = (0, self._gravityStrength)
                         utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,0,255), 2)
                         # 合力
-                        synthesizedVector = utils.getAccelerationVector(self._passedPoints,
-                                                                        self._numFramesDelay*2)
+                        # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
+                        #                                                 self._numFramesDelay*2)
+                        synthesizedVector = aclVector
                         if synthesizedVector is not None:
                             utils.cvArrow(frameToDisplay, pt, synthesizedVector, 1, (0,0,255), 5)
                             # 接触力ベクトルと加速度ベクトルのあいだに線を引く
