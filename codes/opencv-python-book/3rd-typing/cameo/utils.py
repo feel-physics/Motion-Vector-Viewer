@@ -60,7 +60,11 @@ def getAccelerationVector(passedPoints, population=2, numFramesDelay=0):
 
                 return vector
 
-def getAccelerationVectorStartStop(passedPoints, population=6, numFramesDelay=3):
+def getAccelerationVectorStartStop(
+        passedPoints,
+        population=6,
+        numFramesDelay=3,
+        coForceVectorStrength=25.0):
 
     ### 静止判定
 
@@ -77,18 +81,22 @@ def getAccelerationVectorStartStop(passedPoints, population=6, numFramesDelay=3)
 
     if 20 < math.fabs(v6size - v3size):
         # print '静止／急発進した ' + str(int(vSizeAfter - vSizeBefore))
-        a3np = (v6np - v3np) * 50.0 / 3
+        a3np = (v6np - v3np) * coForceVectorStrength / 3
         # 加速度が0ならNoneを返す
         areSameVelocity_array = (a3np == numpy.array([0,0]))
         if areSameVelocity_array.all():
             return None
         else:
             vector = tuple(a3np)
-            return 'startStop', vector
+            return 'quickMotion', vector
     else:
         return 'usual'
 
-def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3):
+def getAccelerationVectorFirFilter(
+        passedPoints,
+        population=6,
+        numFramesDelay=3,
+        coForceVectorStrength=25.0):
     # populationVelocityは6
     # v_6 - v_0 = Δv0 = a_0
     v11 = getVelocityVector(passedPoints, 6, numFramesDelay)
@@ -98,7 +106,7 @@ def getAccelerationVectorFirFilter(passedPoints, population=6, numFramesDelay=3)
     else:
         v11np = numpy.array(v11)
         v10np = numpy.array(v10)
-        anp = (v11np - v10np) * 50.0 / population
+        anp = (v11np - v10np) * coForceVectorStrength / population
         # 加速度が0ならNoneを返す
         areSameVelocity_array = (anp == numpy.array([0,0]))
         if areSameVelocity_array.all():

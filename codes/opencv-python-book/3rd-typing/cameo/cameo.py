@@ -31,17 +31,20 @@ class Cameo(object):
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         GRAVITY_STRENGTH,
-        SHOULD_DRAW_FORCE_VECTOR,
+        SHOULD_PROCESS_QUICK_MOTION,
+        SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
+        SHOULD_DRAW_FORCE_VECTOR_TOP,
+        CO_FORCE_VECTOR_STRENGTH,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 22)
+    ) = range(0, 25)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
-        GRAY_SCALE,
+        # GRAY_SCALE,
         WHAT_COMPUTER_SEE
-    ) = range(0, 3)
+    ) = range(0, 2)
 
     def __init__(self):
 
@@ -79,19 +82,22 @@ class Cameo(object):
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
         self._shouldDrawVerocityVector     = False
-        self._shouldDrawAccelerationVector = True
-        self._shouldDrawForceVector        = False
-        self._gravityStrength              = 200
+        self._shouldDrawAccelerationVector = False
+        self._shouldDrawForceVectorBottom  = False
+        self._shouldDrawForceVectorTop     = True
+        self._gravityStrength              = 500
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.GRAVITY_STRENGTH
+        self._currentAdjusting             = self.CO_FORCE_VECTOR_STRENGTH
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 6
+        self._numFramesDelay               = 4
         self._enteredFrames                = []
         self._populationVelocity           = 6
         self._populationAcceleration       = 6
-        self._indexStartStop               = None
+        self._indexQuickMotion             = None
+        self._shouldProcessQuickMotion     = False
+        self._coForceVectorStrength        = 10.0
 
         self._numZeroMeanShift             = 0
 
@@ -164,37 +170,37 @@ class Cameo(object):
                     1)                        # 円の最大半径
                 return circles
 
-            if self._currentShowing == self.GRAY_SCALE:
-                mask = getMaskToFindCircle(self, frameToDisplay)
-
-                # カメラ画像をHSVチャンネルに分離し・・・
-                frame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
-                h, s, v = cv2.split(frame)
-
-                # マスク部分の明度をガンマ補正し・・・
-                v = filters.letMaskMoreBright(v, mask, self._gamma)
-
-                # マスク部分以外は・・・
-
-                # mask（1チャンネル画像）の該当ピクセルが0のとき、
-                # notMask（1チャンネル画像）の該当ピクセルを255にセットする。
-                # さもなくば、0にセットする。
-                # 要するにnotMaskはmaskを反転させたもの。
-                notMask = cv2.compare(mask, 0, cv2.CMP_EQ)
-
-                # 彩度を0にする
-                cv2.bitwise_and(s, 0, s, notMask) # 論理積
-
-                frame = cv2.merge((h, s, v))
-                cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
-
-            elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                pass
-                # gray = getMaskToFindCircle(self, frameToDisplay)
-                # cv2.merge((gray, gray, gray), frameToDisplay)
-
-            elif self._currentShowing == self.ORIGINAL:
-                pass
+            # if self._currentShowing == self.GRAY_SCALE:
+            #     mask = getMaskToFindCircle(self, frameToDisplay)
+            #
+            #     # カメラ画像をHSVチャンネルに分離し・・・
+            #     frame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
+            #     h, s, v = cv2.split(frame)
+            #
+            #     # マスク部分の明度をガンマ補正し・・・
+            #     v = filters.letMaskMoreBright(v, mask, self._gamma)
+            #
+            #     # マスク部分以外は・・・
+            #
+            #     # mask（1チャンネル画像）の該当ピクセルが0のとき、
+            #     # notMask（1チャンネル画像）の該当ピクセルを255にセットする。
+            #     # さもなくば、0にセットする。
+            #     # 要するにnotMaskはmaskを反転させたもの。
+            #     notMask = cv2.compare(mask, 0, cv2.CMP_EQ)
+            #
+            #     # 彩度を0にする
+            #     cv2.bitwise_and(s, 0, s, notMask) # 論理積
+            #
+            #     frame = cv2.merge((h, s, v))
+            #     cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
+            #
+            # elif self._currentShowing == self.WHAT_COMPUTER_SEE:
+            #     pass
+            #     # gray = getMaskToFindCircle(self, frameToDisplay)
+            #     # cv2.merge((gray, gray, gray), frameToDisplay)
+            #
+            # elif self._currentShowing == self.ORIGINAL:
+            #     pass
 
 
             ### 物体追跡・描画処理 ###
@@ -263,10 +269,10 @@ class Cameo(object):
                                                         ( cv2.TERM_CRITERIA_EPS |
                                                           cv2.TERM_CRITERIA_COUNT, 10, 1 ))
 
-                if 7 <= ret:
+                if 9 <= ret:
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
-                        print '7 <= ret'
+                        print '9 <= ret'
 
                 x,y,w,h = self._track_window
 
@@ -320,18 +326,29 @@ class Cameo(object):
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                     # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
                     aclVector = None
-                    result = utils.getAccelerationVectorStartStop(
-                        self._passedPoints, self._populationAcceleration, 3
-                    )
-                    if result[0] is 'startStop':
-                        self._indexStartStop = len(self._passedPoints)
-                        aclVector = result[1]
-                    # 急発進／静止後3フレームは通常の加速度を表示しない
-                    elif result == 'usual' \
-                            and self._indexStartStop is not None \
-                            and self._indexStartStop+4 < numPointsVisible:
+                    if self._shouldProcessQuickMotion:
+                        result = utils.getAccelerationVectorStartStop(
+                            self._passedPoints, self._populationAcceleration, 3, self._coForceVectorStrength
+                        )
+                        if result[0] is 'quickMotion':
+                            self._indexQuickMotion = len(self._passedPoints)
+                            aclVector = result[1]
+                        # 急発進／静止後3フレームは通常の加速度を表示しない
+                        elif result == 'usual' \
+                                and self._indexQuickMotion is not None \
+                                and self._indexQuickMotion+4 < numPointsVisible:
+                            aclVector = utils.getAccelerationVectorFirFilter(
+                                self._passedPoints,
+                                self._populationAcceleration,
+                                0,
+                                self._coForceVectorStrength
+                            )
+                    else:
                         aclVector = utils.getAccelerationVectorFirFilter(
-                            self._passedPoints, self._populationAcceleration, 0
+                            self._passedPoints,
+                            self._populationAcceleration,
+                            0,
+                            self._coForceVectorStrength
                         )
 
                     # 加速度ベクトルを描画する
@@ -340,16 +357,24 @@ class Cameo(object):
                             utils.cvArrow(frameToDisplay, pt, aclVector, 1, (0,255,0), 5)
 
                     # 力ベクトルを描画する
-                    yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
-                    ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
-                    if self._shouldDrawForceVector:
-                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                    def drawForceVector(aclVector, ptAcl):
                         if aclVector is None:
                             aclVector = (0,0)
                         vector = (aclVector[0], aclVector[1] - self._gravityStrength)
 
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
+
+                    if self._shouldDrawForceVectorBottom:
+                        yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
+                        ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
+                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                        drawForceVector(aclVector, ptAcl)
+
+                    if self._shouldDrawForceVectorTop:
+                        yPtAcl = self._passedPoints[numPointsVisible][1] - h/2
+                        ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
+                        drawForceVector(aclVector, ptAcl)
 
                     # 力ベクトルの合成を描画する
                     if self._shouldDrawSynthesizedVector:
@@ -449,8 +474,14 @@ class Cameo(object):
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
             elif cur == self.GRAVITY_STRENGTH:
                 put('Gravity Strength'                   , self._gravityStrength)
-            elif cur == self.SHOULD_DRAW_FORCE_VECTOR:
-                put('Should Draw Force Vector'           , self._shouldDrawForceVector)
+            elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
+                put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
+            elif cur == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
+                put('Should Draw Force Vector Bottom'    , self._shouldDrawForceVectorBottom)
+            elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+                put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
+            elif cur == self.CO_FORCE_VECTOR_STRENGTH:
+                put('Coefficient Force Vector Strength'  , self._coForceVectorStrength)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -618,13 +649,22 @@ class Cameo(object):
                 else:
                     self._shouldDrawAccelerationVector = True
             elif self._currentAdjusting == self.GRAVITY_STRENGTH:
-                pitch = 50  if keycode == 0 else -50
+                pitch = 100  if keycode == 0 else -100
                 self._gravityStrength += pitch
-            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR:
-                if  self._shouldDrawForceVector:
-                    self._shouldDrawForceVector = False
+            elif self._currentAdjusting == self.CO_FORCE_VECTOR_STRENGTH:
+                pitch = 1.0  if keycode == 0 else -1.0
+                self._coForceVectorStrength += pitch
+            elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
+                self._shouldProcessQuickMotion = \
+                    not self._shouldProcessQuickMotion
+            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
+                if  self._shouldDrawForceVectorBottom:
+                    self._shouldDrawForceVectorBottom = False
                 else:
-                    self._shouldDrawForceVector = True
+                    self._shouldDrawForceVectorBottom = True
+            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+                self._shouldDrawForceVectorTop = not \
+                    self._shouldDrawForceVectorTop
             elif self._currentAdjusting == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 if  self._shouldDrawSynthesizedVector:
                     self._shouldDrawSynthesizedVector = False
