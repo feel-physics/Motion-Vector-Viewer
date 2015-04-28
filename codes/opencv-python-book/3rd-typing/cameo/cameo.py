@@ -30,6 +30,7 @@ class Cameo(object):
         SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
+        IS_MODE_PENDULUM,
         GRAVITY_STRENGTH,
         SHOULD_PROCESS_QUICK_MOTION,
         SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
@@ -38,7 +39,7 @@ class Cameo(object):
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 25)
+    ) = range(0, 26)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -54,10 +55,10 @@ class Cameo(object):
 
         ### Filtering
         self._hueMin                       = 50  # 硬式テニスボール
-        self._hueMax                       = 80
+        self._hueMax                       = 100
         self._sThreshold                   = 5
         self._valueMin                     = 60
-        self._valueMax                     = 260
+        self._valueMax                     = 250
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -85,19 +86,20 @@ class Cameo(object):
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = True
-        self._gravityStrength              = 500
+        self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.CO_FORCE_VECTOR_STRENGTH
+        self._currentAdjusting             = self.IS_MODE_PENDULUM
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 4
+        self._numFramesDelay               = 6
         self._enteredFrames                = []
         self._populationVelocity           = 6
         self._populationAcceleration       = 6
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
-        self._coForceVectorStrength        = 10.0
+        self._coForceVectorStrength        = 7.0
+        self._isModePendulum               = False
 
         self._numZeroMeanShift             = 0
 
@@ -194,13 +196,13 @@ class Cameo(object):
             #     frame = cv2.merge((h, s, v))
             #     cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
             #
-            # elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-            #     pass
-            #     # gray = getMaskToFindCircle(self, frameToDisplay)
-            #     # cv2.merge((gray, gray, gray), frameToDisplay)
-            #
-            # elif self._currentShowing == self.ORIGINAL:
-            #     pass
+            if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                # pass
+                gray = getMaskToFindCircle(self, frameToDisplay)
+                cv2.merge((gray, gray, gray), frameToDisplay)
+
+            elif self._currentShowing == self.ORIGINAL:
+                pass
 
 
             ### 物体追跡・描画処理 ###
@@ -305,7 +307,7 @@ class Cameo(object):
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (255,255,255), 5)
 
-                    pt = self._passedPoints[numPointsVisible]
+                    pt = self._passedPoints[numPointsVisible-1]
 
                     # 変位ベクトルを描画する
                     if self._shouldDrawDisplacementVector:
@@ -366,14 +368,14 @@ class Cameo(object):
                             utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
 
                     if self._shouldDrawForceVectorBottom:
-                        yPtAcl = self._passedPoints[numPointsVisible][1] + h/2
-                        ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
+                        yPtAcl = self._passedPoints[numPointsVisible-1][1] + h/2
+                        ptAcl = (self._passedPoints[numPointsVisible-1][0], yPtAcl)
                         # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         drawForceVector(aclVector, ptAcl)
 
                     if self._shouldDrawForceVectorTop:
-                        yPtAcl = self._passedPoints[numPointsVisible][1] - h/2
-                        ptAcl = (self._passedPoints[numPointsVisible][0], yPtAcl)
+                        yPtAcl = self._passedPoints[numPointsVisible-1][1] - h/2
+                        ptAcl = (self._passedPoints[numPointsVisible-1][0], yPtAcl)
                         drawForceVector(aclVector, ptAcl)
 
                     # 力ベクトルの合成を描画する
@@ -384,10 +386,10 @@ class Cameo(object):
                             aclVector = (0,0)
                         contactForceVector = (aclVector[0], aclVector[1] - self._gravityStrength)
                         if contactForceVector is not None:
-                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (0,0,255), 2)
+                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (128,0,255), 2)
                         # 重力
                         gravityForceVector = (0, self._gravityStrength)
-                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,0,255), 2)
+                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,128,255), 2)
                         # 合力
                         # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
                         #                                                 self._numFramesDelay*2)
@@ -481,7 +483,9 @@ class Cameo(object):
             elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
                 put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
             elif cur == self.CO_FORCE_VECTOR_STRENGTH:
-                put('Coefficient Force Vector Strength'  , self._coForceVectorStrength)
+                put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
+            elif cur == self.IS_MODE_PENDULUM:
+                put('Pendulum Mode'                      , self._isModePendulum)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -491,8 +495,8 @@ class Cameo(object):
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
-                elif self._currentShowing == self.GRAY_SCALE:
-                    currentShowing = 'Gray Scale'
+                # elif self._currentShowing == self.GRAY_SCALE:
+                #     currentShowing = 'Gray Scale'
                 elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                     currentShowing = 'What Computer See'
                 else:
@@ -654,6 +658,28 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_FORCE_VECTOR_STRENGTH:
                 pitch = 1.0  if keycode == 0 else -1.0
                 self._coForceVectorStrength += pitch
+            elif self._currentAdjusting == self.IS_MODE_PENDULUM:
+                if self._isModePendulum:
+                    self._shouldDrawDisplacementVector = False
+                    self._shouldDrawVerocityVector     = False
+                    self._shouldDrawAccelerationVector = True
+                    self._shouldDrawForceVectorBottom  = False
+                    self._shouldDrawForceVectorTop     = False
+                    self._shouldDrawSynthesizedVector  = False
+                    self._coForceVectorStrength        = 50.0
+                    self._shouldProcessQuickMotion     = True
+                    self._isModePendulum = False
+                else:
+                    self._shouldDrawDisplacementVector = False
+                    self._shouldDrawVerocityVector     = False
+                    self._shouldDrawAccelerationVector = False
+                    self._shouldDrawForceVectorBottom  = False
+                    self._shouldDrawForceVectorTop     = False
+                    self._shouldDrawSynthesizedVector  = True
+                    self._gravityStrength              = 200
+                    self._coForceVectorStrength        = 7.0
+                    self._shouldProcessQuickMotion     = False
+                    self._isModePendulum = True
             elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
                 self._shouldProcessQuickMotion = \
                     not self._shouldProcessQuickMotion
