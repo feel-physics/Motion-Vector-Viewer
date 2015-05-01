@@ -55,10 +55,10 @@ class Cameo(object):
 
         ### Filtering
         self._hueMin                       = 50  # 硬式テニスボール
-        self._hueMax                       = 100
+        self._hueMax                       = 80
         self._sThreshold                   = 5
-        self._valueMin                     = 130
-        self._valueMax                     = 250
+        self._valueMin                     = 60
+        self._valueMax                     = 180
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -89,8 +89,8 @@ class Cameo(object):
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.IS_MODE_PENDULUM
-        self._currentShowing               = self.ORIGINAL
+        self._currentAdjusting             = self.SHOWING_FRAME
+        self._currentShowing               = self.WHAT_COMPUTER_SEE
 
         self._numFramesDelay               = 6
         self._enteredFrames                = []
@@ -138,7 +138,7 @@ class Cameo(object):
 
             # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
-            retMean = -1
+            densityTrackWindow = -1
 
 
             ### 画面表示 ###
@@ -268,14 +268,19 @@ class Cameo(object):
                     cv2.merge((dst, dst, dst), frameToDisplay)
 
                 # 新しい場所を取得するためにmeanshiftを適用
-                retMean, self._track_window = cv2.meanShift(dst, self._track_window,
+                _, self._track_window = cv2.meanShift(dst, self._track_window,
                                                         ( cv2.TERM_CRITERIA_EPS |
                                                           cv2.TERM_CRITERIA_COUNT, 10, 1 ))
 
-                if 9 <= retMean:
+                # 追跡中のウィンドウの密度を計算する
+                x, y, w, h = self._track_window
+                densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
+
+                # 密度が0.1未満なら追跡を中断する
+                if densityTrackWindow < 0.1:
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
-                        print '9 <= ret'
+                        print 'tracking interrupted'
 
                 x,y,w,h = self._track_window
 
@@ -438,7 +443,9 @@ class Cameo(object):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
             def put(label, value):
-                putText('FPS '+"{0:.1f}".format(fps)+' '+strIsTracking+' '+str(retMean), 1)
+                putText('FPS '+"{0:.1f}".format(fps)
+                        +' '+strIsTracking
+                        +' '+"{0:.2f}".format(densityTrackWindow), 1)
                 putText(label, 2)
                 if value is True:
                     value = 'True'
