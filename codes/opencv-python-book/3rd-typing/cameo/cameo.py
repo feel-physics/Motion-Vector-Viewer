@@ -57,7 +57,7 @@ class Cameo(object):
         self._hueMin                       = 50  # 硬式テニスボール
         self._hueMax                       = 100
         self._sThreshold                   = 5
-        self._valueMin                     = 60
+        self._valueMin                     = 130
         self._valueMax                     = 250
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -85,7 +85,7 @@ class Cameo(object):
         self._shouldDrawVerocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
-        self._shouldDrawForceVectorTop     = True
+        self._shouldDrawForceVectorTop     = False
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
@@ -100,8 +100,6 @@ class Cameo(object):
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
         self._isModePendulum               = False
-
-        self._numZeroMeanShift             = 0
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -139,6 +137,8 @@ class Cameo(object):
                 self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
             # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
+
+            retMean = -1
 
 
             ### 画面表示 ###
@@ -198,7 +198,8 @@ class Cameo(object):
             #
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
                 # pass
-                gray = getMaskToFindCircle(self, frameToDisplay)
+                # gray = getMaskToFindCircle(self, frameToDisplay)
+                gray = getMaskToFindCircle(self, frameNow)
                 cv2.merge((gray, gray, gray), frameToDisplay)
 
             elif self._currentShowing == self.ORIGINAL:
@@ -267,11 +268,11 @@ class Cameo(object):
                     cv2.merge((dst, dst, dst), frameToDisplay)
 
                 # 新しい場所を取得するためにmeanshiftを適用
-                ret, self._track_window = cv2.meanShift(dst, self._track_window,
+                retMean, self._track_window = cv2.meanShift(dst, self._track_window,
                                                         ( cv2.TERM_CRITERIA_EPS |
                                                           cv2.TERM_CRITERIA_COUNT, 10, 1 ))
 
-                if 9 <= ret:
+                if 9 <= retMean:
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
                         print '9 <= ret'
@@ -427,12 +428,17 @@ class Cameo(object):
                 timeElapsed = self._timeArrayToCalcFps[9] - self._timeArrayToCalcFps[0]
                 fps = 10 / (timeElapsed.seconds + timeElapsed.microseconds / 1000000.0)
 
+            if self._isTracking:
+                strIsTracking = 'Tracking'
+            else:
+                strIsTracking = 'Finding'
+
             # 情報を表示する
             def putText(text, lineNumber):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
             def put(label, value):
-                putText('FPS ' + "{0:.1f}".format(fps), 1)
+                putText('FPS '+"{0:.1f}".format(fps)+' '+strIsTracking+' '+str(retMean), 1)
                 putText(label, 2)
                 if value is True:
                     value = 'True'
