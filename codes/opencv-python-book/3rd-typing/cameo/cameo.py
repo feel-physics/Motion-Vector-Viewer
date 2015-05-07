@@ -31,6 +31,7 @@ class Cameo(object):
         SHOULD_DRAW_VEROCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         IS_MODE_PENDULUM,
+        NUM_FRAMES_DELAY,
         GRAVITY_STRENGTH,
         SHOULD_PROCESS_QUICK_MOTION,
         SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
@@ -39,7 +40,7 @@ class Cameo(object):
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOWING_FRAME
-    ) = range(0, 26)
+    ) = range(0, 27)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -54,11 +55,11 @@ class Cameo(object):
             cv2.VideoCapture(0), self._windowManager, False)
 
         ### Filtering
-        self._hueMin                       = 50  # 硬式テニスボール
-        self._hueMax                       = 80
+        self._hueMin                       = 50  # 黄色のスーパーボール
+        self._hueMax                       = 90
         self._sThreshold                   = 5
         self._valueMin                     = 60
-        self._valueMax                     = 180
+        self._valueMax                     = 230
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -89,13 +90,13 @@ class Cameo(object):
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.SHOWING_FRAME
-        self._currentShowing               = self.WHAT_COMPUTER_SEE
+        self._currentAdjusting             = self.IS_MODE_PENDULUM
+        self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 6
+        self._numFramesDelay               = 13
         self._enteredFrames                = []
         self._populationVelocity           = 6
-        self._populationAcceleration       = 6
+        self._populationAcceleration       = 12
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
@@ -263,6 +264,13 @@ class Cameo(object):
                 # バックプロジェクションの計算
                 dst = cv2.calcBackProject([hsv],[0],self._roi_hist,[0,180],1)
 
+                # 8近傍
+                element8 = numpy.array([[1,1,1],
+                                        [1,1,1],
+                                        [1,1,1]], numpy.uint8)
+                # オープニング
+                cv2.morphologyEx(dst, cv2.MORPH_OPEN, element8, dst, None, 2)
+
                 # バックプロジェクションを描画するコード（デバッグ用）
                 if self._currentShowing == self.WHAT_COMPUTER_SEE:
                     cv2.merge((dst, dst, dst), frameToDisplay)
@@ -276,10 +284,11 @@ class Cameo(object):
                 x, y, w, h = self._track_window
                 densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
 
-                # 密度が0.1未満なら追跡を中断する
-                if densityTrackWindow < 0.1:
+                # 密度が0.05未満なら追跡を中断する
+                if densityTrackWindow < 0.05:
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
+                        self._indexQuickMotion = 0
                         print 'tracking interrupted'
 
                 x,y,w,h = self._track_window
@@ -499,6 +508,8 @@ class Cameo(object):
                 put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
             elif cur == self.IS_MODE_PENDULUM:
                 put('Pendulum Mode'                      , self._isModePendulum)
+            elif cur == self.NUM_FRAMES_DELAY:
+                put('Number of Delay Frames'             , self._numFramesDelay)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -671,6 +682,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_FORCE_VECTOR_STRENGTH:
                 pitch = 1.0  if keycode == 0 else -1.0
                 self._coForceVectorStrength += pitch
+            elif self._currentAdjusting == self.NUM_FRAMES_DELAY:
+                pitch = 1  if keycode == 0 else -1
+                self._numFramesDelay += pitch
             elif self._currentAdjusting == self.IS_MODE_PENDULUM:
                 if self._isModePendulum:
                     self._shouldDrawDisplacementVector = False
