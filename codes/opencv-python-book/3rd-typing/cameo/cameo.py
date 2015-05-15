@@ -55,11 +55,11 @@ class Cameo(object):
             cv2.VideoCapture(0), self._windowManager, False)
 
         ### Filtering
-        self._hueMin                       = 50  # 黄色のスーパーボール
-        self._hueMax                       = 90
+        self._hueMin                       = 60  # 黄色のスーパーボール 40  # 色紙
+        self._hueMax                       = 80  # 黄色のスーパーボール 50  # 色紙
         self._sThreshold                   = 5
         self._valueMin                     = 60
-        self._valueMax                     = 230
+        self._valueMax                     = 260
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -93,10 +93,10 @@ class Cameo(object):
         self._currentAdjusting             = self.IS_MODE_PENDULUM
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 13
+        self._numFramesDelay               = 6  # 13
         self._enteredFrames                = []
         self._populationVelocity           = 6
-        self._populationAcceleration       = 12
+        self._populationAcceleration       = 6  # 12
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
@@ -214,11 +214,6 @@ class Cameo(object):
                 # 検出用フレームをつくる
                 frameToFindCircle = getMaskToFindCircle(self, frameNow)
                 circles = getCircles(self, frameToFindCircle)  # 円を検出する
-
-                # TODO:ここが動かない
-                # if self._currentShowing == self.WHAT_COMPUTER_SEE:
-                #     gray = getMaskToFindCircle(self, frameToDisplay)
-                #     cv2.merge((gray, gray, gray), frameToDisplay)
 
                 if circles is not None:  # もし円を見つけたら・・・
                     x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・

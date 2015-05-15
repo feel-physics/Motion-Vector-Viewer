@@ -79,7 +79,7 @@ def getAccelerationVectorStartStop(
     v6size = math.sqrt(v6np[0]**2 + v6np[1]**2)
     v3size = math.sqrt(v3np[0]**2 + v3np[1]**2)
 
-    if 20 < math.fabs(v6size - v3size):
+    if 20 < math.fabs(v6size - v3size) and (v6size < 2.0 or v3size < 2.0):
         # print '静止／急発進した ' + str(int(vSizeAfter - vSizeBefore))
         a3np = (v6np - v3np) * coForceVectorStrength / 3
         # 加速度が0ならNoneを返す
