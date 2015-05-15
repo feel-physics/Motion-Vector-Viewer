@@ -55,8 +55,10 @@ class Cameo(object):
             cv2.VideoCapture(0), self._windowManager, False)
 
         ### Filtering
-        self._hueMin                       = 60  # 黄色のスーパーボール 40  # 色紙
-        self._hueMax                       = 80  # 黄色のスーパーボール 50  # 色紙
+        # self._hueMin                       = 40  # 色紙
+        # self._hueMax                       = 60  # 色紙
+        self._hueMin                       = 60  # テニスボール
+        self._hueMax                       = 80  # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 60
         self._valueMax                     = 260
@@ -284,7 +286,7 @@ class Cameo(object):
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
                         self._indexQuickMotion = 0
-                        print 'tracking interrupted'
+                        # print 'tracking interrupted'
 
                 x,y,w,h = self._track_window
 
@@ -296,7 +298,6 @@ class Cameo(object):
                 if self._track_window is not None:
                     # 通過点リストの最後に要素を追加する
                     self._passedPoints.append((x+w/2, y+h/2))
-                    # self._passedPoints.pop(0)  # 最初の要素は削除する
 
                 # 次の円が見つかっても見つからなくても・・・
                 if len(self._passedPoints) - self._numFramesDelay > 0:
@@ -367,6 +368,7 @@ class Cameo(object):
                     if self._shouldDrawAccelerationVector:
                         if aclVector is not None:
                             utils.cvArrow(frameToDisplay, pt, aclVector, 1, (0,255,0), 5)
+                            # print aclVector
 
                     # 力ベクトルを描画する
                     def drawForceVector(aclVector, ptAcl):
@@ -689,7 +691,7 @@ class Cameo(object):
                     self._shouldDrawForceVectorTop     = False
                     self._shouldDrawSynthesizedVector  = False
                     self._coForceVectorStrength        = 50.0
-                    self._shouldProcessQuickMotion     = True
+                    self._shouldProcessQuickMotion     = False
                     self._isModePendulum = False
                 else:
                     self._shouldDrawDisplacementVector = False
@@ -699,7 +701,7 @@ class Cameo(object):
                     self._shouldDrawForceVectorTop     = False
                     self._shouldDrawSynthesizedVector  = True
                     self._gravityStrength              = 200
-                    self._coForceVectorStrength        = 7.0
+                    self._coForceVectorStrength        = 13.0
                     self._shouldProcessQuickMotion     = False
                     self._isModePendulum = True
             elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
