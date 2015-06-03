@@ -127,6 +127,7 @@ class Cameo(object):
             # フレームを取得し・・・
             self._captureManager.enterFrame()
             frameToDisplay = self._captureManager.frame
+            frameToDisplay[:] = numpy.fliplr(frameToDisplay)
 
             # 数フレームを配列にためて、
             # 新しいフレームを末尾に追加し、
