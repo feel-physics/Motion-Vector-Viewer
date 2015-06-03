@@ -144,6 +144,13 @@ class Cameo(object):
 
             densityTrackWindow = -1
 
+            grayFrame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
+            corners = cv2.goodFeaturesToTrack(grayFrame, 300, 0.1, 5)
+            print len(corners), " corners found"
+
+            for point in corners:
+                center = int(point[0][0]), int(point[0][1])
+                cv2.circle(frameToDisplay, (center), 5, (0,255,255))
 
             ### 画面表示 ###
 
