@@ -135,12 +135,12 @@ class Cameo(object):
             # 新しいフレームを末尾に追加し、
             # 最初のフレームを取り出して表示する。
             frameNow = frameToDisplay.copy()  # 本当の現在のフレーム
-            self._enteredFrames.append(frameToDisplay.copy())  # ディープコピーしないと参照を持って行かれる
-            frameToDisplay[:] = self._enteredFrames[0]  # ためたフレームの最初のものを表示する
-            if len(self._enteredFrames) <= self._numFramesDelay:  # 最初はためる
-                pass
-            else:
-                self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
+            # self._enteredFrames.append(frameToDisplay.copy())  # ディープコピーしないと参照を持って行かれる
+            # frameToDisplay[:] = self._enteredFrames[0]  # ためたフレームの最初のものを表示する
+            # if len(self._enteredFrames) <= self._numFramesDelay:  # 最初はためる
+            #     pass
+            # else:
+            #     self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
             # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
 
@@ -252,8 +252,8 @@ class Cameo(object):
                 for i,(new,old) in enumerate(zip(good_new,good_old)):
                     a,b = new.ravel()
                     c,d = old.ravel()
-                    self._mask = cv2.line(self._mask, (a,b),(c,d), self._color[i].tolist(), 2)
-                    frameToDisplay[:] = cv2.circle(frameToDisplay, (a,b),5,self._color[i].tolist(),-1)
+                    cv2.line(self._mask, (a,b),(c,d), self._color[i].tolist(), 2)
+                    cv2.circle(frameToDisplay, (a,b),5,self._color[i].tolist())
                 frameToDisplay[:] = cv2.add(frameToDisplay, self._mask)
 
                 # Now update the previous frame and previous points
