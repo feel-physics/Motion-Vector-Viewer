@@ -107,6 +107,8 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
 
+        self._corners                      = None
+
     def _takeScreenShot(self):
         self._captureManager.writeImage(
             datetime.now().strftime('%y%m%d-%H%M%S')
@@ -144,16 +146,7 @@ class Cameo(object):
 
             densityTrackWindow = -1
 
-            grayFrame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
-            corners = cv2.goodFeaturesToTrack(grayFrame, 300, 0.1, 5)
-            print len(corners), " corners found"
-
-            for point in corners:
-                center = int(point[0][0]), int(point[0][1])
-                cv2.circle(frameToDisplay, (center), 5, (0,255,255))
-
             ### 画面表示 ###
-
 
             def getMaskToFindCircle(self, frame):
                 """
@@ -219,6 +212,55 @@ class Cameo(object):
 
             ### 物体追跡・描画処理 ###
 
+            ### オプティカルフローの実験中 ###
+
+            if self._corners is None:
+
+                # params for ShiTomasi corner detection
+                feature_params = dict( maxCorners = 100,
+                                       qualityLevel = 0.3,
+                                       minDistance = 7,
+                                       blockSize = 7 )
+
+                # Create some random colors
+                self._color = numpy.random.randint(0,255,(100,3))
+
+                # Take first frame and find corners in it
+                self._frameOldGray = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
+                self._corners = cv2.goodFeaturesToTrack(self._frameOldGray, mask=None, **feature_params)
+                # print len(corners), " corners found"
+                #
+                # for point in corners:
+                #     center = int(point[0][0]), int(point[0][1])
+                #     cv2.circle(frameToDisplay, (center), 5, (0,255,255))
+
+                # Create a mask image for drawing purposes
+                self._mask = numpy.zeros_like(frameToDisplay)
+            else:
+                frameGray = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
+
+                # calculate optical flow
+                cornersNew, st, err = cv2.calcOpticalFlowPyrLK(
+                    frameGray, self._frameOldGray, self._corners
+                )
+
+                # select good points
+                good_new = cornersNew[st==1]
+                good_old = self._corners[st==1]
+
+                # draw the tracks
+                for i,(new,old) in enumerate(zip(good_new,good_old)):
+                    a,b = new.ravel()
+                    c,d = old.ravel()
+                    self._mask = cv2.line(self._mask, (a,b),(c,d), self._color[i].tolist(), 2)
+                    frameToDisplay[:] = cv2.circle(frameToDisplay, (a,b),5,self._color[i].tolist(),-1)
+                frameToDisplay[:] = cv2.add(frameToDisplay, self._mask)
+
+                # Now update the previous frame and previous points
+                self._frameOldGray = frameGray.copy()
+                self._corners = good_new.reshape(-1,1,2)
+
+            ### オプティカルフロー終わり ###
 
             if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
