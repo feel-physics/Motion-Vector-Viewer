@@ -195,13 +195,13 @@ class BGRCurveFilter(BGRFuncFilter):
         """
         初期化する
         :param vPoints:
-        :rtype vPoints: list[tuple]
+        :type vPoints: list[tuple]
         :param bPoints:
-        :rtype bPoints: list[tuple]
+        :type bPoints: list[tuple]
         :param gPoints:
-        :rtype gPoints: list[tuple]
+        :type gPoints: list[tuple]
         :param rPoints:
-        :rtype rPoints: list[tuple]
+        :type rPoints: list[tuple]
         :param dtype:
         :return:
         """
