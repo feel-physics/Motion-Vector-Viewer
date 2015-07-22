@@ -98,6 +98,10 @@ class Cameo(object):
         elif keycode == 27: # エスケープ
             self._windowManager.destroyWindow()
 
+        elif keycode == ord('r'):
+            self._shouldDrawDebugRects = \
+                not self._shouldDrawDebugRects
+
         ### Filters ###
         elif keycode == ord('p'):
             self._shouldApplyPortraCurveFilter = \
