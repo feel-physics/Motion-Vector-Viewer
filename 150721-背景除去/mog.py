@@ -2,22 +2,12 @@
 __author__ = 'weed'
 
 import cv2
-from datetime import datetime
+import lib_video
 
 cap = cv2.VideoCapture(0)
 
 
-fps = 30
-size = (
-    int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH )),
-    int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
-)
-file_name = datetime.now().strftime('%y%m%d-%H%M%S') + '-screencast.avi'
-videoWriter = cv2.VideoWriter(
-    file_name,
-    cv2.cv.CV_FOURCC('I', '4', '2', '0'),  # aviファイル形式
-    fps,
-    size)
+videoWriter = lib_video.initVideoRecoder(cap)  # Video Record Code
 
 
 fgbg = cv2.BackgroundSubtractorMOG()
@@ -29,7 +19,7 @@ while True:
     cv2.imshow('frame',dst)
 
 
-    videoWriter.write(dst)
+    videoWriter.write(dst)  # Video Record Code
 
 
     k = cv2.waitKey(30) & 0xff
