@@ -110,6 +110,9 @@ class CaptureManager(object):
             # 削除する
             self._pausedFrame = None
 
+        # 画像スケールを1/2に落とす
+        self._frame = cv2.resize(self._frame[:], (640, 360))
+
         return self._frame
 
     @property
