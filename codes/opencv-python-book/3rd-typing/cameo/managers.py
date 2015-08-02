@@ -174,6 +174,11 @@ class CaptureManager(object):
             self._fpsEstimate = self._framesElapsed / timeElapsed
         self._framesElapsed += 1
 
+
+        # 画像スケールを2倍に上げる
+        # self._frame = cv2.resize(self._frame[:], (1280, 720))
+
+
         #とにかく、ウィンドウに描画する
         if self.previewWindowManager is not None:
             if self.shouldMirrorPreview:
