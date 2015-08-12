@@ -39,8 +39,9 @@ class Cameo(object):
         CO_FORCE_VECTOR_STRENGTH,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
+        SHOULD_DRAW_TRACKS_STROBE_MODE,
         SHOWING_FRAME
-    ) = range(0, 27)
+    ) = range(0, 28)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -103,6 +104,8 @@ class Cameo(object):
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
         self._isModePendulum               = False
+
+        self._shouldDrawTracksStrobeMode   = False
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -368,12 +371,12 @@ class Cameo(object):
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (255,255,255), 5)
 
-                    pt = self._passedPoints[numPointsVisible-1]
+                    lastPt = self._passedPoints[numPointsVisible-1]
 
                     # 変位ベクトルを描画する
                     if self._shouldDrawDisplacementVector:
-                        vector = (pt[0] - self._passedPoints[0][0],
-                                  pt[1] - self._passedPoints[0][1])
+                        vector = (lastPt[0] - self._passedPoints[0][0],
+                                  lastPt[1] - self._passedPoints[0][1])
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, self._passedPoints[0],
                                           vector, 1, (255,255,255), 5)
@@ -383,7 +386,7 @@ class Cameo(object):
                         vector = utils.getVelocityVector(self._passedPoints, self._populationVelocity,
                                                          int(self._populationVelocity/2))
                         if vector is not None:
-                            utils.cvArrow(frameToDisplay, pt, vector, 4, (255,0,0), 5)
+                            utils.cvArrow(frameToDisplay, lastPt, vector, 4, (255,0,0), 5)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -417,7 +420,7 @@ class Cameo(object):
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
                         if aclVector is not None:
-                            utils.cvArrow(frameToDisplay, pt, aclVector, 1, (0,255,0), 5)
+                            utils.cvArrow(frameToDisplay, lastPt, aclVector, 1, (0,255,0), 5)
                             # print aclVector
 
                     # 力ベクトルを描画する
@@ -448,23 +451,23 @@ class Cameo(object):
                             aclVector = (0,0)
                         contactForceVector = (aclVector[0], aclVector[1] - self._gravityStrength)
                         if contactForceVector is not None:
-                            utils.cvArrow(frameToDisplay, pt, contactForceVector, 1, (128,0,255), 2)
+                            utils.cvArrow(frameToDisplay, lastPt, contactForceVector, 1, (128,0,255), 2)
                         # 重力
                         gravityForceVector = (0, self._gravityStrength)
-                        utils.cvArrow(frameToDisplay, pt, gravityForceVector, 1, (0,128,255), 2)
+                        utils.cvArrow(frameToDisplay, lastPt, gravityForceVector, 1, (0,128,255), 2)
                         # 合力
                         # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
                         #                                                 self._numFramesDelay*2)
                         synthesizedVector = aclVector
                         if synthesizedVector is not None:
-                            utils.cvArrow(frameToDisplay, pt, synthesizedVector, 1, (0,0,255), 5)
+                            utils.cvArrow(frameToDisplay, lastPt, synthesizedVector, 1, (0,0,255), 5)
                             # 接触力ベクトルと加速度ベクトルのあいだに線を引く
-                            ptSV = (pt[0]+synthesizedVector[0], pt[1]+synthesizedVector[1])
+                            ptSV = (lastPt[0]+synthesizedVector[0], lastPt[1]+synthesizedVector[1])
                             if contactForceVector is not None:
-                                ptCF = (pt[0]+contactForceVector[0], pt[1]+contactForceVector[1])
+                                ptCF = (lastPt[0]+contactForceVector[0], lastPt[1]+contactForceVector[1])
                                 utils.cvLine(frameToDisplay, ptSV, ptCF, (0,0,255), 1)
                             # 重力ベクトルと加速度ベクトルのあいだに線を引く
-                            ptGF = (pt[0], pt[1]+self._gravityStrength)
+                            ptGF = (lastPt[0], lastPt[1]+self._gravityStrength)
                             utils.cvLine(frameToDisplay, ptSV, ptGF, (0,0,255), 1)
 
 
@@ -569,6 +572,8 @@ class Cameo(object):
                 put('Should Track Circle'                , self._shouldTrackCircle)
             elif cur == self.SHOULD_DRAW_CANNY_EDGE:
                 put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
+            elif cur == self.SHOULD_DRAW_TRACKS_STROBE_MODE:
+                put('Should Draw Tracks Strobe Mode'     , self._shouldDrawTracksStrobeMode)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
