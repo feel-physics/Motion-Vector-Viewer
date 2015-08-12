@@ -39,7 +39,7 @@ class Cameo(object):
         CO_FORCE_VECTOR_STRENGTH,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
-        SHOULD_DRAW_TRACKS_STROBE_MODE,
+        SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         SHOWING_FRAME
     ) = range(0, 28)
 
@@ -105,7 +105,8 @@ class Cameo(object):
         self._coForceVectorStrength        = 7.0
         self._isModePendulum               = False
 
-        self._shouldDrawTracksStrobeMode   = False
+        self._shouldDrawTracksInStrobeMode = False
+        self._numStrobeModeSkips           = 5
 
         self._timeSelfTimerStarted         = None
         self._timeArrayToCalcFps           = []
@@ -371,6 +372,12 @@ class Cameo(object):
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (255,255,255), 5)
 
+                    # ストロボモード
+                    if self._shouldDrawTracksInStrobeMode:
+                        for i in range(numPointsVisible - 1):
+                            if i % self._numStrobeModeSkips == 0:
+                                cv2.circle(frameToDisplay, self._passedPoints[i], 3, (255,255,255), -1)
+
                     lastPt = self._passedPoints[numPointsVisible-1]
 
                     # 変位ベクトルを描画する
@@ -572,8 +579,8 @@ class Cameo(object):
                 put('Should Track Circle'                , self._shouldTrackCircle)
             elif cur == self.SHOULD_DRAW_CANNY_EDGE:
                 put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
-            elif cur == self.SHOULD_DRAW_TRACKS_STROBE_MODE:
-                put('Should Draw Tracks Strobe Mode'     , self._shouldDrawTracksStrobeMode)
+            elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
+                put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTracksInStrobeMode)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -789,6 +796,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
                 self._shouldDrawCannyEdge = \
                     not self._shouldDrawCannyEdge
+            elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
+                self._shouldDrawTracksInStrobeMode = \
+                    not self._shouldDrawTracksInStrobeMode
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
