@@ -28,7 +28,7 @@ class Cameo(object):
         SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_DISPLACEMENT_VECTOR,
-        SHOULD_DRAW_VEROCITY_VECTOR,
+        SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         IS_MODE_PENDULUM,
         NUM_FRAMES_DELAY,
@@ -85,7 +85,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVerocityVector     = False
+        self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
@@ -379,7 +379,7 @@ class Cameo(object):
                                           vector, 1, (255,255,255), 5)
 
                     # 速度ベクトルを描画する
-                    if self._shouldDrawVerocityVector:
+                    if self._shouldDrawVelocityVector:
                         vector = utils.getVelocityVector(self._passedPoints, self._populationVelocity,
                                                          int(self._populationVelocity/2))
                         if vector is not None:
@@ -545,8 +545,8 @@ class Cameo(object):
                 put('Should Draw Tracks'                 , self._shouldDrawTracks)
             elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
                 put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
-            elif cur == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                put('Should Draw Verocity Vector'        , self._shouldDrawVerocityVector)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
+                put('Should Draw Velocity Vector'        , self._shouldDrawVelocityVector)
             elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
             elif cur == self.GRAVITY_STRENGTH:
@@ -719,11 +719,11 @@ class Cameo(object):
                     self._shouldDrawDisplacementVector = False
                 else:
                     self._shouldDrawDisplacementVector = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_VEROCITY_VECTOR:
-                if  self._shouldDrawVerocityVector:
-                    self._shouldDrawVerocityVector = False
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
+                if  self._shouldDrawVelocityVector:
+                    self._shouldDrawVelocityVector = False
                 else:
-                    self._shouldDrawVerocityVector = True
+                    self._shouldDrawVelocityVector = True
             elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 if  self._shouldDrawAccelerationVector:
                     self._shouldDrawAccelerationVector = False
@@ -741,7 +741,7 @@ class Cameo(object):
             elif self._currentAdjusting == self.IS_MODE_PENDULUM:
                 if self._isModePendulum:
                     self._shouldDrawDisplacementVector = False
-                    self._shouldDrawVerocityVector     = False
+                    self._shouldDrawVelocityVector     = False
                     self._shouldDrawAccelerationVector = True
                     self._shouldDrawForceVectorBottom  = False
                     self._shouldDrawForceVectorTop     = False
@@ -751,7 +751,7 @@ class Cameo(object):
                     self._isModePendulum = False
                 else:
                     self._shouldDrawDisplacementVector = False
-                    self._shouldDrawVerocityVector     = False
+                    self._shouldDrawVelocityVector     = False
                     self._shouldDrawAccelerationVector = False
                     self._shouldDrawForceVectorBottom  = False
                     self._shouldDrawForceVectorTop     = False
