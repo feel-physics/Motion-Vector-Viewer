@@ -3,6 +3,8 @@
 import cv2
 import numpy
 import time
+import pygame
+import utils
 
 class CaptureManager(object):
 
@@ -307,3 +309,38 @@ class WindowManager(object):
             # GTKによってエンコードされた非ASCII情報を捨てる
             keycode &= 0xFF
             self.keypressCallback(keycode)
+
+class PygameWindowManager(WindowManager):
+    def createWindow(self):
+        pygame.display.init()
+        pygame.display.set_caption(self._windowName)
+        self._isWindowCreated = True
+    def show(self, frame):
+        # Find the frame's dimensions in (w, h) format
+        frameSize = frame.shape[1::-1]
+        # Convert the frame to RGB, which Pygame requires.
+        # if utils.isGray(frame):
+        #     conversionType = cv2.COLOR_GRAY2BGR
+        # else:
+        conversionType = cv2.COLOR_BGR2RGB
+        rgbFrame = cv2.cvtColor(frame, conversionType)
+        # Convert the frame to Pygame's Surface type.
+        pygameFrame = pygame.image.frombuffer(
+            rgbFrame.tostring(), frameSize, 'RGB'
+        )
+        # Resize the window to match the frame.
+        displaySurface = pygame.display.set_mode(frameSize)
+        # Blit and display the frame.
+        displaySurface.blit(pygameFrame, (0, 0))
+        pygame.display.flip()
+    def destroyWindow(self):
+        pygame.display.quit()
+        self._isWindowCreated = False
+    def processEvents(self):
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and \
+                self.keypressCallback is not None:
+                self.keypressCallback(event.key)
+            elif event.type == pygame.QUIT:
+                self.destroyWindow()
+                return
