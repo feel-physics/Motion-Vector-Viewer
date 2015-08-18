@@ -4,6 +4,7 @@ import cv2
 import numpy
 import time
 import pygame
+from pygame.locals import *
 import utils
 
 class CaptureManager(object):
@@ -113,7 +114,7 @@ class CaptureManager(object):
             self._pausedFrame = None
 
         # 画像スケールを1/2に落とす
-        self._frame = cv2.resize(self._frame[:], (640, 360))
+        # self._frame = cv2.resize(self._frame[:], (640, 360))
 
         return self._frame
 
@@ -328,11 +329,14 @@ class PygameWindowManager(WindowManager):
         pygameFrame = pygame.image.frombuffer(
             rgbFrame.tostring(), frameSize, 'RGB'
         )
+        # pygameFrame = pygame.transform.scale(pygameFrame, (1280, 720))
         # Resize the window to match the frame.
         displaySurface = pygame.display.set_mode(frameSize)
+        # displaySurface = pygame.display.set_mode((1280, 720), RESIZABLE)
         # Blit and display the frame.
         displaySurface.blit(pygameFrame, (0, 0))
         pygame.display.flip()
+        # pygame.display.set_mode((640, 360), FULLSCREEN)
     def destroyWindow(self):
         pygame.display.quit()
         self._isWindowCreated = False
