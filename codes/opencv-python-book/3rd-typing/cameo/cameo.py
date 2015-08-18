@@ -6,8 +6,9 @@ from datetime import datetime
 import numpy
 
 import filters
-from managers import PygameWindowManager as WindowManager, \
-    CaptureManager
+from managers import WindowManager, CaptureManager
+# from managers import PygameWindowManager as WindowManager, \
+#     CaptureManager
 import utils
 
 class Cameo(object):

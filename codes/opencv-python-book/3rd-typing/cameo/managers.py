@@ -285,6 +285,7 @@ class WindowManager(object):
         :return:
         """
         cv2.namedWindow(self._windowName)
+        cv2.setWindowProperty(self._windowName, cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
         self._isWindowCreated = True
 
     def show(self, frame):
