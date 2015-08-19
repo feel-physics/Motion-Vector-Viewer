@@ -114,7 +114,7 @@ class CaptureManager(object):
             self._pausedFrame = None
 
         # 画像スケールを1/2に落とす
-        # self._frame = cv2.resize(self._frame[:], (640, 360))
+        self._frame = cv2.resize(self._frame[:], (640, 360))
 
         return self._frame
 
@@ -285,7 +285,6 @@ class WindowManager(object):
         :return:
         """
         cv2.namedWindow(self._windowName)
-        cv2.setWindowProperty(self._windowName, cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
         self._isWindowCreated = True
 
     def show(self, frame):
