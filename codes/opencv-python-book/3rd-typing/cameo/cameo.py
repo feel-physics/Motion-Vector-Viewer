@@ -10,6 +10,7 @@ from managers import WindowManager, CaptureManager
 # from managers import PygameWindowManager as WindowManager, \
 #     CaptureManager
 import utils
+import my_lib
 
 class Cameo(object):
 
@@ -111,7 +112,6 @@ class Cameo(object):
         self._numStrobeModeSkips           = 5
 
         self._timeSelfTimerStarted         = None
-        self._timeArrayToCalcFps           = []
 
         self._corners                      = None
 
@@ -128,8 +128,9 @@ class Cameo(object):
         """
         # ウィンドウをつくる
         self._windowManager.createWindow()
-        # FPS計算用の時刻
-        self._timeArrayToCalcFps.append(datetime.now())
+        # FPS計算用
+        self._fpsWithTick = my_lib.fpsWithTick()
+
         # ウィンドウが存在する限り・・・
         while self._windowManager.isWindowCreated:
             # フレームを取得し・・・
@@ -491,22 +492,6 @@ class Cameo(object):
             ### 情報表示 ###
 
 
-            # FPSを計算する
-            # 開始直後は・・・
-            if len(self._timeArrayToCalcFps) < 10:
-                # 日時を配列に追加していく
-                self._timeArrayToCalcFps.append(datetime.now())
-                fps = -1
-            # あるていど日時がたまったら・・・
-            else:
-                # 相変わらず日時を配列に追加していくが、
-                self._timeArrayToCalcFps.append(datetime.now())
-                # 古い日時を棄て、
-                self._timeArrayToCalcFps.pop(0)
-                # 経過時間を求め、FPSを求める
-                timeElapsed = self._timeArrayToCalcFps[9] - self._timeArrayToCalcFps[0]
-                fps = 10 / (timeElapsed.seconds + timeElapsed.microseconds / 1000000.0)
-
             if self._isTracking:
                 strIsTracking = 'Tracking'
             else:
@@ -517,7 +502,8 @@ class Cameo(object):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 2.0, (255,255,255), 3)
             def put(label, value):
-                putText('FPS '+"{0:.1f}".format(fps)
+                fps = self._fpsWithTick.get()  # FPSを計算する
+                putText('FPS '+str(fps)
                         +' '+strIsTracking
                         +' '+"{0:.2f}".format(densityTrackWindow), 1)
                 putText(label, 2)
