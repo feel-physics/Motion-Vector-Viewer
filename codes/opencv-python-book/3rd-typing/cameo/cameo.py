@@ -41,8 +41,9 @@ class Cameo(object):
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
         SHOWING_FRAME
-    ) = range(0, 15)
+    ) = range(0, 16)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -86,7 +87,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVelocityVector     = False
+        self._shouldDrawVelocityVector     = True
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
@@ -105,8 +106,11 @@ class Cameo(object):
         self._coForceVectorStrength        = 7.0
         self._isModePendulum               = False
 
+        # ストロボモード 15/08/12 -
         self._shouldDrawTracksInStrobeMode = False
         self._numStrobeModeSkips           = 5
+        self._velocityVectorsHistory       = []
+        self._shouldDrawVelocityVectorsInStrobeMode = True
 
         self._timeSelfTimerStarted         = None
 
@@ -264,6 +268,7 @@ class Cameo(object):
                 if densityTrackWindow < 0.05:
                         self._isTracking = False
                         self._passedPoints = []  # 軌跡を消去する
+                        self._velocityVectorsHistory = []
                         self._indexQuickMotion = 0
                         # print 'tracking interrupted'
 
@@ -277,6 +282,32 @@ class Cameo(object):
                 if self._track_window is not None:
                     # 通過点リストの最後に要素を追加する
                     self._passedPoints.append((x+w/2, y+h/2))
+                    # 速度ベクトルを記録する
+                    lastVelocityVector = utils.getVelocityVector(
+                        self._passedPoints, self._populationVelocity,
+                        int(self._populationVelocity/2)  # numFramesDelay
+                    )
+                    # 条件
+                    #   self._numFramesDelay = 6, len(passedPoints) = 20
+                    #   すなわち numPointsVisible = 14
+                    #   populationVelocity = 6, numFrameDelay = 3
+                    # のときの速度ベクトルを求めると
+                    #   passedPoints[20 - 1 - 3] - passedPoints[20 - 1 - 6 - 3] / 6 つまり
+                    #   passedPoints[16]         - passedPoints[10]             / 6
+                    # ちなみに、あとでこの速度ベクトルを passedPoints[13] に生やす
+                    # [16] - [10] を [13] に生やすので正しい
+                    #
+                    # 条件
+                    #   self._numFramesDelay = 13, len(passedPoints) = 20
+                    #   すなわち numPointsVisible = 7
+                    #   populationVelocity = 6, numFramesDelay = 10
+                    # のときの速度ベクトルを求めると
+                    #   passedPoints[20 - 1 - 10] - passedPoints[20 - 1 - 10 - 6] / 6 つまり
+                    #   passedPoints[9]           - passedPoints[3]               / 6
+                    # あとでこのベクトルを passedPoints[6] に生やす
+                    # [9] - [3] を [6] に生やすので正しい
+
+                    self._velocityVectorsHistory.append(lastVelocityVector)
 
                 # 次の円が見つかっても見つからなくても・・・
                 if len(self._passedPoints) - self._numFramesDelay > 0:
@@ -294,7 +325,7 @@ class Cameo(object):
                     if self._shouldDrawTracksInStrobeMode:
                         for i in range(numPointsVisible - 1):
                             if i % self._numStrobeModeSkips == 0:
-                                cv2.circle(frameToDisplay, self._passedPoints[i], 3, (255,255,255), -1)
+                                cv2.circle(frameToDisplay, self._passedPoints[i], 5, (255,255,255), -1)
 
                     lastPt = self._passedPoints[numPointsVisible-1]
 
@@ -307,11 +338,23 @@ class Cameo(object):
                                           vector, 1, (255,255,255), 5)
 
                     # 速度ベクトルを描画する
-                    if self._shouldDrawVelocityVector:
-                        vector = utils.getVelocityVector(self._passedPoints, self._populationVelocity,
-                                                         int(self._populationVelocity/2))
-                        if vector is not None:
-                            utils.cvArrow(frameToDisplay, lastPt, vector, 4, (255,0,0), 5)
+                    if self._shouldDrawVelocityVector and \
+                                    self._velocityVectorsHistory[numPointsVisible - 1] is not None:
+                        utils.cvArrow(
+                            frameToDisplay, lastPt,
+                            self._velocityVectorsHistory[-1], 4, (255,0,0), 5)
+
+                    # 速度ベクトルをストロボモードで表示する
+                    if self._shouldDrawVelocityVectorsInStrobeMode:
+                        for i in range(numPointsVisible - 1):
+                            if i % self._numStrobeModeSkips == 0 and \
+                                    self._velocityVectorsHistory[i] is not None:
+                                utils.cvArrow(
+                                    frameToDisplay,
+                                    self._passedPoints[i - self._numFramesDelay],
+                                    self._velocityVectorsHistory[i],
+                                    4, (255,0,0), 5
+                                )
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -484,6 +527,8 @@ class Cameo(object):
             #     put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
             elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTracksInStrobeMode)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
+                put('Should Draw Velocity Vectors In Strobe Mode' , self._shouldDrawVelocityVectorsInStrobeMode)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -702,6 +747,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 self._shouldDrawTracksInStrobeMode = \
                     not self._shouldDrawTracksInStrobeMode
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
+                self._shouldDrawVelocityVectorsInStrobeMode = \
+                    not self._shouldDrawVelocityVectorsInStrobeMode
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
