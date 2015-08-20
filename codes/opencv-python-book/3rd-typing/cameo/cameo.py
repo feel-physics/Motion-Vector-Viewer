@@ -7,8 +7,6 @@ import numpy
 
 import filters
 from managers import WindowManager, CaptureManager
-# from managers import PygameWindowManager as WindowManager, \
-#     CaptureManager
 import utils
 import my_lib
 
@@ -20,35 +18,34 @@ class Cameo(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-        SHOULD_PROCESS_GAUSSIAN_BLUR,
-        GAUSSIAN_BLUR_KERNEL_SIZE,
-        SHOULD_PROCESS_CLOSING,
-        CLOSING_ITERATIONS,
-        HOUGH_CIRCLE_RESOLUTION,
-        HOUGH_CIRCLE_CANNY_THRESHOLD,
-        HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-        SHOULD_DRAW_CANNY_EDGE,
-        SHOULD_DRAW_CIRCLE,
+        # SHOULD_PROCESS_GAUSSIAN_BLUR,
+        # GAUSSIAN_BLUR_KERNEL_SIZE,
+        # SHOULD_PROCESS_CLOSING,
+        # CLOSING_ITERATIONS,
+        # HOUGH_CIRCLE_RESOLUTION,
+        # HOUGH_CIRCLE_CANNY_THRESHOLD,
+        # HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
+        # SHOULD_DRAW_CANNY_EDGE,
+        # SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
-        SHOULD_DRAW_DISPLACEMENT_VECTOR,
+        # SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         IS_MODE_PENDULUM,
-        NUM_FRAMES_DELAY,
+        # NUM_FRAMES_DELAY,
         GRAVITY_STRENGTH,
-        SHOULD_PROCESS_QUICK_MOTION,
+        # SHOULD_PROCESS_QUICK_MOTION,
         SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
-        SHOULD_DRAW_FORCE_VECTOR_TOP,
+        # SHOULD_DRAW_FORCE_VECTOR_TOP,
         CO_FORCE_VECTOR_STRENGTH,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         SHOWING_FRAME
-    ) = range(0, 28)
+    ) = range(0, 15)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
-        # GRAY_SCALE,
         WHAT_COMPUTER_SEE
     ) = range(0, 2)
 
@@ -149,8 +146,6 @@ class Cameo(object):
             else:
                 self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
-            # frameToFindCircle = frameToDisplay.copy()  # 検出用のフレーム（ディープコピー）
-
             densityTrackWindow = -1
 
             ### 画面表示 ###
@@ -183,30 +178,6 @@ class Cameo(object):
                     1)                        # 円の最大半径
                 return circles
 
-            # if self._currentShowing == self.GRAY_SCALE:
-            #     mask = getMaskToFindCircle(self, frameToDisplay)
-            #
-            #     # カメラ画像をHSVチャンネルに分離し・・・
-            #     frame = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2HSV)
-            #     h, s, v = cv2.split(frame)
-            #
-            #     # マスク部分の明度をガンマ補正し・・・
-            #     v = filters.letMaskMoreBright(v, mask, self._gamma)
-            #
-            #     # マスク部分以外は・・・
-            #
-            #     # mask（1チャンネル画像）の該当ピクセルが0のとき、
-            #     # notMask（1チャンネル画像）の該当ピクセルを255にセットする。
-            #     # さもなくば、0にセットする。
-            #     # 要するにnotMaskはmaskを反転させたもの。
-            #     notMask = cv2.compare(mask, 0, cv2.CMP_EQ)
-            #
-            #     # 彩度を0にする
-            #     cv2.bitwise_and(s, 0, s, notMask) # 論理積
-            #
-            #     frame = cv2.merge((h, s, v))
-            #     cv2.cvtColor(frame, cv2.COLOR_HSV2BGR, frameToDisplay)
-            #
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
                 # pass
                 # gray = getMaskToFindCircle(self, frameToDisplay)
@@ -219,55 +190,6 @@ class Cameo(object):
 
             ### 物体追跡・描画処理 ###
 
-            ### オプティカルフローの実験中 ###
-
-            # if self._corners is None:
-            #
-            #     # params for ShiTomasi corner detection
-            #     feature_params = dict( maxCorners = 100,
-            #                            qualityLevel = 0.3,
-            #                            minDistance = 7,
-            #                            blockSize = 7 )
-            #
-            #     # Create some random colors
-            #     self._color = numpy.random.randint(0,255,(100,3))
-            #
-            #     # Take first frame and find corners in it
-            #     self._frameOldGray = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
-            #     self._corners = cv2.goodFeaturesToTrack(self._frameOldGray, mask=None, **feature_params)
-            #     # print len(corners), " corners found"
-            #     #
-            #     # for point in corners:
-            #     #     center = int(point[0][0]), int(point[0][1])
-            #     #     cv2.circle(frameToDisplay, (center), 5, (0,255,255))
-            #
-            #     # Create a mask image for drawing purposes
-            #     self._mask = numpy.zeros_like(frameToDisplay)
-            # else:
-            #     frameGray = cv2.cvtColor(frameToDisplay, cv2.COLOR_BGR2GRAY)
-            #
-            #     # calculate optical flow
-            #     cornersNew, st, err = cv2.calcOpticalFlowPyrLK(
-            #         frameGray, self._frameOldGray, self._corners
-            #     )
-            #
-            #     # select good points
-            #     good_new = cornersNew[st==1]
-            #     good_old = self._corners[st==1]
-            #
-            #     # draw the tracks
-            #     for i,(new,old) in enumerate(zip(good_new,good_old)):
-            #         a,b = new.ravel()
-            #         c,d = old.ravel()
-            #         cv2.line(self._mask, (a,b),(c,d), self._color[i].tolist(), 2)
-            #         cv2.circle(frameToDisplay, (a,b),5,self._color[i].tolist())
-            #     frameToDisplay[:] = cv2.add(frameToDisplay, self._mask)
-            #
-            #     # Now update the previous frame and previous points
-            #     self._frameOldGray = frameGray.copy()
-            #     self._corners = good_new.reshape(-1,1,2)
-            #
-            # ### オプティカルフロー終わり ###
 
             if self._shouldTrackCircle and not self._isTracking:
                 # 検出用フレームをつくる
@@ -359,13 +281,6 @@ class Cameo(object):
                 # 次の円が見つかっても見つからなくても・・・
                 if len(self._passedPoints) - self._numFramesDelay > 0:
                     numPointsVisible = len(self._passedPoints) - self._numFramesDelay
-
-                    # if numPointsVisible >= 2:
-                    #     print self._passedPoints[numPointsVisible-1][0] \
-                    #         - self._passedPoints[numPointsVisible-2][0], \
-                    #         + self._passedPoints[numPointsVisible-1][1] \
-                    #         - self._passedPoints[numPointsVisible-2][1]
-
 
                     # 軌跡を描画する
                     if self._shouldDrawTracks:
@@ -523,50 +438,50 @@ class Cameo(object):
                 put('Value Min'                          , self._valueMin)
             elif cur == self.VALUE_MAX:
                 put('Value Max'                          , self._valueMax)
-            elif cur == self.HOUGH_CIRCLE_RESOLUTION:
-                put('Hough Circle Resolution'            , self._houghCircleDp)
-            elif cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-                put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
-            elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
-                put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
-            elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-                put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
-            elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-                put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
-            elif cur == self.SHOULD_PROCESS_CLOSING:
-                put('Process Closing'                    , self._shouldProcessClosing)
-            elif cur == self.CLOSING_ITERATIONS:
-                put('Closing Iterations'                 , self._closingIterations)
-            elif cur == self.SHOULD_DRAW_CIRCLE:
-                put('Should Draw Circle'                 , self._shouldDrawCircle)
-            elif cur == self.SHOULD_DRAW_TRACKS:
-                put('Should Draw Tracks'                 , self._shouldDrawTracks)
-            elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
-                put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
+            # elif cur == self.HOUGH_CIRCLE_RESOLUTION:
+            #     put('Hough Circle Resolution'            , self._houghCircleDp)
+            # elif cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
+            #     put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
+            # elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
+            #     put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
+            # elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+            #     put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
+            # elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+            #     put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
+            # elif cur == self.SHOULD_PROCESS_CLOSING:
+            #     put('Process Closing'                    , self._shouldProcessClosing)
+            # elif cur == self.CLOSING_ITERATIONS:
+            #     put('Closing Iterations'                 , self._closingIterations)
+            # elif cur == self.SHOULD_DRAW_CIRCLE:
+            #     put('Should Draw Circle'                 , self._shouldDrawCircle)
+            # elif cur == self.SHOULD_DRAW_TRACKS:
+            #     put('Should Draw Tracks'                 , self._shouldDrawTracks)
+            # elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
+            #     put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
                 put('Should Draw Velocity Vector'        , self._shouldDrawVelocityVector)
             elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
             elif cur == self.GRAVITY_STRENGTH:
                 put('Gravity Strength'                   , self._gravityStrength)
-            elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
-                put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
+            # elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
+            #     put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
             elif cur == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
                 put('Should Draw Force Vector Bottom'    , self._shouldDrawForceVectorBottom)
-            elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
-                put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
+            # elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+            #     put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
             elif cur == self.CO_FORCE_VECTOR_STRENGTH:
                 put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
             elif cur == self.IS_MODE_PENDULUM:
                 put('Pendulum Mode'                      , self._isModePendulum)
-            elif cur == self.NUM_FRAMES_DELAY:
-                put('Number of Delay Frames'             , self._numFramesDelay)
+            # elif cur == self.NUM_FRAMES_DELAY:
+            #     put('Number of Delay Frames'             , self._numFramesDelay)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_TRACK_CIRCLE:
                 put('Should Track Circle'                , self._shouldTrackCircle)
-            elif cur == self.SHOULD_DRAW_CANNY_EDGE:
-                put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
+            # elif cur == self.SHOULD_DRAW_CANNY_EDGE:
+            #     put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
             elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTracksInStrobeMode)
             elif cur == self.SHOWING_FRAME:
@@ -682,43 +597,43 @@ class Cameo(object):
             elif self._currentAdjusting == self.VALUE_MAX:
                 pitch = 10 if keycode == 0 else -10
                 self._valueMax          += pitch
-            elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-                pitch = 1  if keycode == 0 else -1
-                self._houghCircleDp     += pitch
-            elif self._currentAdjusting == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-                pitch = 20 if keycode == 0 else -20
-                self._houghCircleParam1 += pitch
-            elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
-                pitch = 50 if keycode == 0 else -50
-                self._houghCircleParam2 += pitch
-            elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-                pitch = 1  if keycode == 0 else -1
-                self._gaussianBlurKernelSize += pitch
-            elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-                self._shouldProcessGaussianBlur = \
-                    not self._shouldProcessGaussianBlur
-            elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
-                self._shouldProcessClosing = \
-                    not self._shouldProcessClosing
-            elif self._currentAdjusting == self.CLOSING_ITERATIONS:
-                pitch = 1  if keycode == 0 else -1
-                self._closingIterations += pitch
-            elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-                if  self._shouldDrawCircle:
-                    self._shouldDrawCircle = False
-                else:
-                    self._shouldDrawCircle = True
+            # elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
+            #     pitch = 1  if keycode == 0 else -1
+            #     self._houghCircleDp     += pitch
+            # elif self._currentAdjusting == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
+            #     pitch = 20 if keycode == 0 else -20
+            #     self._houghCircleParam1 += pitch
+            # elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
+            #     pitch = 50 if keycode == 0 else -50
+            #     self._houghCircleParam2 += pitch
+            # elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+            #     pitch = 1  if keycode == 0 else -1
+            #     self._gaussianBlurKernelSize += pitch
+            # elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+            #     self._shouldProcessGaussianBlur = \
+            #         not self._shouldProcessGaussianBlur
+            # elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
+            #     self._shouldProcessClosing = \
+            #         not self._shouldProcessClosing
+            # elif self._currentAdjusting == self.CLOSING_ITERATIONS:
+            #     pitch = 1  if keycode == 0 else -1
+            #     self._closingIterations += pitch
+            # elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
+            #     if  self._shouldDrawCircle:
+            #         self._shouldDrawCircle = False
+            #     else:
+            #         self._shouldDrawCircle = True
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
                 if  self._shouldDrawTracks:
                     self._shouldDrawTracks = False
                 else:
                     self._passedPoints = []  # 軌跡を消去する
                     self._shouldDrawTracks = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
-                if  self._shouldDrawDisplacementVector:
-                    self._shouldDrawDisplacementVector = False
-                else:
-                    self._shouldDrawDisplacementVector = True
+            # elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
+            #     if  self._shouldDrawDisplacementVector:
+            #         self._shouldDrawDisplacementVector = False
+            #     else:
+            #         self._shouldDrawDisplacementVector = True
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
                 if  self._shouldDrawVelocityVector:
                     self._shouldDrawVelocityVector = False
@@ -735,9 +650,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_FORCE_VECTOR_STRENGTH:
                 pitch = 1.0  if keycode == 0 else -1.0
                 self._coForceVectorStrength += pitch
-            elif self._currentAdjusting == self.NUM_FRAMES_DELAY:
-                pitch = 1  if keycode == 0 else -1
-                self._numFramesDelay += pitch
+            # elif self._currentAdjusting == self.NUM_FRAMES_DELAY:
+            #     pitch = 1  if keycode == 0 else -1
+            #     self._numFramesDelay += pitch
             elif self._currentAdjusting == self.IS_MODE_PENDULUM:
                 if self._isModePendulum:
                     self._shouldDrawDisplacementVector = False
@@ -760,17 +675,17 @@ class Cameo(object):
                     self._coForceVectorStrength        = 13.0
                     self._shouldProcessQuickMotion     = False
                     self._isModePendulum = True
-            elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
-                self._shouldProcessQuickMotion = \
-                    not self._shouldProcessQuickMotion
+            # elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
+            #     self._shouldProcessQuickMotion = \
+            #         not self._shouldProcessQuickMotion
             elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
                 if  self._shouldDrawForceVectorBottom:
                     self._shouldDrawForceVectorBottom = False
                 else:
                     self._shouldDrawForceVectorBottom = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
-                self._shouldDrawForceVectorTop = not \
-                    self._shouldDrawForceVectorTop
+            # elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+            #     self._shouldDrawForceVectorTop = not \
+            #         self._shouldDrawForceVectorTop
             elif self._currentAdjusting == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 if  self._shouldDrawSynthesizedVector:
                     self._shouldDrawSynthesizedVector = False
@@ -781,9 +696,9 @@ class Cameo(object):
                     self._shouldTrackCircle = False
                 else:
                     self._shouldTrackCircle = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
-                self._shouldDrawCannyEdge = \
-                    not self._shouldDrawCannyEdge
+            # elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
+            #     self._shouldDrawCannyEdge = \
+            #         not self._shouldDrawCannyEdge
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 self._shouldDrawTracksInStrobeMode = \
                     not self._shouldDrawTracksInStrobeMode
