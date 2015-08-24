@@ -77,7 +77,7 @@ class Cameo(object):
         self._shouldDrawCannyEdge          = False
 
         self._centerPointOfCircle          = None
-        self._passedPoints                 = []
+        self._positionHistory                 = []
 
         self._shouldTrackCircle            = True
         self._isTracking                   = False
@@ -267,7 +267,7 @@ class Cameo(object):
                 # 密度が0.05未満なら追跡を中断する
                 if densityTrackWindow < 0.05:
                         self._isTracking = False
-                        self._passedPoints = []  # 軌跡を消去する
+                        self._positionHistory = []  # 軌跡を消去する
                         self._velocityVectorsHistory = []
                         self._indexQuickMotion = 0
                         # print 'tracking interrupted'
@@ -281,23 +281,23 @@ class Cameo(object):
                 # 次の円を検出したら・・・
                 if self._track_window is not None:
                     # 通過点リストの最後に要素を追加する
-                    self._passedPoints.append((x+w/2, y+h/2))
+                    self._positionHistory.append((x+w/2, y+h/2))
                     # 速度ベクトルを記録する
                     lastVelocityVector = utils.getVelocityVector(
-                        self._passedPoints, self._populationVelocity,
+                        self._positionHistory, self._populationVelocity,
                         self._numFramesDelay
                     )
                     self._velocityVectorsHistory.append(lastVelocityVector)
 
                 # 次の円が見つかっても見つからなくても・・・
-                if len(self._passedPoints) - self._numFramesDelay > 0:
-                    numPointsVisible = len(self._passedPoints) - self._numFramesDelay
+                if len(self._positionHistory) - self._numFramesDelay > 0:
+                    numPointsVisible = len(self._positionHistory) - self._numFramesDelay
 
                     # 軌跡を描画する
                     if self._shouldDrawTracks:
                         for i in range(numPointsVisible - 1):
-                            cv2.line(frameToDisplay, self._passedPoints[i],
-                                     self._passedPoints[i+1], (255,255,255), 5)
+                            cv2.line(frameToDisplay, self._positionHistory[i],
+                                     self._positionHistory[i+1], (255,255,255), 5)
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, (255,255,255), 5)
 
@@ -305,23 +305,24 @@ class Cameo(object):
                     if self._shouldDrawTracksInStrobeMode:
                         for i in range(numPointsVisible - 1):
                             if i % self._numStrobeModeSkips == 0:
-                                cv2.circle(frameToDisplay, self._passedPoints[i], 5, (255,255,255), -1)
+                                cv2.circle(
+                                    frameToDisplay, self._positionHistory[i], 5, (255,255,255), -1)
 
-                    lastPt = self._passedPoints[numPointsVisible-1]
+                    lastPosition = self._positionHistory[numPointsVisible-1]
 
                     # 変位ベクトルを描画する
                     if self._shouldDrawDisplacementVector:
-                        vector = (lastPt[0] - self._passedPoints[0][0],
-                                  lastPt[1] - self._passedPoints[0][1])
+                        vector = (lastPosition[0] - self._positionHistory[0][0],
+                                  lastPosition[1] - self._positionHistory[0][1])
                         if vector is not None:
-                            utils.cvArrow(frameToDisplay, self._passedPoints[0],
+                            utils.cvArrow(frameToDisplay, self._positionHistory[0],
                                           vector, 1, (255,255,255), 5)
 
                     # 速度ベクトルを描画する
                     if self._shouldDrawVelocityVector and \
                                     self._velocityVectorsHistory[numPointsVisible - 1] is not None:
                         utils.cvArrow(
-                            frameToDisplay, lastPt,
+                            frameToDisplay, lastPosition,
                             self._velocityVectorsHistory[numPointsVisible - 1], 4, (255,0,0), 5)
 
                     # 速度ベクトルをストロボモードで表示する
@@ -331,7 +332,7 @@ class Cameo(object):
                                     self._velocityVectorsHistory[i] is not None:
                                 utils.cvArrow(
                                     frameToDisplay,
-                                    self._passedPoints[i - self._numFramesDelay],
+                                    self._positionHistory[i - self._numFramesDelay],
                                     self._velocityVectorsHistory[i],
                                     4, (255,0,0), 5
                                 )
@@ -342,24 +343,24 @@ class Cameo(object):
                     aclVector = None
                     if self._shouldProcessQuickMotion:
                         result = utils.getAccelerationVectorStartStop(
-                            self._passedPoints, self._populationAcceleration, 3, self._coForceVectorStrength
+                            self._positionHistory, self._populationAcceleration, 3, self._coForceVectorStrength
                         )
                         if result[0] is 'quickMotion':
-                            self._indexQuickMotion = len(self._passedPoints)
+                            self._indexQuickMotion = len(self._positionHistory)
                             aclVector = result[1]
                         # 急発進／静止後3フレームは通常の加速度を表示しない
                         elif result == 'usual' \
                                 and self._indexQuickMotion is not None \
                                 and self._indexQuickMotion+4 < numPointsVisible:
                             aclVector = utils.getAccelerationVectorFirFilter(
-                                self._passedPoints,
+                                self._positionHistory,
                                 self._populationAcceleration,
                                 0,
                                 self._coForceVectorStrength
                             )
                     else:
                         aclVector = utils.getAccelerationVectorFirFilter(
-                            self._passedPoints,
+                            self._positionHistory,
                             self._populationAcceleration,
                             0,
                             self._coForceVectorStrength
@@ -368,28 +369,33 @@ class Cameo(object):
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
                         if aclVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPt, aclVector, 1, (0,255,0), 5)
+                            utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, (0,255,0), 5)
                             # print aclVector
 
                     # 力ベクトルを描画する
-                    def drawForceVector(aclVector, ptAcl):
+                    def drawForceVector(aclVector, positionAclBegin):
                         if aclVector is None:
                             aclVector = (0,0)
                         vector = (aclVector[0], aclVector[1] - self._gravityStrength)
 
                         if vector is not None:
-                            utils.cvArrow(frameToDisplay, ptAcl, vector, 1, (0,0,255), 5)
+                            utils.cvArrow(frameToDisplay, positionAclBegin,
+                                          vector, 1, (0,0,255), 5)
 
                     if self._shouldDrawForceVectorBottom:
-                        yPtAcl = self._passedPoints[numPointsVisible-1][1] + h/2
-                        ptAcl = (self._passedPoints[numPointsVisible-1][0], yPtAcl)
+                        yPositionAclBegin = \
+                            self._positionHistory[numPointsVisible-1][1] + h/2
+                        positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
+                                        yPositionAclBegin)
                         # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        drawForceVector(aclVector, ptAcl)
+                        drawForceVector(aclVector, positionAclBegin)
 
                     if self._shouldDrawForceVectorTop:
-                        yPtAcl = self._passedPoints[numPointsVisible-1][1] - h/2
-                        ptAcl = (self._passedPoints[numPointsVisible-1][0], yPtAcl)
-                        drawForceVector(aclVector, ptAcl)
+                        yPositionAclBegin = \
+                            self._positionHistory[numPointsVisible-1][1] - h/2
+                        positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
+                                        yPositionAclBegin)
+                        drawForceVector(aclVector, positionAclBegin)
 
                     # 力ベクトルの合成を描画する
                     if self._shouldDrawSynthesizedVector:
@@ -397,26 +403,39 @@ class Cameo(object):
                         # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                         if aclVector is None:
                             aclVector = (0,0)
-                        contactForceVector = (aclVector[0], aclVector[1] - self._gravityStrength)
+                        contactForceVector = \
+                            (aclVector[0], aclVector[1] - self._gravityStrength)
                         if contactForceVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPt, contactForceVector, 1, (128,0,255), 2)
+                            utils.cvArrow(frameToDisplay, lastPosition,
+                                          contactForceVector, 1, (128,0,255), 2)
                         # 重力
                         gravityForceVector = (0, self._gravityStrength)
-                        utils.cvArrow(frameToDisplay, lastPt, gravityForceVector, 1, (0,128,255), 2)
+                        utils.cvArrow(frameToDisplay, lastPosition,
+                                      gravityForceVector, 1, (0,128,255), 2)
                         # 合力
                         # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
                         #                                                 self._numFramesDelay*2)
                         synthesizedVector = aclVector
                         if synthesizedVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPt, synthesizedVector, 1, (0,0,255), 5)
+                            utils.cvArrow(
+                                frameToDisplay, lastPosition, synthesizedVector,
+                                1, (0,0,255), 5
+                            )
                             # 接触力ベクトルと加速度ベクトルのあいだに線を引く
-                            ptSV = (lastPt[0]+synthesizedVector[0], lastPt[1]+synthesizedVector[1])
+                            positionSVBegin = \
+                                (lastPosition[0]+synthesizedVector[0],
+                                 lastPosition[1]+synthesizedVector[1])
                             if contactForceVector is not None:
-                                ptCF = (lastPt[0]+contactForceVector[0], lastPt[1]+contactForceVector[1])
-                                utils.cvLine(frameToDisplay, ptSV, ptCF, (0,0,255), 1)
+                                positionCFBegin = \
+                                    (lastPosition[0]+contactForceVector[0],
+                                     lastPosition[1]+contactForceVector[1])
+                                utils.cvLine(frameToDisplay, positionSVBegin,
+                                             positionCFBegin, (0,0,255), 1)
                             # 重力ベクトルと加速度ベクトルのあいだに線を引く
-                            ptGF = (lastPt[0], lastPt[1]+self._gravityStrength)
-                            utils.cvLine(frameToDisplay, ptSV, ptGF, (0,0,255), 1)
+                            positionGFBegin = \
+                                (lastPosition[0], lastPosition[1]+self._gravityStrength)
+                            utils.cvLine(frameToDisplay, positionSVBegin,
+                                         positionGFBegin, (0,0,255), 1)
 
 
 
@@ -652,7 +671,7 @@ class Cameo(object):
                 if  self._shouldDrawTracks:
                     self._shouldDrawTracks = False
                 else:
-                    self._passedPoints = []  # 軌跡を消去する
+                    self._positionHistory = []  # 軌跡を消去する
                     self._shouldDrawTracks = True
             # elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
             #     if  self._shouldDrawDisplacementVector:
