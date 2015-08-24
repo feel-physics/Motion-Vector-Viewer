@@ -285,28 +285,8 @@ class Cameo(object):
                     # 速度ベクトルを記録する
                     lastVelocityVector = utils.getVelocityVector(
                         self._passedPoints, self._populationVelocity,
-                        int(self._populationVelocity/2)  # numFramesDelay
+                        self._numFramesDelay
                     )
-                    # 条件
-                    #   self._numFramesDelay = 6, len(passedPoints) = 20
-                    #   すなわち numPointsVisible = 14
-                    #   populationVelocity = 6, numFrameDelay = 3
-                    # のときの速度ベクトルを求めると
-                    #   passedPoints[20 - 1 - 3] - passedPoints[20 - 1 - 6 - 3] / 6 つまり
-                    #   passedPoints[16]         - passedPoints[10]             / 6
-                    # ちなみに、あとでこの速度ベクトルを passedPoints[13] に生やす
-                    # [16] - [10] を [13] に生やすので正しい
-                    #
-                    # 条件
-                    #   self._numFramesDelay = 13, len(passedPoints) = 20
-                    #   すなわち numPointsVisible = 7
-                    #   populationVelocity = 6, numFramesDelay = 10
-                    # のときの速度ベクトルを求めると
-                    #   passedPoints[20 - 1 - 10] - passedPoints[20 - 1 - 10 - 6] / 6 つまり
-                    #   passedPoints[9]           - passedPoints[3]               / 6
-                    # あとでこのベクトルを passedPoints[6] に生やす
-                    # [9] - [3] を [6] に生やすので正しい
-
                     self._velocityVectorsHistory.append(lastVelocityVector)
 
                 # 次の円が見つかっても見つからなくても・・・
@@ -342,7 +322,7 @@ class Cameo(object):
                                     self._velocityVectorsHistory[numPointsVisible - 1] is not None:
                         utils.cvArrow(
                             frameToDisplay, lastPt,
-                            self._velocityVectorsHistory[-1], 4, (255,0,0), 5)
+                            self._velocityVectorsHistory[numPointsVisible - 1], 4, (255,0,0), 5)
 
                     # 速度ベクトルをストロボモードで表示する
                     if self._shouldDrawVelocityVectorsInStrobeMode:

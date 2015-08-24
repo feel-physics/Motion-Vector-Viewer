@@ -8,25 +8,30 @@ import math
 def getVelocityVector(passedPoints, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
     # populationが3の場合はvはPt[-1],Pt[-4]を参照する。
-    if len(passedPoints) < population+numFramesDelay+1 \
-            or passedPoints[-1-numFramesDelay] is None \
-            or passedPoints[-1-population-numFramesDelay] is None:
+
+    indexPtBegin = -1-numFramesDelay-int(population/2)  # ptBegin: 始点
+    indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
+
+    # 追跡開始直後
+    if len(passedPoints) < population+numFramesDelay - int(population/2)+1 \
+            or passedPoints[indexPtBegin] is None \
+            or passedPoints[indexPtEnd]   is None:
         return None
     else:
-        # 最後からpopulation個前の点 pt0
-        pt0np = numpy.array(passedPoints[-(1+population+numFramesDelay)])
-        # 最後の点 pt1
-        pt1np = numpy.array(passedPoints[-(1+numFramesDelay)])
-        # 移動ベクトル Δpt = pt1 - pt0
-        dptnp = pt1np - pt0np
+        ptBeginNp = numpy.array(passedPoints[indexPtBegin])
+        ptEndNp   = numpy.array(passedPoints[indexPtEnd]  )
+        # 移動ベクトル Δpt = ptEnd - ptBegin
+        deltaPtNp = ptEndNp - ptBeginNp
+
         # 移動してなければNoneを返す
-        areSamePoint_array = (dptnp == numpy.array([0,0]))
-        if areSamePoint_array.all():
+        notMoved = (deltaPtNp == numpy.array([0,0]))
+        if notMoved.all():
             return None
+        # 移動していれば、速度ベクトル = 移動ベクトル / 母数
         else:
-            dptnp = dptnp / float(population)
-            vector = tuple(dptnp)
-            return vector
+            velocityVectorNp = deltaPtNp / float(population)
+            velocityVector   = tuple(velocityVectorNp)
+            return velocityVector
 
 def getAccelerationVector(passedPoints, population=2, numFramesDelay=0):
     pop = int(population / 2)  # 切り捨て
