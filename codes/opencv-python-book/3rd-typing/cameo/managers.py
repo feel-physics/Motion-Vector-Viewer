@@ -10,7 +10,7 @@ import utils
 class CaptureManager(object):
 
     def __init__(self, capture, previewWindowManager = None,
-                 shouldMirrorPreview = False):
+                 shouldMirrorPreview = False, scaleRatio = 1.0):
         """
         コンストラクタ
         :param capture: cv2.VideoCapture
@@ -50,6 +50,8 @@ class CaptureManager(object):
 
         self.paused        = False
         self._pausedFrame  = None
+
+        self._scaleRatio   = scaleRatio
 
     @property
     def channel(self):
@@ -113,8 +115,10 @@ class CaptureManager(object):
             # 削除する
             self._pausedFrame = None
 
-        # 画像スケールを1/2に落とす
-        self._frame = cv2.resize(self._frame[:], (640, 360))
+        # 画像サイズに縮尺倍率をかける
+        height = int(self._frame.shape[0] * self._scaleRatio)
+        width  = int(self._frame.shape[1] * self._scaleRatio)
+        self._frame = cv2.resize(self._frame[:], (width, height))
 
         return self._frame
 
@@ -248,9 +252,10 @@ class CaptureManager(object):
                     return
                 else:
                     fps = self._fpsEstimate
+            # cv2.VideoWriterを初期化する際に、画面サイズに縮尺倍率をかける
             size = (
-                int(self._capture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH )),
-                int(self._capture.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
+                int(self._capture.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH ) * self._scaleRatio),
+                int(self._capture.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT) * self._scaleRatio)
             )
             # _videoWriterを初期化する
             self._videoWriter = cv2.VideoWriter(

@@ -54,7 +54,7 @@ class Cameo(object):
 
         self._windowManager = WindowManager('Cameo', self.onKeypress)
         self._captureManager = CaptureManager(
-            cv2.VideoCapture(0), self._windowManager, False)
+            cv2.VideoCapture(0), self._windowManager, False, 0.5)
 
         ### Filtering
         # self._hueMin                       = 40  # 色紙
