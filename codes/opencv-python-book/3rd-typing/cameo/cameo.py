@@ -25,6 +25,7 @@ class Cameo(object):
         # HOUGH_CIRCLE_RESOLUTION,
         # HOUGH_CIRCLE_CANNY_THRESHOLD,
         # HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
+        HOUGH_CIRCLE_RADIUS_MIN,
         # SHOULD_DRAW_CANNY_EDGE,
         # SHOULD_DRAW_CIRCLE,
         SHOULD_DRAW_TRACKS,
@@ -43,7 +44,7 @@ class Cameo(object):
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
         SHOWING_FRAME
-    ) = range(0, 16)
+    ) = range(0, 17)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -74,6 +75,7 @@ class Cameo(object):
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
+        self._houghCircleRadiusMin         = 100
         self._shouldDrawCannyEdge          = False
 
         self._centerPointOfCircle          = None
@@ -178,7 +180,7 @@ class Cameo(object):
                     width / 10,               # 円同士の間の最小距離
                     self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
                     self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
-                    100,                      # 円の最小半径
+                    self._houghCircleRadiusMin,  # 円の最小半径
                     1)                        # 円の最大半径
                 return circles
 
@@ -486,6 +488,8 @@ class Cameo(object):
             #     put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
             # elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
             #     put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
+            elif cur == self.HOUGH_CIRCLE_RADIUS_MIN:
+                put('Hough Circle Radius Min'              , self._houghCircleRadiusMin)
             # elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
             #     put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
             # elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
@@ -650,6 +654,9 @@ class Cameo(object):
             # elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
             #     pitch = 50 if keycode == 0 else -50
             #     self._houghCircleParam2 += pitch
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_RADIUS_MIN:
+                pitch = 10 if keycode == 0 else -10
+                self._houghCircleRadiusMin += pitch
             # elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
             #     pitch = 1  if keycode == 0 else -1
             #     self._gaussianBlurKernelSize += pitch
