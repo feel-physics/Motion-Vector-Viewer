@@ -60,13 +60,13 @@ class Cameo(object):
         ### Filtering
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
-        self._hueMin                       = 60  # テニスボール
+        self._hueMin                       = 50  # テニスボール
         self._hueMax                       = 80  # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 60
         self._valueMax                     = 260
         self._gamma                        = 100
-        self._shouldProcessGaussianBlur    = True
+        self._shouldProcessGaussianBlur    = False
         self._gaussianBlurKernelSize       = 20
         self._shouldProcessClosing         = True
         self._closingIterations            = 2
@@ -500,8 +500,8 @@ class Cameo(object):
             #     put('Closing Iterations'                 , self._closingIterations)
             # elif cur == self.SHOULD_DRAW_CIRCLE:
             #     put('Should Draw Circle'                 , self._shouldDrawCircle)
-            # elif cur == self.SHOULD_DRAW_TRACKS:
-            #     put('Should Draw Tracks'                 , self._shouldDrawTracks)
+            elif cur == self.SHOULD_DRAW_TRACKS:
+                put('Should Draw Tracks'                 , self._shouldDrawTracks)
             # elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
             #     put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
