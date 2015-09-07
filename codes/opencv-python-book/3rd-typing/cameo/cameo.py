@@ -240,8 +240,21 @@ class Cameo(object):
 
                         self._isTracking = True
 
+                        # 新しい円を見つけたら
+                        self._positionHistory = []  # 軌跡を消去する
+                        self._velocityVectorsHistory = []
+
+                # if circles is not None:  # もし円を見つけたら・・・
+                else:  # 円が見つからなくても・・・
+                    # 表示可能な軌跡があれば・・・
+                    if 0 < len(self._positionHistory) - self._numFramesDelay:
+                        # 速度ベクトルをストロボモードで表示する
+                        if self._shouldDrawVelocityVectorsInStrobeMode:
+                            self.drawVelocityVectorsInStrobeMode(
+                                frameToDisplay, self._positionHistory, self._numFramesDelay)
+
             # if self._shouldTrackCircle and not self._isTracking:
-            elif self._shouldTrackCircle and self._isTracking:
+            elif self._shouldTrackCircle:  # and self._isTracking:
                 # HSV色空間に変換
                 hsv = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
                 # バックプロジェクションの計算
@@ -270,8 +283,8 @@ class Cameo(object):
                 # 密度が0.05未満なら追跡を中断する
                 if densityTrackWindow < 0.05:
                         self._isTracking = False
-                        self._positionHistory = []  # 軌跡を消去する
-                        self._velocityVectorsHistory = []
+                        # self._positionHistory = []  # 軌跡を消去する
+                        # self._velocityVectorsHistory = []
                         self._indexQuickMotion = 0
                         # print 'tracking interrupted'
 
@@ -330,15 +343,8 @@ class Cameo(object):
 
                     # 速度ベクトルをストロボモードで表示する
                     if self._shouldDrawVelocityVectorsInStrobeMode:
-                        for i in range(numPointsVisible - 1):
-                            if i % self._numStrobeModeSkips == 0 and \
-                                    self._velocityVectorsHistory[i] is not None:
-                                utils.cvArrow(
-                                    frameToDisplay,
-                                    self._positionHistory[i - self._numFramesDelay],
-                                    self._velocityVectorsHistory[i],
-                                    4, (255,0,0), 5
-                                )
+                        self.drawVelocityVectorsInStrobeMode(
+                            frameToDisplay, self._positionHistory, self._numFramesDelay)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -564,6 +570,18 @@ class Cameo(object):
                     self._takeScreenShot()
                     # タイマーをリセットする
                     self._timeSelfTimerStarted = None
+
+    def drawVelocityVectorsInStrobeMode(self, frameToDisplay,
+                                        positionHistory, numFramesDelay):
+        for i in range(len(positionHistory) - numFramesDelay - 1):
+            if i % self._numStrobeModeSkips == 0 and \
+                            self._velocityVectorsHistory[i] is not None:
+                utils.cvArrow(
+                    frameToDisplay,
+                    self._positionHistory[i - self._numFramesDelay],
+                    self._velocityVectorsHistory[i],
+                    4, (255, 0, 0), 5
+                )
 
     def onKeypress(self, keycode):
         """
