@@ -616,8 +616,8 @@ class Cameo(object):
             if not self._captureManager.isWritingVideo:
                 # ファイルに書き出すのを始めて・・・
                 self._captureManager.startWritingVideo(
-                    datetime.now().strftime('%y%m%d-%H%M%S')
-                    + '-screencast.avi')
+                    datetime.now().strftime('%Y-%m-%d %H%M%S ')
+                    + 'screencast.avi')
             # 書き出し中であれば・・・
             else:
                 # ・・・書き出しを終える
