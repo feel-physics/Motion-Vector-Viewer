@@ -158,6 +158,13 @@ def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=
         cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
         cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
+def cvVerticalArrow(img, x, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+    vx, vy = vector
+    verticalVector = (0, -math.sqrt(vx ** 2 + vy ** 2))
+    baseY = img.shape[0] - 20  # 画面下端から20px上
+    cvArrow(img, (x, baseY), verticalVector,
+            lengthTimes, color, thickness, lineType, shift)
+
 def cvLine(img, pt1, pt2, color, thickness=1):
     pt1 = (int(pt1[0]), int(pt1[1]))
     pt2 = (int(pt2[0]), int(pt2[1]))

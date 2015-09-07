@@ -52,6 +52,7 @@ class Cameo(object):
     ) = range(0, 2)
 
     SCALE_RATIO = 0.6
+    SPACE_BETWEEN_VERTICAL_VECTORS = 3
 
     def __init__(self):
 
@@ -581,6 +582,11 @@ class Cameo(object):
                 utils.cvArrow(
                     frameToDisplay,
                     self._positionHistory[i - self._numFramesDelay],
+                    self._velocityVectorsHistory[i],
+                    4, (255, 0, 0), 5
+                )
+                utils.cvVerticalArrow(
+                    frameToDisplay, self.SPACE_BETWEEN_VERTICAL_VECTORS*i,
                     self._velocityVectorsHistory[i],
                     4, (255, 0, 0), 5
                 )
