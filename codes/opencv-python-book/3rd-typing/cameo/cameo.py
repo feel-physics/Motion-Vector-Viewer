@@ -208,10 +208,11 @@ class Cameo(object):
                     # 画面外に円がはみ出す場合は・・・
                     height, width = frameToFindCircle.shape
                     m = 10  # マージン
-                    if x < r+m or width < x+r+m or y < r+m or height < y+r+m:
-                        pass
-                    # 画面の中に円が収まる場合は・・・
-                    else:
+                    # 画面の中に円が収まる場合
+                    if m < x-r \
+                            or width < x+2*r+m \
+                            or m < y-r \
+                            or height < y+2*r+m:
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROI関心領域（Region of Interest)を設定
