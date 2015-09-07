@@ -51,11 +51,13 @@ class Cameo(object):
         WHAT_COMPUTER_SEE
     ) = range(0, 2)
 
+    SCALE_RATIO = 0.6
+
     def __init__(self):
 
         self._windowManager = WindowManager('Cameo', self.onKeypress)
         self._captureManager = CaptureManager(
-            cv2.VideoCapture(0), self._windowManager, False, 0.5)
+            cv2.VideoCapture(0), self._windowManager, False, self.SCALE_RATIO)
 
         ### Filtering
         # self._hueMin                       = 40  # 色紙
