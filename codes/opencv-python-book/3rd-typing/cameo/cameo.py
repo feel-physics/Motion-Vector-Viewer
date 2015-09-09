@@ -43,8 +43,9 @@ class Cameo(object):
         SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOWING_FRAME
-    ) = range(0, 17)
+    ) = range(0, 18)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -114,8 +115,8 @@ class Cameo(object):
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = True
-        self._spaceBetweenVerticalVectors = 3
-
+        self._spaceBetweenVerticalVectors  = 3
+        self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
 
         self._timeSelfTimerStarted         = None
 
@@ -541,7 +542,11 @@ class Cameo(object):
             elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTracksInStrobeMode)
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
-                put('Should Draw Velocity Vectors In Strobe Mode' , self._shouldDrawVelocityVectorsInStrobeMode)
+                put('Should Draw Velocity Vectors In Strobe Mode' ,
+                    self._shouldDrawVelocityVectorsInStrobeMode)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE:
+                put('Should Draw Velocity Vectors Vertically In Strobe Mode' ,
+                    self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -585,11 +590,12 @@ class Cameo(object):
                     self._velocityVectorsHistory[i],
                     4, (255, 0, 0), 5
                 )
-                utils.cvVerticalArrow(
-                    frameToDisplay, self._spaceBetweenVerticalVectors*i,
-                    self._velocityVectorsHistory[i],
-                    4, (255, 0, 0), 5
-                )
+                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+                    utils.cvVerticalArrow(
+                        frameToDisplay, self._spaceBetweenVerticalVectors*i,
+                        self._velocityVectorsHistory[i],
+                        4, (255, 0, 0), 5
+                    )
 
     def onKeypress(self, keycode):
         """
@@ -783,6 +789,13 @@ class Cameo(object):
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
                 self._shouldDrawVelocityVectorsInStrobeMode = \
                     not self._shouldDrawVelocityVectorsInStrobeMode
+                self._positionHistory = []
+                self._velocityVectorsHistory = []
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE:
+                self._shouldDrawVelocityVectorsVerticallyInStrobeMode = \
+                    not self._shouldDrawVelocityVectorsVerticallyInStrobeMode
+                self._positionHistory = []
+                self._velocityVectorsHistory = []
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
