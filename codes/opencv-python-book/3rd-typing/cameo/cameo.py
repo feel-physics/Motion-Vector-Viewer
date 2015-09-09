@@ -65,7 +65,7 @@ class Cameo(object):
         self._hueMax                       = 80  # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 60
-        self._valueMax                     = 260
+        self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = False
         self._gaussianBlurKernelSize       = 20
