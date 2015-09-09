@@ -51,14 +51,12 @@ class Cameo(object):
         WHAT_COMPUTER_SEE
     ) = range(0, 2)
 
-    SCALE_RATIO = 0.6
-    SPACE_BETWEEN_VERTICAL_VECTORS = 3
-
     def __init__(self):
 
+        self._scaleRatio                   = 0.6
         self._windowManager = WindowManager('Cameo', self.onKeypress)
         self._captureManager = CaptureManager(
-            cv2.VideoCapture(0), self._windowManager, False, self.SCALE_RATIO)
+            cv2.VideoCapture(0), self._windowManager, False, self._scaleRatio)
 
         ### Filtering
         # self._hueMin                       = 40  # 色紙
@@ -116,6 +114,8 @@ class Cameo(object):
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = True
+        self._spaceBetweenVerticalVectors = 3
+
 
         self._timeSelfTimerStarted         = None
 
@@ -586,7 +586,7 @@ class Cameo(object):
                     4, (255, 0, 0), 5
                 )
                 utils.cvVerticalArrow(
-                    frameToDisplay, self.SPACE_BETWEEN_VERTICAL_VECTORS*i,
+                    frameToDisplay, self._spaceBetweenVerticalVectors*i,
                     self._velocityVectorsHistory[i],
                     4, (255, 0, 0), 5
                 )
