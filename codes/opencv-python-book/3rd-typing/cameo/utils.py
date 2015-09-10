@@ -170,6 +170,26 @@ def cvLine(img, pt1, pt2, color, thickness=1):
     pt2 = (int(pt2[0]), int(pt2[1]))
     cv2.line(img, pt1, pt2, color, thickness)
 
+# 追跡中と検出中に呼ばれるのでメソッドにしている
+def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
+                                    numFramesDelay, numStrobeModeSkips,
+                                    velocityVectorsHistory, spaceBetweenVerticalVectors):
+    for i in range(len(positionHistory) - numFramesDelay - 1):
+        if i % numStrobeModeSkips == 0 and \
+                        velocityVectorsHistory[i] is not None:
+            cvArrow(
+                frameToDisplay,
+                positionHistory[i - numFramesDelay],
+                velocityVectorsHistory[i],
+                4, (255, 0, 0), 5
+            )
+            if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+                cvVerticalArrow(
+                    frameToDisplay, spaceBetweenVerticalVectors*i,
+                    velocityVectorsHistory[i],
+                    4, (255, 0, 0), 5
+                )
+
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
     入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける

@@ -131,7 +131,7 @@ class Cameo(object):
         self._shouldDrawTracksInStrobeMode = False
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
-        self._shouldDrawVelocityVectorsInStrobeMode = True
+        self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = True
@@ -283,8 +283,10 @@ class Cameo(object):
                     if 0 < len(self._positionHistory) - self._numFramesDelay:
                         # 速度ベクトルをストロボモードで表示する
                         if self._shouldDrawVelocityVectorsInStrobeMode:
-                            self.drawVelocityVectorsInStrobeMode(
-                                frameToDisplay, self._positionHistory, self._numFramesDelay)
+                            utils.drawVelocityVectorsInStrobeMode(
+                                frameToDisplay, self._positionHistory, self._numFramesDelay,
+                                self._numStrobeModeSkips, self._velocityVectorsHistory,
+                                self._spaceBetweenVerticalVectors)
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -367,13 +369,13 @@ class Cameo(object):
                             utils.cvArrow(frameToDisplay, self._positionHistory[0],
                                           vector, 1, WHITE, 5)
 
-                    # 速度ベクトルを描画する
-                    if self._shouldDrawVelocityVector and \
-                                    self._velocityVectorsHistory[numPointsVisible - 1] is not None:
+                    if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
                         c = self._coVelocityVectorStrength
-                        utils.cvArrow(
-                            frameToDisplay, lastPosition,
-                            self._velocityVectorsHistory[numPointsVisible - 1], c, BLUE, 5)
+                        # 速度ベクトルを描画する
+                        if self._shouldDrawVelocityVector:
+                            utils.cvArrow(
+                                frameToDisplay, lastPosition,
+                                self._velocityVectorsHistory[numPointsVisible - 1], c, BLUE, 5)
 
                         if self._shouldDrawVelocityVectorXComponent:
                             v  = self._velocityVectorsHistory[numPointsVisible - 1]
@@ -381,16 +383,20 @@ class Cameo(object):
                             utils.cvArrow(
                                 frameToDisplay, lastPosition,
                                 (v[0], 0), c, SKY_BLUE, 3)  # x成分のみ使う
-                            # 元ベクトルの先から成分ベクトルの先へ線を引く
-                            utils.cvLine(frameToDisplay,
-                                         (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
-                                         (lastPosition[0] + v[0]*c, lastPosition[1]),
-                                         WHITE, 2)
+
+                            if self._shouldDrawVelocityVector:
+                                # 元ベクトルの先から成分ベクトルの先へ線を引く
+                                utils.cvLine(frameToDisplay,
+                                             (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
+                                             (lastPosition[0] + v[0]*c, lastPosition[1]),
+                                             WHITE, 2)
 
                     # 速度ベクトルをストロボモードで表示する
                     if self._shouldDrawVelocityVectorsInStrobeMode:
-                        self.drawVelocityVectorsInStrobeMode(
-                            frameToDisplay, self._positionHistory, self._numFramesDelay)
+                        utils.drawVelocityVectorsInStrobeMode(
+                            frameToDisplay, self._positionHistory, self._numFramesDelay,
+                            self._numStrobeModeSkips, self._velocityVectorsHistory,
+                            self._spaceBetweenVerticalVectors)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -626,24 +632,6 @@ class Cameo(object):
                     self._takeScreenShot()
                     # タイマーをリセットする
                     self._timeSelfTimerStarted = None
-
-    def drawVelocityVectorsInStrobeMode(self, frameToDisplay,
-                                        positionHistory, numFramesDelay):
-        for i in range(len(positionHistory) - numFramesDelay - 1):
-            if i % self._numStrobeModeSkips == 0 and \
-                            self._velocityVectorsHistory[i] is not None:
-                utils.cvArrow(
-                    frameToDisplay,
-                    self._positionHistory[i - self._numFramesDelay],
-                    self._velocityVectorsHistory[i],
-                    4, (255, 0, 0), 5
-                )
-                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
-                    utils.cvVerticalArrow(
-                        frameToDisplay, self._spaceBetweenVerticalVectors*i,
-                        self._velocityVectorsHistory[i],
-                        4, (255, 0, 0), 5
-                    )
 
     def onKeypress(self, keycode):
         """
