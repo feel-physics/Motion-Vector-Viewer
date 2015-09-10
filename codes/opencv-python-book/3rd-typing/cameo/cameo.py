@@ -10,20 +10,6 @@ from managers import WindowManager, CaptureManager
 import utils
 import my_lib
 
-COLOR = (
-    WHITE,
-    RED,
-    GREEN,
-    BLUE,
-    SKY_BLUE
-) = (
-    (255,255,255),
-    (  0,  0,255),
-    (  0,255,  0),
-    (255,  0,  0),
-    (255,128,128)
-)
-
 class Cameo(object):
 
     ##### TODO: 不要になったオプションは廃止する
@@ -286,7 +272,8 @@ class Cameo(object):
                             utils.drawVelocityVectorsInStrobeMode(
                                 frameToDisplay, self._positionHistory, self._numFramesDelay,
                                 self._numStrobeModeSkips, self._velocityVectorsHistory,
-                                self._spaceBetweenVerticalVectors)
+                                self._spaceBetweenVerticalVectors,
+                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -348,7 +335,7 @@ class Cameo(object):
                     if self._shouldDrawTracks:
                         for i in range(numPointsVisible - 1):
                             cv2.line(frameToDisplay, self._positionHistory[i],
-                                     self._positionHistory[i+1], WHITE, 5)
+                                     self._positionHistory[i+1], utils.WHITE, 5)
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, WHITE, 5)
 
@@ -357,7 +344,7 @@ class Cameo(object):
                         for i in range(numPointsVisible - 1):
                             if i % self._numStrobeModeSkips == 0:
                                 cv2.circle(
-                                    frameToDisplay, self._positionHistory[i], 5, WHITE, -1)
+                                    frameToDisplay, self._positionHistory[i], 5, utils.WHITE, -1)
 
                     lastPosition = self._positionHistory[numPointsVisible-1]
 
@@ -367,7 +354,7 @@ class Cameo(object):
                                   lastPosition[1] - self._positionHistory[0][1])
                         if vector is not None:
                             utils.cvArrow(frameToDisplay, self._positionHistory[0],
-                                          vector, 1, WHITE, 5)
+                                          vector, 1, utils.WHITE, 5)
 
                     if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
                         c = self._coVelocityVectorStrength
@@ -375,28 +362,29 @@ class Cameo(object):
                         if self._shouldDrawVelocityVector:
                             utils.cvArrow(
                                 frameToDisplay, lastPosition,
-                                self._velocityVectorsHistory[numPointsVisible - 1], c, BLUE, 5)
+                                self._velocityVectorsHistory[numPointsVisible - 1], c, utils.BLUE, 5)
 
                         if self._shouldDrawVelocityVectorXComponent:
                             v  = self._velocityVectorsHistory[numPointsVisible - 1]
                             # 成分ベクトルを描く
                             utils.cvArrow(
                                 frameToDisplay, lastPosition,
-                                (v[0], 0), c, SKY_BLUE, 3)  # x成分のみ使う
+                                (v[0], 0), c, utils.SKY_BLUE, 3)  # x成分のみ使う
 
                             if self._shouldDrawVelocityVector:
                                 # 元ベクトルの先から成分ベクトルの先へ線を引く
                                 utils.cvLine(frameToDisplay,
                                              (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
                                              (lastPosition[0] + v[0]*c, lastPosition[1]),
-                                             WHITE, 2)
+                                             utils.WHITE, 2)
 
                     # 速度ベクトルをストロボモードで表示する
                     if self._shouldDrawVelocityVectorsInStrobeMode:
                         utils.drawVelocityVectorsInStrobeMode(
                             frameToDisplay, self._positionHistory, self._numFramesDelay,
                             self._numStrobeModeSkips, self._velocityVectorsHistory,
-                            self._spaceBetweenVerticalVectors)
+                            self._spaceBetweenVerticalVectors,
+                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -430,18 +418,8 @@ class Cameo(object):
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
                         if aclVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, GREEN, 5)
+                            utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, utils.GREEN, 5)
                             # print aclVector
-
-                    # 力ベクトルを描画する
-                    def drawForceVector(aclVector, positionAclBegin):
-                        if aclVector is None:
-                            aclVector = (0,0)
-                        vector = (aclVector[0], aclVector[1] - self._gravityStrength)
-
-                        if vector is not None:
-                            utils.cvArrow(frameToDisplay, positionAclBegin,
-                                          vector, 1, BLUE, 5)
 
                     if self._shouldDrawForceVectorBottom:
                         yPositionAclBegin = \
@@ -449,14 +427,16 @@ class Cameo(object):
                         positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
                                         yPositionAclBegin)
                         # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        drawForceVector(aclVector, positionAclBegin)
+                        utils.drawForceVector(frameToDisplay, aclVector,
+                                              positionAclBegin, self._gravityStrength)
 
                     if self._shouldDrawForceVectorTop:
                         yPositionAclBegin = \
                             self._positionHistory[numPointsVisible-1][1] - h/2
                         positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
                                         yPositionAclBegin)
-                        drawForceVector(aclVector, positionAclBegin)
+                        utils.drawForceVector(frameToDisplay, aclVector,
+                                              positionAclBegin, self._gravityStrength)
 
                     # 力ベクトルの合成を描画する
                     if self._shouldDrawSynthesizedVector:
@@ -480,7 +460,7 @@ class Cameo(object):
                         if synthesizedVector is not None:
                             utils.cvArrow(
                                 frameToDisplay, lastPosition, synthesizedVector,
-                                1, BLUE, 5
+                                1, utils.BLUE, 5
                             )
                             # 接触力ベクトルと加速度ベクトルのあいだに線を引く
                             positionSVBegin = \
@@ -491,12 +471,12 @@ class Cameo(object):
                                     (lastPosition[0]+contactForceVector[0],
                                      lastPosition[1]+contactForceVector[1])
                                 utils.cvLine(frameToDisplay, positionSVBegin,
-                                             positionCFBegin, BLUE, 1)
+                                             positionCFBegin, utils.BLUE, 1)
                             # 重力ベクトルと加速度ベクトルのあいだに線を引く
                             positionGFBegin = \
                                 (lastPosition[0], lastPosition[1]+self._gravityStrength)
                             utils.cvLine(frameToDisplay, positionSVBegin,
-                                         positionGFBegin, BLUE, 1)
+                                         positionGFBegin, utils.BLUE, 1)
 
 
 
@@ -518,7 +498,7 @@ class Cameo(object):
             # 情報を表示する
             def putText(text, lineNumber):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
-                            cv2.FONT_HERSHEY_PLAIN, 2.0, WHITE, 3)
+                            cv2.FONT_HERSHEY_PLAIN, 2.0, utils.WHITE, 3)
             def put(label, value):
                 fps = self._fpsWithTick.get()  # FPSを計算する
                 putText('FPS '+str(fps)

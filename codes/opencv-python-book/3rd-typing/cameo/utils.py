@@ -5,6 +5,20 @@ import cv2
 import numpy
 import math
 
+COLOR = (
+    WHITE,
+    RED,
+    GREEN,
+    BLUE,
+    SKY_BLUE
+) = (
+    (255,255,255),
+    (  0,  0,255),
+    (  0,255,  0),
+    (255,  0,  0),
+    (255,128,128)
+)
+
 def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
     # populationが3の場合はvはPt[-1],Pt[-4]を参照する。
@@ -173,7 +187,8 @@ def cvLine(img, pt1, pt2, color, thickness=1):
 # 追跡中と検出中に呼ばれるのでメソッドにしている
 def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                                     numFramesDelay, numStrobeModeSkips,
-                                    velocityVectorsHistory, spaceBetweenVerticalVectors):
+                                    velocityVectorsHistory, spaceBetweenVerticalVectors,
+                                    shouldDrawVelocityVectorsVerticallyInStrobeMode):
     for i in range(len(positionHistory) - numFramesDelay - 1):
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
@@ -183,12 +198,22 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                 velocityVectorsHistory[i],
                 4, (255, 0, 0), 5
             )
-            if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+            if shouldDrawVelocityVectorsVerticallyInStrobeMode:
                 cvVerticalArrow(
                     frameToDisplay, spaceBetweenVerticalVectors*i,
                     velocityVectorsHistory[i],
                     4, (255, 0, 0), 5
                 )
+
+# 力ベクトルを描画する
+def drawForceVector(img, aclVector, positionAclBegin, gravityStrength):
+    if aclVector is None:
+        aclVector = (0,0)
+    # 加速度ベクトル - 重力ベクトル = 力ベクトル
+    vector = (aclVector[0], aclVector[1] - gravityStrength)
+
+    if vector is not None:
+        cvArrow(img, positionAclBegin, vector, 1, BLUE, 5)
 
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
