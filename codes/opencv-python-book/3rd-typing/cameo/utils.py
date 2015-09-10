@@ -5,7 +5,7 @@ import cv2
 import numpy
 import math
 
-def getVelocityVector(passedPoints, population=1, numFramesDelay=0):
+def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
     # populationが3の場合はvはPt[-1],Pt[-4]を参照する。
 
@@ -13,13 +13,13 @@ def getVelocityVector(passedPoints, population=1, numFramesDelay=0):
     indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
 
     # 追跡開始直後
-    if len(passedPoints) < population+numFramesDelay - int(population/2)+1 \
-            or passedPoints[indexPtBegin] is None \
-            or passedPoints[indexPtEnd]   is None:
+    if len(positionHistory) < population+numFramesDelay - int(population/2)+1 \
+            or positionHistory[indexPtBegin] is None \
+            or positionHistory[indexPtEnd]   is None:
         return None
     else:
-        ptBeginNp = numpy.array(passedPoints[indexPtBegin])
-        ptEndNp   = numpy.array(passedPoints[indexPtEnd]  )
+        ptBeginNp = numpy.array(positionHistory[indexPtBegin])
+        ptEndNp   = numpy.array(positionHistory[indexPtEnd]  )
         # 移動ベクトル Δpt = ptEnd - ptBegin
         deltaPtNp = ptEndNp - ptBeginNp
 
@@ -33,18 +33,18 @@ def getVelocityVector(passedPoints, population=1, numFramesDelay=0):
             velocityVector   = tuple(velocityVectorNp)
             return velocityVector
 
-def getAccelerationVector(passedPoints, population=2, numFramesDelay=0):
+def getAccelerationVector(positionHistory, population=2, numFramesDelay=0):
     pop = int(population / 2)  # 切り捨て
-    if len(passedPoints) < 1+2*pop+numFramesDelay \
-            or passedPoints[-1-numFramesDelay] is None \
-            or passedPoints[-1-pop-numFramesDelay] is None \
-            or passedPoints[-1-2*pop-numFramesDelay] is None:
+    if len(positionHistory) < 1+2*pop+numFramesDelay \
+            or positionHistory[-1-numFramesDelay] is None \
+            or positionHistory[-1-pop-numFramesDelay] is None \
+            or positionHistory[-1-2*pop-numFramesDelay] is None:
         return None
     else:
         # [-1-pop]から[-1-2*pop]のときの速度
-        velocity0 = getVelocityVector(passedPoints, pop, pop+numFramesDelay)
+        velocity0 = getVelocityVector(positionHistory, pop, pop+numFramesDelay)
         # [-1]から[-1-pop]のときの速度
-        velocity1 = getVelocityVector(passedPoints, pop, numFramesDelay)
+        velocity1 = getVelocityVector(positionHistory, pop, numFramesDelay)
         if velocity0 is not None and velocity1 is not None:
 
             printVector('v0', velocity0)
@@ -66,7 +66,7 @@ def getAccelerationVector(passedPoints, population=2, numFramesDelay=0):
                 return vector
 
 def getAccelerationVectorStartStop(
-        passedPoints,
+        positionHistory,
         population=6,
         numFramesDelay=3,
         coForceVectorStrength=25.0):
@@ -75,8 +75,8 @@ def getAccelerationVectorStartStop(
 
     # v6 - v3 = Δv3 = a3
     #
-    v6 = getVelocityVector(passedPoints, 3, 0+numFramesDelay)
-    v3 = getVelocityVector(passedPoints, 3, 3+numFramesDelay)
+    v6 = getVelocityVector(positionHistory, 3, 0+numFramesDelay)
+    v3 = getVelocityVector(positionHistory, 3, 3+numFramesDelay)
 
     v6np = numpy.array([0,0]) if v6 is None else numpy.array(v6)
     v3np = numpy.array([0,0]) if v3 is None else numpy.array(v3)
@@ -98,14 +98,14 @@ def getAccelerationVectorStartStop(
         return 'usual'
 
 def getAccelerationVectorFirFilter(
-        passedPoints,
+        positionHistory,
         population=6,
         numFramesDelay=3,
         coForceVectorStrength=25.0):
     # populationVelocityは6
     # v_6 - v_0 = Δv0 = a_0
-    v11 = getVelocityVector(passedPoints, 6, numFramesDelay)
-    v10 = getVelocityVector(passedPoints, 6, population+numFramesDelay)
+    v11 = getVelocityVector(positionHistory, 6, numFramesDelay)
+    v10 = getVelocityVector(positionHistory, 6, population+numFramesDelay)
     if v11 is None or v10 is None:
         pass
     else:
@@ -124,17 +124,17 @@ def printVector(name, tuple):
     tupleInt = (int(tuple[0]), int(tuple[1]))
     # print name + ': ' + str(tupleInt)
 
-def getAccelerationVectorVelocitySensitive(passedPoints):
-    # passedPoints[-6]とpassedPoints[-7]の
+def getAccelerationVectorVelocitySensitive(positionHistory):
+    # positionHistory[-6]とpositionHistory[-7]の
     # あいだの距離が40ピクセル以上のときは母数2で加速度を求める
-    vVector = getVelocityVector(passedPoints, 1, 5)
+    vVector = getVelocityVector(positionHistory, 1, 5)
     if vVector is None:
         pass
     elif 40 < math.sqrt(vVector[0]**2 + vVector[1]**2):
         # print '40 < v'
-        return getAccelerationVector(passedPoints, 6, 3)
+        return getAccelerationVector(positionHistory, 6, 3)
     else:
-        return getAccelerationVector(passedPoints, 12, 0)
+        return getAccelerationVector(positionHistory, 12, 0)
 
 def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
     if int(vector[0]) == 0 and int(vector[1]) == 0:
