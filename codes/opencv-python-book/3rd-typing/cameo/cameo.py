@@ -356,21 +356,26 @@ class Cameo(object):
                             utils.cvArrow(frameToDisplay, self._positionHistory[0],
                                           vector, 1, utils.WHITE, 5)
 
+                    # 速度ベクトル関係
                     if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
                         c = self._coVelocityVectorStrength
-                        # 速度ベクトルを描画する
+
+                        # 速度ベクトルを描く
                         if self._shouldDrawVelocityVector:
                             utils.cvArrow(
                                 frameToDisplay, lastPosition,
                                 self._velocityVectorsHistory[numPointsVisible - 1], c, utils.BLUE, 5)
 
+                        # 速度x成分ベクトルを描く
                         if self._shouldDrawVelocityVectorXComponent:
                             v  = self._velocityVectorsHistory[numPointsVisible - 1]
-                            # 成分ベクトルを描く
+                            # 成分ベクトルを求める
+                            vx = utils.getComponentVector(v, "x")
                             utils.cvArrow(
-                                frameToDisplay, lastPosition,
-                                (v[0], 0), c, utils.SKY_BLUE, 3)  # x成分のみ使う
+                                frameToDisplay, lastPosition, vx, c, utils.SKY_BLUE, 3)
 
+                            # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
+                            # 2つのベクトルの先を結ぶ線分を描く
                             if self._shouldDrawVelocityVector:
                                 # 元ベクトルの先から成分ベクトルの先へ線を引く
                                 utils.cvLine(frameToDisplay,

@@ -215,6 +215,14 @@ def drawForceVector(img, aclVector, positionAclBegin, gravityStrength):
     if vector is not None:
         cvArrow(img, positionAclBegin, vector, 1, BLUE, 5)
 
+def getComponentVector(vector, axis):
+    if axis is "x":
+        return (vector[0], 0)  # x成分のみ使う
+    elif axis is "y":
+        return (0, vector[1])  # y成分のみ使う
+    else:
+        raise ValueError('axis is neither x nor y')
+
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
     入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
