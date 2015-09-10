@@ -44,8 +44,11 @@ class Cameo(object):
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
+        CO_VELOCITY_VECTOR_STRENGTH,
+
         SHOWING_FRAME
-    ) = range(0, 18)
+    ) = range(0, 20)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -98,7 +101,7 @@ class Cameo(object):
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.IS_MODE_PENDULUM
+        self._currentAdjusting             = self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT
         self._currentShowing               = self.ORIGINAL
 
         self._numFramesDelay               = 6  # 13
@@ -117,6 +120,8 @@ class Cameo(object):
         self._shouldDrawVelocityVectorsInStrobeMode = True
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
+        self._shouldDrawVelocityVectorXComponent = True
+        self._coVelocityVectorStrength     = 4
 
         self._timeSelfTimerStarted         = None
 
@@ -224,14 +229,22 @@ class Cameo(object):
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
                         # マスク画像の作成
-                        mask = cv2.inRange(hsv_roi, numpy.array((
-                            self._hueMin / 2,           # H最小値
-                            2 ** self._sThreshold - 1,  # S最小値
-                            self._valueMin              # V最小値
-                        )), numpy.array((
-                            self._hueMax / 2,           # H最大値
-                            255,                        # S最大値
-                            self._valueMax)))           # V最大値
+                        # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
+                        # > OpenCV Error: Sizes of input arguments do not match
+                        # > (The lower boundary is neither
+                        # > an array of the same size and same type as src, nor a scalar)
+                        # > in inRange
+                        mask = cv2.inRange(hsv_roi,
+                                numpy.array([
+                                    self._hueMin / 2,           # H最小値
+                                    2 ** self._sThreshold - 1,  # S最小値
+                                    self._valueMin              # V最小値
+                                ], dtype=numpy.uint8),
+                                numpy.array([
+                                    self._hueMax / 2,           # H最大値
+                                    255,                        # S最大値
+                                    self._valueMax
+                                ], dtype=numpy.uint8))          # V最大値
                         # ヒストグラムの計算
                         self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
                         # ヒストグラムの正規化
@@ -341,9 +354,22 @@ class Cameo(object):
                     # 速度ベクトルを描画する
                     if self._shouldDrawVelocityVector and \
                                     self._velocityVectorsHistory[numPointsVisible - 1] is not None:
+                        c = self._coVelocityVectorStrength
                         utils.cvArrow(
                             frameToDisplay, lastPosition,
-                            self._velocityVectorsHistory[numPointsVisible - 1], 4, (255,0,0), 5)
+                            self._velocityVectorsHistory[numPointsVisible - 1], c, (255,0,0), 5)
+
+                        if self._shouldDrawVelocityVectorXComponent:
+                            v  = self._velocityVectorsHistory[numPointsVisible - 1]
+                            # 成分ベクトルを描く
+                            utils.cvArrow(
+                                frameToDisplay, lastPosition,
+                                (v[0], 0), c, (255,128,128), 3)  # x成分のみ使う
+                            # 元ベクトルの先から成分ベクトルの先へ線を引く
+                            utils.cvLine(frameToDisplay,
+                                         (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
+                                         (lastPosition[0] + v[0]*c, lastPosition[1]),
+                                         (255,255,255), 2)
 
                     # 速度ベクトルをストロボモードで表示する
                     if self._shouldDrawVelocityVectorsInStrobeMode:
@@ -547,6 +573,12 @@ class Cameo(object):
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE:
                 put('Should Draw Velocity Vectors Vertically In Strobe Mode' ,
                     self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
+                put('Should Draw Velocity Vector X Component' ,
+                    self._shouldDrawVelocityVectorXComponent)
+            elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
+                put('Coefficient of Velocity Vector Strength' ,
+                    self._coVelocityVectorStrength)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -796,6 +828,12 @@ class Cameo(object):
                     not self._shouldDrawVelocityVectorsVerticallyInStrobeMode
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
+                self._shouldDrawVelocityVectorXComponent = \
+                    not self._shouldDrawVelocityVectorXComponent
+            elif self._currentAdjusting == self.CO_VELOCITY_VECTOR_STRENGTH:
+                pitch = 1  if keycode == 0 else -1
+                self._coVelocityVectorStrength += pitch
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
