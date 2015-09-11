@@ -126,6 +126,10 @@ class Cameo(object):
         self._coVelocityVectorStrength     = 4
         self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
         self._velocityVectorsXComponentHistory = []
+        self._colorVelocityVector          = utils.BLUE
+        self._colorVelocityVectorXComponent = utils.SKY_BLUE
+        self._thicknessVelocityVector      = 5
+        self._thicknessVelocityVectorXComponent = 3
 
         self._timeSelfTimerStarted         = None
 
@@ -292,7 +296,9 @@ class Cameo(object):
                                 frameToDisplay, self._positionHistory, self._numFramesDelay,
                                 self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                                 self._spaceBetweenVerticalVectors,
-                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode,
+                                self._colorVelocityVectorXComponent,
+                                self._thicknessVelocityVectorXComponent)
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -392,7 +398,8 @@ class Cameo(object):
                         if self._shouldDrawVelocityVector:
                             utils.cvArrow(
                                 frameToDisplay, lastPosition,
-                                self._velocityVectorsHistory[numPointsVisible - 1], c, utils.BLUE, 5)
+                                self._velocityVectorsHistory[numPointsVisible - 1], c,
+                                self._colorVelocityVector, self._thicknessVelocityVector)
 
                         # 速度x成分ベクトルを描く
                         if self._shouldDrawVelocityVectorXComponent:
@@ -400,7 +407,9 @@ class Cameo(object):
                             # 成分ベクトルを求める
                             vx = utils.getComponentVector(v, "x")
                             utils.cvArrow(
-                                frameToDisplay, lastPosition, vx, c, utils.SKY_BLUE, 3)
+                                frameToDisplay, lastPosition, vx, c,
+                                self._colorVelocityVectorXComponent,
+                                self._thicknessVelocityVectorXComponent)
 
                             # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
                             # 2つのベクトルの先を結ぶ線分を描く
@@ -425,7 +434,9 @@ class Cameo(object):
                             frameToDisplay, self._positionHistory, self._numFramesDelay,
                             self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                             self._spaceBetweenVerticalVectors,
-                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode,
+                            self._colorVelocityVectorXComponent,
+                            self._thicknessVelocityVectorXComponent)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)

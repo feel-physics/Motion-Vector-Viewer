@@ -188,7 +188,8 @@ def cvLine(img, pt1, pt2, color, thickness=1):
 def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                                     numFramesDelay, numStrobeModeSkips,
                                     velocityVectorsHistory, spaceBetweenVerticalVectors,
-                                    shouldDrawVelocityVectorsVerticallyInStrobeMode):
+                                    shouldDrawVelocityVectorsVerticallyInStrobeMode=False,
+                                    color=BLUE, thickness=5):
     for i in range(len(positionHistory) - numFramesDelay - 1):
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
@@ -196,13 +197,13 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                 frameToDisplay,
                 positionHistory[i - numFramesDelay],
                 velocityVectorsHistory[i],
-                4, (255, 0, 0), 5
+                4, color, thickness
             )
             if shouldDrawVelocityVectorsVerticallyInStrobeMode:
                 cvVerticalArrow(
                     frameToDisplay, spaceBetweenVerticalVectors*i,
                     velocityVectorsHistory[i],
-                    4, (255, 0, 0), 5
+                    4, color, thickness
                 )
 
 # 力ベクトルを描画する
