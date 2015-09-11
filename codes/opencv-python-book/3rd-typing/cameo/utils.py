@@ -5,19 +5,11 @@ import cv2
 import numpy
 import math
 
-COLOR = (
-    WHITE,
-    RED,
-    GREEN,
-    BLUE,
-    SKY_BLUE
-) = (
-    (255,255,255),
-    (  0,  0,255),
-    (  0,255,  0),
-    (255,  0,  0),
-    (255,128,128)
-)
+WHITE    = (255,255,255)
+RED      = (  0,  0,255)
+GREEN    = (  0,255,  0)
+BLUE     = (255,  0,  0)
+SKY_BLUE = (255,128,128)
 
 def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
