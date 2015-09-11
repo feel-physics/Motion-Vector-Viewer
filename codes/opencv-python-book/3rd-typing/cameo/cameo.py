@@ -46,9 +46,10 @@ class Cameo(object):
         SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
         CO_VELOCITY_VECTOR_STRENGTH,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
 
         SHOWING_FRAME
-    ) = range(0, 20)
+    ) = range(0, 21)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -117,11 +118,13 @@ class Cameo(object):
         self._shouldDrawTracksInStrobeMode = False
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
-        self._shouldDrawVelocityVectorsInStrobeMode = False
+        self._shouldDrawVelocityVectorsInStrobeMode = True
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = True
         self._coVelocityVectorStrength     = 4
+        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
+        self._velocityVectorsXComponentHistory = []
 
         self._timeSelfTimerStarted         = None
 
@@ -239,14 +242,14 @@ class Cameo(object):
                                     self._hueMin / 2,           # H最小値
                                     2 ** self._sThreshold - 1,  # S最小値
                                     self._valueMin              # V最小値
-                                # ], dtype=numpy.uint8),
-                                ]),
+                                ], dtype=numpy.uint8),
+                                # ]),
                                 numpy.array([
                                     self._hueMax / 2,           # H最大値
                                     255,                        # S最大値
                                     self._valueMax              # V最大値
-                                # ], dtype=numpy.uint8))
-                                ]))
+                                ], dtype=numpy.uint8))
+                                # ]))
                         # ヒストグラムの計算
                         self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
                         # ヒストグラムの正規化
@@ -260,18 +263,33 @@ class Cameo(object):
                         self._isTracking = True
 
                         # 新しい円を見つけたら
-                        self._positionHistory = []  # 軌跡を消去する
+
+                        ### History系の初期化 ###
+
+                        self._positionHistory = []
                         self._velocityVectorsHistory = []
+                        self._velocityVectorsXComponentHistory = []
 
                 # if circles is not None:  # もし円を見つけたら・・・
                 else:  # 円が見つからなくても・・・
                     # 表示可能な軌跡があれば・・・
                     if 0 < len(self._positionHistory) - self._numFramesDelay:
+
+                        ### 追跡できなくなっても軌跡を残す
+                        # TODO: 軌跡表示が2カ所になってわかりにくい。1カ所にまとめる。
+
                         # 速度ベクトルをストロボモードで表示する
                         if self._shouldDrawVelocityVectorsInStrobeMode:
                             utils.drawVelocityVectorsInStrobeMode(
                                 frameToDisplay, self._positionHistory, self._numFramesDelay,
                                 self._numStrobeModeSkips, self._velocityVectorsHistory,
+                                self._spaceBetweenVerticalVectors,
+                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+                        # 速度x成分ベクトルをストロボモードで表示する
+                        if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                            utils.drawVelocityVectorsInStrobeMode(
+                                frameToDisplay, self._positionHistory, self._numFramesDelay,
+                                self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                                 self._spaceBetweenVerticalVectors,
                                 self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
 
@@ -318,6 +336,9 @@ class Cameo(object):
 
                 # 次の円を検出したら・・・
                 if self._track_window is not None:
+
+                    ### History系の追加 ###
+
                     # 通過点リストの最後に要素を追加する
                     self._positionHistory.append((x+w/2, y+h/2))
                     # 速度ベクトルを記録する
@@ -326,6 +347,12 @@ class Cameo(object):
                         self._numFramesDelay
                     )
                     self._velocityVectorsHistory.append(lastVelocityVector)
+                    lastVelocityVectorXComponent = \
+                        utils.getComponentVector(lastVelocityVector, "x")
+                    self._velocityVectorsXComponentHistory.append(
+                        lastVelocityVectorXComponent
+                    )
+
 
                 # 次の円が見つかっても見つからなくても・・・
                 if len(self._positionHistory) - self._numFramesDelay > 0:
@@ -388,6 +415,14 @@ class Cameo(object):
                         utils.drawVelocityVectorsInStrobeMode(
                             frameToDisplay, self._positionHistory, self._numFramesDelay,
                             self._numStrobeModeSkips, self._velocityVectorsHistory,
+                            self._spaceBetweenVerticalVectors,
+                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+
+                    # 速度x成分ベクトルをストロボモードで表示する
+                    if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                        utils.drawVelocityVectorsInStrobeMode(
+                            frameToDisplay, self._positionHistory, self._numFramesDelay,
+                            self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                             self._spaceBetweenVerticalVectors,
                             self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
 
@@ -503,7 +538,7 @@ class Cameo(object):
             # 情報を表示する
             def putText(text, lineNumber):
                 cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
-                            cv2.FONT_HERSHEY_PLAIN, 2.0, utils.WHITE, 3)
+                            cv2.FONT_HERSHEY_PLAIN, 1.5, utils.WHITE, 2)
             def put(label, value):
                 fps = self._fpsWithTick.get()  # FPSを計算する
                 putText('FPS '+str(fps)
@@ -586,6 +621,9 @@ class Cameo(object):
             elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
                 put('Coefficient of Velocity Vector Strength' ,
                     self._coVelocityVectorStrength)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
+                put('Should Draw Velocity Vectors X Component Vertically In Strobe Mode' ,
+                    self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -823,6 +861,12 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_VELOCITY_VECTOR_STRENGTH:
                 pitch = 1  if keycode == 0 else -1
                 self._coVelocityVectorStrength += pitch
+            elif self._currentAdjusting == \
+                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
+                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = \
+                    not self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode
+                self._positionHistory = []
+                self._velocityVectorsHistory = []
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:

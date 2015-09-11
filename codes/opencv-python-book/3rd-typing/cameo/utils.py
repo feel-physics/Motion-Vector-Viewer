@@ -216,7 +216,9 @@ def drawForceVector(img, aclVector, positionAclBegin, gravityStrength):
         cvArrow(img, positionAclBegin, vector, 1, BLUE, 5)
 
 def getComponentVector(vector, axis):
-    if axis is "x":
+    if vector is None:
+        return None
+    elif axis is "x":
         return (vector[0], 0)  # x成分のみ使う
     elif axis is "y":
         return (0, vector[1])  # y成分のみ使う
