@@ -47,10 +47,11 @@ class Cameo(object):
         SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
         CO_VELOCITY_VECTOR_STRENGTH,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
 
         SHOWING_FRAME
-    ) = range(0, 21)
+    ) = range(0, 22)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -123,6 +124,7 @@ class Cameo(object):
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = True
+        self._shouldDrawVelocityVectorsXComponentInStrobeMode = True
         self._coVelocityVectorStrength     = 4
         self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
         self._velocityVectorsXComponentHistory = []
@@ -291,14 +293,14 @@ class Cameo(object):
                                 self._spaceBetweenVerticalVectors,
                                 self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
                         # 速度x成分ベクトルをストロボモードで表示する
-                        if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                        if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                             utils.drawVelocityVectorsInStrobeMode(
                                 frameToDisplay, self._positionHistory, self._numFramesDelay,
                                 self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                                 self._spaceBetweenVerticalVectors,
-                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode,
+                                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
                                 self._colorVelocityVectorXComponent,
-                                self._thicknessVelocityVectorXComponent)
+                                self._thicknessVelocityVectorXComponent, True)
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -429,14 +431,14 @@ class Cameo(object):
                             self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
 
                     # 速度x成分ベクトルをストロボモードで表示する
-                    if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                    if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                         utils.drawVelocityVectorsInStrobeMode(
                             frameToDisplay, self._positionHistory, self._numFramesDelay,
                             self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
                             self._spaceBetweenVerticalVectors,
-                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode,
+                            self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
                             self._colorVelocityVectorXComponent,
-                            self._thicknessVelocityVectorXComponent)
+                            self._thicknessVelocityVectorXComponent, True)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -549,7 +551,7 @@ class Cameo(object):
 
             # 情報を表示する
             def putText(text, lineNumber):
-                cv2.putText(frameToDisplay, text, (100, 50 + 50 * lineNumber),
+                cv2.putText(frameToDisplay, text, (50, 20 + 30 * lineNumber),
                             cv2.FONT_HERSHEY_PLAIN, 1.5, utils.WHITE, 2)
             def put(label, value):
                 fps = self._fpsWithTick.get()  # FPSを計算する
@@ -633,6 +635,9 @@ class Cameo(object):
             elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
                 put('Coefficient of Velocity Vector Strength' ,
                     self._coVelocityVectorStrength)
+            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
+                put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
+                    self._shouldDrawVelocityVectorsXComponentInStrobeMode)
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
                 put('Should Draw Velocity Vectors X Component Vertically In Strobe Mode' ,
                     self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
@@ -873,6 +878,12 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_VELOCITY_VECTOR_STRENGTH:
                 pitch = 1  if keycode == 0 else -1
                 self._coVelocityVectorStrength += pitch
+            elif self._currentAdjusting == \
+                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
+                self._shouldDrawVelocityVectorsXComponentInStrobeMode = \
+                    not self._shouldDrawVelocityVectorsXComponentInStrobeMode
+                self._positionHistory = []
+                self._velocityVectorsHistory = []
             elif self._currentAdjusting == \
                     self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
                 self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = \

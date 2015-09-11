@@ -164,10 +164,14 @@ def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=
         cv2.line(img,pt2,ptl,color,thickness,lineType,shift)
         cv2.line(img,pt2,ptr,color,thickness,lineType,shift)
 
-def cvVerticalArrow(img, x, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+def cvVerticalArrow(img, x, vector, lengthTimes, color, isSigned=False, thickness=1, lineType=8, shift=0):
     vx, vy = vector
-    verticalVector = (0, -math.sqrt(vx ** 2 + vy ** 2))
-    baseY = img.shape[0] - 20  # 画面下端から20px上
+    if isSigned:
+        verticalVector = (0, -vx)
+        baseY = img.shape[0] * 2 / 3  # 画面の下から1/3の高さ
+    else:
+        verticalVector = (0, -math.sqrt(vx ** 2 + vy ** 2))
+        baseY = img.shape[0] - 20  # 画面下端から20px上
     cvArrow(img, (x, baseY), verticalVector,
             lengthTimes, color, thickness, lineType, shift)
 
@@ -181,7 +185,7 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                                     numFramesDelay, numStrobeModeSkips,
                                     velocityVectorsHistory, spaceBetweenVerticalVectors,
                                     shouldDrawVelocityVectorsVerticallyInStrobeMode=False,
-                                    color=BLUE, thickness=5):
+                                    color=BLUE, thickness=5, isSigned=False):
     for i in range(len(positionHistory) - numFramesDelay - 1):
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
@@ -195,7 +199,7 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                 cvVerticalArrow(
                     frameToDisplay, spaceBetweenVerticalVectors*i,
                     velocityVectorsHistory[i],
-                    4, color, thickness
+                    4, color, isSigned, thickness
                 )
 
 # 力ベクトルを描画する
