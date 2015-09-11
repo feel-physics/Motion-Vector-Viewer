@@ -8,7 +8,8 @@ import numpy
 import filters
 from managers import WindowManager, CaptureManager
 import utils
-import my_lib
+
+### TODO:このファイルが長すぎる。目的の箇所を探すのが大変。
 
 class Cameo(object):
 
@@ -144,7 +145,7 @@ class Cameo(object):
         # ウィンドウをつくる
         self._windowManager.createWindow()
         # FPS計算用
-        self._fpsWithTick = my_lib.fpsWithTick()
+        self._fpsWithTick = utils.fpsWithTick()
 
         # ウィンドウが存在する限り・・・
         while self._windowManager.isWindowCreated:
