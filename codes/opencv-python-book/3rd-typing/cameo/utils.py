@@ -183,9 +183,8 @@ def cvLine(img, pt1, pt2, color, thickness=1):
 # 追跡中と検出中に呼ばれるのでメソッドにしている
 def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                                     numFramesDelay, numStrobeModeSkips,
-                                    velocityVectorsHistory, spaceBetweenVerticalVectors,
-                                    shouldDrawVelocityVectorsVerticallyInStrobeMode=False,
-                                    color=BLUE, thickness=5, isSigned=False):
+                                    velocityVectorsHistory,
+                                    color=BLUE, thickness=5):
     for i in range(len(positionHistory) - numFramesDelay - 1):
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
@@ -195,12 +194,26 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
                 velocityVectorsHistory[i],
                 4, color, thickness
             )
-            if shouldDrawVelocityVectorsVerticallyInStrobeMode:
-                cvVerticalArrow(
-                    frameToDisplay, spaceBetweenVerticalVectors*i,
-                    velocityVectorsHistory[i],
-                    4, color, isSigned, thickness
-                )
+            # if shouldDrawVelocityVectorsVerticallyInStrobeMode:
+            #     cvVerticalArrow(
+            #         frameToDisplay, spaceBetweenVerticalVectors*i,
+            #         velocityVectorsHistory[i],
+            #         4, color, isSigned, thickness
+            #     )
+
+def drawVelocityVectorsVerticallyInStrobeMode(frameToDisplay, positionHistory,
+                                              velocityVectorsHistory, numFramesDelay,
+                                              numStrobeModeSkips, spaceBetweenVerticalVectors,
+                                              color=BLUE, thickness=5, isSigned=False):
+    for i in range(len(positionHistory) - numFramesDelay - 1):
+        if i % numStrobeModeSkips == 0 and \
+                        velocityVectorsHistory[i] is not None:
+            cvVerticalArrow(
+                frameToDisplay, spaceBetweenVerticalVectors*i,
+                velocityVectorsHistory[i],
+                4, color, isSigned, thickness
+            )
+
 
 # 力ベクトルを描画する
 def drawForceVector(img, aclVector, positionAclBegin, gravityStrength):

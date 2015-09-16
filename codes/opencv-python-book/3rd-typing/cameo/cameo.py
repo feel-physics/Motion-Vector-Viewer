@@ -97,7 +97,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVelocityVector     = True
+        self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
@@ -120,11 +120,11 @@ class Cameo(object):
         self._shouldDrawTracksInStrobeMode = False
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
-        self._shouldDrawVelocityVectorsInStrobeMode = True
+        self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = True
-        self._shouldDrawVelocityVectorsXComponentInStrobeMode = True
+        self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
         self._coVelocityVectorStrength     = 4
         self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
         self._velocityVectorsXComponentHistory = []
@@ -212,6 +212,38 @@ class Cameo(object):
             elif self._currentShowing == self.ORIGINAL:
                 pass
 
+            # 表示可能な軌跡があれば・・・
+            if 0 < len(self._positionHistory) - self._numFramesDelay:
+
+                ### 追跡できなくなっても軌跡を残す
+                # TODO: 軌跡表示が2カ所になってわかりにくい。1カ所にまとめる。
+
+                # 速度ベクトルをストロボモードで表示する
+                if self._shouldDrawVelocityVectorsInStrobeMode:
+                    utils.drawVelocityVectorsInStrobeMode(
+                        frameToDisplay, self._positionHistory, self._numFramesDelay,
+                        self._numStrobeModeSkips, self._velocityVectorsHistory)
+                # 速度ベクトルの大きさのグラフを表示する
+                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+                    utils.drawVelocityVectorsVerticallyInStrobeMode(
+                        frameToDisplay, self._positionHistory,
+                        self._velocityVectorsHistory, self._numFramesDelay,
+                        self._numStrobeModeSkips, self._spaceBetweenVerticalVectors)
+                # 速度x成分ベクトルをストロボモードで表示する
+                if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
+                    utils.drawVelocityVectorsInStrobeMode(
+                        frameToDisplay, self._positionHistory, self._numFramesDelay,
+                        self._numStrobeModeSkips, self._velocityVectorsXComponentHistory)
+                # 速度ベクトルのx成分（正負あり）のグラフを表示する
+                if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                    utils.drawVelocityVectorsVerticallyInStrobeMode(
+                        frameToDisplay, self._positionHistory,
+                        self._velocityVectorsXComponentHistory,
+                        self._numFramesDelay, self._numStrobeModeSkips,
+                        self._spaceBetweenVerticalVectors,
+                        self._colorVelocityVectorXComponent,
+                        self._thicknessVelocityVectorXComponent, True)
+
 
             ### 物体追跡・描画処理 ###
 
@@ -276,31 +308,6 @@ class Cameo(object):
                         self._positionHistory = []
                         self._velocityVectorsHistory = []
                         self._velocityVectorsXComponentHistory = []
-
-                # if circles is not None:  # もし円を見つけたら・・・
-                else:  # 円が見つからなくても・・・
-                    # 表示可能な軌跡があれば・・・
-                    if 0 < len(self._positionHistory) - self._numFramesDelay:
-
-                        ### 追跡できなくなっても軌跡を残す
-                        # TODO: 軌跡表示が2カ所になってわかりにくい。1カ所にまとめる。
-
-                        # 速度ベクトルをストロボモードで表示する
-                        if self._shouldDrawVelocityVectorsInStrobeMode:
-                            utils.drawVelocityVectorsInStrobeMode(
-                                frameToDisplay, self._positionHistory, self._numFramesDelay,
-                                self._numStrobeModeSkips, self._velocityVectorsHistory,
-                                self._spaceBetweenVerticalVectors,
-                                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
-                        # 速度x成分ベクトルをストロボモードで表示する
-                        if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
-                            utils.drawVelocityVectorsInStrobeMode(
-                                frameToDisplay, self._positionHistory, self._numFramesDelay,
-                                self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
-                                self._spaceBetweenVerticalVectors,
-                                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
-                                self._colorVelocityVectorXComponent,
-                                self._thicknessVelocityVectorXComponent, True)
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -422,23 +429,23 @@ class Cameo(object):
                                              (lastPosition[0] + v[0]*c, lastPosition[1]),
                                              utils.WHITE, 2)
 
-                    # 速度ベクトルをストロボモードで表示する
-                    if self._shouldDrawVelocityVectorsInStrobeMode:
-                        utils.drawVelocityVectorsInStrobeMode(
-                            frameToDisplay, self._positionHistory, self._numFramesDelay,
-                            self._numStrobeModeSkips, self._velocityVectorsHistory,
-                            self._spaceBetweenVerticalVectors,
-                            self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
-
-                    # 速度x成分ベクトルをストロボモードで表示する
-                    if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
-                        utils.drawVelocityVectorsInStrobeMode(
-                            frameToDisplay, self._positionHistory, self._numFramesDelay,
-                            self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
-                            self._spaceBetweenVerticalVectors,
-                            self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
-                            self._colorVelocityVectorXComponent,
-                            self._thicknessVelocityVectorXComponent, True)
+                    # # 速度ベクトルをストロボモードで表示する
+                    # if self._shouldDrawVelocityVectorsInStrobeMode:
+                    #     utils.drawVelocityVectorsInStrobeMode(
+                    #         frameToDisplay, self._positionHistory, self._numFramesDelay,
+                    #         self._numStrobeModeSkips, self._velocityVectorsHistory,
+                    #         self._spaceBetweenVerticalVectors,
+                    #         self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+                    #
+                    # # 速度x成分ベクトルをストロボモードで表示する
+                    # if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
+                    #     utils.drawVelocityVectorsInStrobeMode(
+                    #         frameToDisplay, self._positionHistory, self._numFramesDelay,
+                    #         self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
+                    #         self._spaceBetweenVerticalVectors,
+                    #         self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
+                    #         self._colorVelocityVectorXComponent,
+                    #         self._thicknessVelocityVectorXComponent, True)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
