@@ -7,13 +7,14 @@ import math
 
 WHITE    = (255,255,255)
 RED      = (  0,  0,255)
-GREEN    = (  0,255,  0)
+GREEN    = (  0,128,  0)
 BLUE     = (255,  0,  0)
 SKY_BLUE = (255,128,128)
 
 def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて速度を求めるか。
-    # populationが3の場合はvはPt[-1],Pt[-4]を参照する。
+    # populationが4、numFramesDelayが6の場合は
+    # vはPt[-1-6-2=-9],Pt[-1-6+2=-5]を参照する。
 
     indexPtBegin = -1-numFramesDelay-int(population/2)  # ptBegin: 始点
     indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
@@ -38,6 +39,38 @@ def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
             velocityVectorNp = deltaPtNp / float(population)
             velocityVector   = tuple(velocityVectorNp)
             return velocityVector
+
+def getAccelerationVector2(velocityVectorsHistory, population=1, numFramesDelay=0,
+                           coAcceleration=25):
+    # populationは母集団。すなわち、何フレーム分の位置データを用いて加速度を求めるか。
+    # populationが4、numFramesDelayが6の場合は
+    # aはv[-1-6-2=-9],v[-1-6+2=-5]を参照する。
+
+    # indexVelocityVectorBegin = -1-numFramesDelay-int(population/2)  # velocityVectorBegin: 始点 -1-9
+    # indexVelocityVectorEnd   = -1-numFramesDelay+int(population/2)  # velocityVectorEnd  : 終点 -1-3
+    indexVelocityVectorBegin = -1-6  # velocityVectorBegin: 始点 -1-6
+    indexVelocityVectorEnd   = -1-0  # velocityVectorEnd  : 終点 -1-0
+
+    # 追跡開始直後
+    if len(velocityVectorsHistory) < population+numFramesDelay - int(population/2)+1 \
+            or velocityVectorsHistory[indexVelocityVectorBegin] is None \
+            or velocityVectorsHistory[indexVelocityVectorEnd]   is None:
+        return None
+    else:
+        velocityVectorBeginNp = numpy.array(velocityVectorsHistory[indexVelocityVectorBegin])
+        velocityVectorEndNp   = numpy.array(velocityVectorsHistory[indexVelocityVectorEnd]  )
+        # 移動ベクトル ΔVelocityVector = velocityVectorEnd - velocityVectorBegin
+        deltaVelocityVectorNp = velocityVectorEndNp - velocityVectorBeginNp
+
+        # 変化してなければNoneを返す
+        notChanged = (deltaVelocityVectorNp == numpy.array([0,0]))
+        if notChanged.all():
+            return None
+        # 移動していれば、速度ベクトル = 移動ベクトル * 係数 / 母数
+        else:
+            accelerationVectorNp = deltaVelocityVectorNp * coAcceleration / float(population)
+            accelerationVector   = tuple(accelerationVectorNp)
+            return accelerationVector
 
 def getAccelerationVector(positionHistory, population=2, numFramesDelay=0):
     pop = int(population / 2)  # 切り捨て

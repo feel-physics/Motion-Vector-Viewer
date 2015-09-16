@@ -98,7 +98,7 @@ class Cameo(object):
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
         self._shouldDrawVelocityVector     = False
-        self._shouldDrawAccelerationVector = False
+        self._shouldDrawAccelerationVector = True
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
         self._gravityStrength              = 200
@@ -123,10 +123,10 @@ class Cameo(object):
         self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
-        self._shouldDrawVelocityVectorXComponent = True
+        self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
         self._coVelocityVectorStrength     = 4
-        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
+        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = False
         self._velocityVectorsXComponentHistory = []
         self._colorVelocityVector          = utils.BLUE
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
@@ -212,12 +212,20 @@ class Cameo(object):
             elif self._currentShowing == self.ORIGINAL:
                 pass
 
+
+            ### ストロボ描画処理 ###
+
+
             # 表示可能な軌跡があれば・・・
             if 0 < len(self._positionHistory) - self._numFramesDelay:
+                numPointsVisible = len(self._positionHistory) - self._numFramesDelay
 
-                ### 追跡できなくなっても軌跡を残す
-                # TODO: 軌跡表示が2カ所になってわかりにくい。1カ所にまとめる。
-
+                # 位置の履歴を表示する
+                if self._shouldDrawTracksInStrobeMode:
+                    for i in range(numPointsVisible - 1):
+                        if i % self._numStrobeModeSkips == 0:
+                            cv2.circle(
+                                frameToDisplay, self._positionHistory[i], 5, utils.WHITE, -1)
                 # 速度ベクトルをストロボモードで表示する
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     utils.drawVelocityVectorsInStrobeMode(
@@ -245,7 +253,7 @@ class Cameo(object):
                         self._thicknessVelocityVectorXComponent, True)
 
 
-            ### 物体追跡・描画処理 ###
+            ### 物体追跡 ###
 
 
             if self._shouldTrackCircle and not self._isTracking:
@@ -353,7 +361,9 @@ class Cameo(object):
                 # 次の円を検出したら・・・
                 if self._track_window is not None:
 
+
                     ### History系の追加 ###
+
 
                     # 通過点リストの最後に要素を追加する
                     self._positionHistory.append((x+w/2, y+h/2))
@@ -363,11 +373,15 @@ class Cameo(object):
                         self._numFramesDelay
                     )
                     self._velocityVectorsHistory.append(lastVelocityVector)
+                    # 速度x成分ベクトルを記録する
                     lastVelocityVectorXComponent = \
                         utils.getComponentVector(lastVelocityVector, "x")
                     self._velocityVectorsXComponentHistory.append(
                         lastVelocityVectorXComponent
                     )
+
+
+                ### 描画処理 ###
 
 
                 # 次の円が見つかっても見つからなくても・・・
@@ -381,13 +395,6 @@ class Cameo(object):
                                      self._positionHistory[i+1], utils.WHITE, 5)
                             # # 軌跡ではなく打点する（デバッグ用）
                             # cv2.circle(frameToDisplay, self._passedPoints[i], 1, WHITE, 5)
-
-                    # ストロボモード
-                    if self._shouldDrawTracksInStrobeMode:
-                        for i in range(numPointsVisible - 1):
-                            if i % self._numStrobeModeSkips == 0:
-                                cv2.circle(
-                                    frameToDisplay, self._positionHistory[i], 5, utils.WHITE, -1)
 
                     lastPosition = self._positionHistory[numPointsVisible-1]
 
@@ -429,24 +436,6 @@ class Cameo(object):
                                              (lastPosition[0] + v[0]*c, lastPosition[1]),
                                              utils.WHITE, 2)
 
-                    # # 速度ベクトルをストロボモードで表示する
-                    # if self._shouldDrawVelocityVectorsInStrobeMode:
-                    #     utils.drawVelocityVectorsInStrobeMode(
-                    #         frameToDisplay, self._positionHistory, self._numFramesDelay,
-                    #         self._numStrobeModeSkips, self._velocityVectorsHistory,
-                    #         self._spaceBetweenVerticalVectors,
-                    #         self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
-                    #
-                    # # 速度x成分ベクトルをストロボモードで表示する
-                    # if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
-                    #     utils.drawVelocityVectorsInStrobeMode(
-                    #         frameToDisplay, self._positionHistory, self._numFramesDelay,
-                    #         self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
-                    #         self._spaceBetweenVerticalVectors,
-                    #         self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode,
-                    #         self._colorVelocityVectorXComponent,
-                    #         self._thicknessVelocityVectorXComponent, True)
-
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                     # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
@@ -469,11 +458,15 @@ class Cameo(object):
                                 self._coForceVectorStrength
                             )
                     else:
-                        aclVector = utils.getAccelerationVectorFirFilter(
-                            self._positionHistory,
-                            self._populationAcceleration,
-                            0,
-                            self._coForceVectorStrength
+                        # aclVector = utils.getAccelerationVectorFirFilter(
+                        #     self._positionHistory,
+                        #     self._populationAcceleration,
+                        #     0,
+                        #     self._coForceVectorStrength
+                        # )
+                        aclVector = utils.getAccelerationVector2(
+                            self._velocityVectorsHistory, self._populationAcceleration,
+                            self._numFramesDelay
                         )
 
                     # 加速度ベクトルを描画する
