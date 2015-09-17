@@ -16,8 +16,10 @@ def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     # populationが4、numFramesDelayが6の場合は
     # vはPt[-1-6-2=-9],Pt[-1-6+2=-5]を参照する。
 
-    indexPtBegin = -1-numFramesDelay-int(population/2)  # ptBegin: 始点
-    indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
+    # indexPtBegin = -1-numFramesDelay-int(population/2)  # ptBegin: 始点
+    # indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
+    indexPtBegin = -1-numFramesDelay             # ptBegin: 始点
+    indexPtEnd   = -1-numFramesDelay+population  # ptEnd  : 終点
 
     # 追跡開始直後
     if len(positionHistory) < -indexPtBegin \
@@ -40,26 +42,23 @@ def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
             velocityVector   = tuple(velocityVectorNp)
             return velocityVector
 
-def getAccelerationVector2(velocityVectorsHistory, population=1, numFramesDelay=0,
-                           coAcceleration=25):
-    # populationは母集団。すなわち、何フレーム分の位置データを用いて加速度を求めるか。
-    # populationが4、numFramesDelayが6の場合は
-    # aはv[-1-3-2=-6],v[-1-3+2=-2]を参照する。
+def getAccelerationVector2(positionHistory, populationVelocity, populationAcceleration=12,
+                           numFramesDelay=0, coAcceleration=200):
 
-    # ToDo: なぜ以下の式でnumFramesDelayを半分にするのか、わからない
-    # velocityVectorBegin: 始点 -1-3-3
-    indexVelocityVectorBegin = -1-int(numFramesDelay/2)-int(population/2)
-    # velocityVectorEnd  : 終点 -1-3+3
-    indexVelocityVectorEnd   = -1-int(numFramesDelay/2)+int(population/2)
+    velocityVectorEnd   = getVelocityVector(positionHistory, populationVelocity,
+                                              populationVelocity)
+    # indexPtBegin = -1-popV = -1-popV  # ptBegin: 始点
+    # indexPtEnd   = -1+popV-popV = -1  # ptEnd  : 終点
+    velocityVectorBegin = getVelocityVector(positionHistory, populationVelocity,
+                                              populationVelocity+populationAcceleration)
+    # indexPtBegin = -1     -(popV+popAcl) = -1-popV-popAcl  # ptBegin: 始点
+    # indexPtEnd   = -1+popV-(popV+popAcl) = -1     -popAcl  # ptEnd  : 終点
 
-    # 追跡開始直後
-    if len(velocityVectorsHistory) < -indexVelocityVectorBegin \
-            or velocityVectorsHistory[indexVelocityVectorBegin] is None \
-            or velocityVectorsHistory[indexVelocityVectorEnd]   is None:
+    if velocityVectorBegin is None or velocityVectorEnd is None:
         return None
     else:
-        velocityVectorBeginNp = numpy.array(velocityVectorsHistory[indexVelocityVectorBegin])
-        velocityVectorEndNp   = numpy.array(velocityVectorsHistory[indexVelocityVectorEnd]  )
+        velocityVectorBeginNp = numpy.array(velocityVectorBegin)
+        velocityVectorEndNp   = numpy.array(velocityVectorEnd)
         # 移動ベクトル ΔVelocityVector = velocityVectorEnd - velocityVectorBegin
         deltaVelocityVectorNp = velocityVectorEndNp - velocityVectorBeginNp
 
@@ -69,7 +68,7 @@ def getAccelerationVector2(velocityVectorsHistory, population=1, numFramesDelay=
             return None
         # 移動していれば、速度ベクトル = 移動ベクトル * 係数 / 母数
         else:
-            accelerationVectorNp = deltaVelocityVectorNp * coAcceleration / float(population)
+            accelerationVectorNp = deltaVelocityVectorNp * coAcceleration / float(populationAcceleration)
             accelerationVector   = tuple(accelerationVectorNp)
             return accelerationVector
 

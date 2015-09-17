@@ -34,7 +34,7 @@ class Cameo(object):
         SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         IS_MODE_PENDULUM,
-        # NUM_FRAMES_DELAY,
+        NUM_FRAMES_DELAY,
         GRAVITY_STRENGTH,
         # SHOULD_PROCESS_QUICK_MOTION,
         SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
@@ -51,7 +51,7 @@ class Cameo(object):
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
 
         SHOWING_FRAME
-    ) = range(0, 22)
+    ) = range(0, 23)
 
     SHOWING_FRAME_OPTIONS = (
         ORIGINAL,
@@ -97,20 +97,20 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVelocityVector     = False
-        self._shouldDrawAccelerationVector = True
+        self._shouldDrawVelocityVector     = True
+        self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT
+        self._currentAdjusting             = self.SHOULD_DRAW_ACCELERATION_VECTOR
         self._currentShowing               = self.ORIGINAL
 
         self._numFramesDelay               = 6  # 13
         self._enteredFrames                = []
         self._populationVelocity           = 6
-        self._populationAcceleration       = 6  # 12
+        self._populationAcceleration       = 12  # 12
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
@@ -465,9 +465,8 @@ class Cameo(object):
                         #     self._coForceVectorStrength
                         # )
                         aclVector = utils.getAccelerationVector2(
-                            self._velocityVectorsHistory, self._populationAcceleration,
-                            self._numFramesDelay
-                        )
+                            self._positionHistory, self._populationVelocity,
+                            self._populationAcceleration)
 
                     # 加速度ベクトルを描画する
                     if self._shouldDrawAccelerationVector:
@@ -613,8 +612,8 @@ class Cameo(object):
                 put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
             elif cur == self.IS_MODE_PENDULUM:
                 put('Pendulum Mode'                      , self._isModePendulum)
-            # elif cur == self.NUM_FRAMES_DELAY:
-            #     put('Number of Delay Frames'             , self._numFramesDelay)
+            elif cur == self.NUM_FRAMES_DELAY:
+                put('Number of Delay Frames'             , self._numFramesDelay)
             elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
             elif cur == self.SHOULD_TRACK_CIRCLE:
@@ -810,9 +809,9 @@ class Cameo(object):
             elif self._currentAdjusting == self.CO_FORCE_VECTOR_STRENGTH:
                 pitch = 1.0  if keycode == 0 else -1.0
                 self._coForceVectorStrength += pitch
-            # elif self._currentAdjusting == self.NUM_FRAMES_DELAY:
-            #     pitch = 1  if keycode == 0 else -1
-            #     self._numFramesDelay += pitch
+            elif self._currentAdjusting == self.NUM_FRAMES_DELAY:
+                pitch = 1  if keycode == 0 else -1
+                self._numFramesDelay += pitch
             elif self._currentAdjusting == self.IS_MODE_PENDULUM:
                 if self._isModePendulum:
                     self._shouldDrawDisplacementVector = False
