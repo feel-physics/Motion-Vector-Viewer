@@ -20,7 +20,7 @@ def getVelocityVector(positionHistory, population=1, numFramesDelay=0):
     indexPtEnd   = -1-numFramesDelay+int(population/2)  # ptEnd  : 終点
 
     # 追跡開始直後
-    if len(positionHistory) < population+numFramesDelay - int(population/2)+1 \
+    if len(positionHistory) < -indexPtBegin \
             or positionHistory[indexPtBegin] is None \
             or positionHistory[indexPtEnd]   is None:
         return None
@@ -44,15 +44,16 @@ def getAccelerationVector2(velocityVectorsHistory, population=1, numFramesDelay=
                            coAcceleration=25):
     # populationは母集団。すなわち、何フレーム分の位置データを用いて加速度を求めるか。
     # populationが4、numFramesDelayが6の場合は
-    # aはv[-1-6-2=-9],v[-1-6+2=-5]を参照する。
+    # aはv[-1-3-2=-6],v[-1-3+2=-2]を参照する。
 
-    # indexVelocityVectorBegin = -1-numFramesDelay-int(population/2)  # velocityVectorBegin: 始点 -1-9
-    # indexVelocityVectorEnd   = -1-numFramesDelay+int(population/2)  # velocityVectorEnd  : 終点 -1-3
-    indexVelocityVectorBegin = -1-6  # velocityVectorBegin: 始点 -1-6
-    indexVelocityVectorEnd   = -1-0  # velocityVectorEnd  : 終点 -1-0
+    # ToDo: なぜ以下の式でnumFramesDelayを半分にするのか、わからない
+    # velocityVectorBegin: 始点 -1-3-3
+    indexVelocityVectorBegin = -1-int(numFramesDelay/2)-int(population/2)
+    # velocityVectorEnd  : 終点 -1-3+3
+    indexVelocityVectorEnd   = -1-int(numFramesDelay/2)+int(population/2)
 
     # 追跡開始直後
-    if len(velocityVectorsHistory) < population+numFramesDelay - int(population/2)+1 \
+    if len(velocityVectorsHistory) < -indexVelocityVectorBegin \
             or velocityVectorsHistory[indexVelocityVectorBegin] is None \
             or velocityVectorsHistory[indexVelocityVectorEnd]   is None:
         return None
