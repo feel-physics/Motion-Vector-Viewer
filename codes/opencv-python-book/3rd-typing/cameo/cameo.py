@@ -14,18 +14,11 @@ import utils
 class Cameo(object):
 
     ##### TODO: 不要になったオプションは廃止する
-    ADJUSTING_OPTIONS = (
+    ADJUSTING_OPTIONS = [
         HUE_MIN,
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-        # SHOULD_PROCESS_GAUSSIAN_BLUR,
-        # GAUSSIAN_BLUR_KERNEL_SIZE,
-        # SHOULD_PROCESS_CLOSING,
-        # CLOSING_ITERATIONS,
-        # HOUGH_CIRCLE_RESOLUTION,
-        # HOUGH_CIRCLE_CANNY_THRESHOLD,
-        # HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
         HOUGH_CIRCLE_RADIUS_MIN,
         # SHOULD_DRAW_CANNY_EDGE,
         # SHOULD_DRAW_CIRCLE,
@@ -51,12 +44,22 @@ class Cameo(object):
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
 
         SHOWING_FRAME
-    ) = range(0, 23)
+    ] = range(23)
 
-    SHOWING_FRAME_OPTIONS = (
+    UNUSED_OPTIONS = [
+        SHOULD_PROCESS_GAUSSIAN_BLUR,
+        GAUSSIAN_BLUR_KERNEL_SIZE,
+        SHOULD_PROCESS_CLOSING,
+        CLOSING_ITERATIONS,
+        HOUGH_CIRCLE_RESOLUTION,
+        HOUGH_CIRCLE_CANNY_THRESHOLD,
+        HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
+    ] = [-1 for x in range(7)]  # すべて-1
+
+    SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
         WHAT_COMPUTER_SEE
-    ) = range(0, 2)
+    ] = range(2)
 
     def __init__(self):
 
