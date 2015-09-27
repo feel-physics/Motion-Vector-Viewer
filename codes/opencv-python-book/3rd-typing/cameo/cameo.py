@@ -77,7 +77,7 @@ class Cameo(object):
         self._valueMin                     = 60
         self._valueMax                     = 255
         self._gamma                        = 100
-        self._shouldProcessGaussianBlur    = False
+        self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
         self._shouldProcessClosing         = True
         self._closingIterations            = 2
@@ -100,7 +100,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTracks             = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVelocityVector     = True
+        self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
@@ -110,10 +110,10 @@ class Cameo(object):
         self._currentAdjusting             = self.SHOULD_DRAW_ACCELERATION_VECTOR
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 6  # 13
+        self._numFramesDelay               = 12  # 6, 12
         self._enteredFrames                = []
-        self._populationVelocity           = 6
-        self._populationAcceleration       = 12  # 12
+        self._populationVelocity           = 12  # 6, 12
+        self._populationAcceleration       = 24  # 12
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
@@ -126,10 +126,10 @@ class Cameo(object):
         self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
-        self._shouldDrawVelocityVectorXComponent = False
+        self._shouldDrawVelocityVectorXComponent = True
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
         self._coVelocityVectorStrength     = 4
-        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = False
+        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
         self._velocityVectorsXComponentHistory = []
         self._colorVelocityVector          = utils.BLUE
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
@@ -278,6 +278,7 @@ class Cameo(object):
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROI関心領域（Region of Interest)を設定
+                        # print(x, y, r)
                         roi = frameNow[y-r:y+r, x-r:x+r]
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -287,6 +288,7 @@ class Cameo(object):
                         # > (The lower boundary is neither
                         # > an array of the same size and same type as src, nor a scalar)
                         # > in inRange
+                        # print(hsv_roi)
                         mask = cv2.inRange(hsv_roi,
                                 numpy.array([
                                     self._hueMin / 2,           # H最小値
