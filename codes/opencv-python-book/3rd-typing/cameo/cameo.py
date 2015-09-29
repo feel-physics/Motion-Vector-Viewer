@@ -16,7 +16,10 @@ class Cameo(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = (
         SHOULD_DRAW_VELOCITY_VECTOR,
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
         SHOULD_TRACK_CIRCLE,
         HUE_MIN,
@@ -24,10 +27,7 @@ class Cameo(object):
         HOUGH_CIRCLE_RADIUS_MIN,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         CO_VELOCITY_VECTOR_STRENGTH,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_ACCELERATION_VECTOR,
 
         SHOWING_FRAME
@@ -244,7 +244,8 @@ class Cameo(object):
                 if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                     utils.drawVelocityVectorsInStrobeMode(
                         frameToDisplay, self._positionHistory, self._numFramesDelay,
-                        self._numStrobeModeSkips, self._velocityVectorsXComponentHistory)
+                        self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
+                        utils.SKY_BLUE, 3)
                 # 速度ベクトルのx成分（正負あり）のグラフを表示する
                 if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
                     utils.drawVelocityVectorsVerticallyInStrobeMode(
@@ -281,44 +282,47 @@ class Cameo(object):
                         roi = frameNow[y-r:y+r, x-r:x+r]
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                        # マスク画像の作成
-                        # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
-                        # > OpenCV Error: Sizes of input arguments do not match
-                        # > (The lower boundary is neither
-                        # > an array of the same size and same type as src, nor a scalar)
-                        # > in inRange
-                        mask = cv2.inRange(hsv_roi,
-                                numpy.array([
-                                    self._hueMin / 2,           # H最小値
-                                    2 ** self._sThreshold - 1,  # S最小値
-                                    self._valueMin              # V最小値
-                                ], dtype=numpy.uint8),
-                                # ]),
-                                numpy.array([
-                                    self._hueMax / 2,           # H最大値
-                                    255,                        # S最大値
-                                    self._valueMax              # V最大値
-                                ], dtype=numpy.uint8))
-                                # ]))
-                        # ヒストグラムの計算
-                        self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-                        # ヒストグラムの正規化
-                        cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
+                        if hsv_roi is None:
+                            pass
+                        else:
+                            # マスク画像の作成
+                            # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
+                            # > OpenCV Error: Sizes of input arguments do not match
+                            # > (The lower boundary is neither
+                            # > an array of the same size and same type as src, nor a scalar)
+                            # > in inRange
+                            mask = cv2.inRange(hsv_roi,
+                                    numpy.array([
+                                        self._hueMin / 2,           # H最小値
+                                        2 ** self._sThreshold - 1,  # S最小値
+                                        self._valueMin              # V最小値
+                                    ], dtype=numpy.uint8),
+                                    # ]),
+                                    numpy.array([
+                                        self._hueMax / 2,           # H最大値
+                                        255,                        # S最大値
+                                        self._valueMax              # V最大値
+                                    ], dtype=numpy.uint8))
+                                    # ]))
+                            # ヒストグラムの計算
+                            self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+                            # ヒストグラムの正規化
+                            cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
 
-                        # # maskを描画するコード（デバッグ用）
-                        # mask3Channel = cv2.merge((mask, mask, mask))
-                        # if mask is not None and self._track_window is not None:
-                        #     utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
+                            # # maskを描画するコード（デバッグ用）
+                            # mask3Channel = cv2.merge((mask, mask, mask))
+                            # if mask is not None and self._track_window is not None:
+                            #     utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
 
-                        self._isTracking = True
+                            self._isTracking = True
 
-                        # 新しい円を見つけたら
+                            # 新しい円を見つけたら
 
-                        ### History系の初期化 ###
+                            ### History系の初期化 ###
 
-                        self._positionHistory = []
-                        self._velocityVectorsHistory = []
-                        self._velocityVectorsXComponentHistory = []
+                            self._positionHistory = []
+                            self._velocityVectorsHistory = []
+                            self._velocityVectorsXComponentHistory = []
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
