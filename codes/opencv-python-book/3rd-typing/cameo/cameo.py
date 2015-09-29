@@ -42,9 +42,11 @@ class Cameo(object):
         CO_VELOCITY_VECTOR_STRENGTH,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
+        CAPTURE_BACKGROUND_FRAME,
+        DIFF_OF_BACKGROUND_AND_FOREGROUND,
 
         SHOWING_FRAME
-    ] = range(23)
+    ] = range(25)
 
     UNUSED_OPTIONS = [
         SHOULD_PROCESS_GAUSSIAN_BLUR,
@@ -107,13 +109,13 @@ class Cameo(object):
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.SHOULD_DRAW_ACCELERATION_VECTOR
+        self._currentAdjusting             = self.CAPTURE_BACKGROUND_FRAME
         self._currentShowing               = self.ORIGINAL
 
-        self._numFramesDelay               = 12  # 6, 12
+        self._numFramesDelay               = 6  # 6, 12
         self._enteredFrames                = []
-        self._populationVelocity           = 12  # 6, 12
-        self._populationAcceleration       = 24  # 12
+        self._populationVelocity           = 6  # 6, 12
+        self._populationAcceleration       = 12  # 12, 24
         self._indexQuickMotion             = None
         self._shouldProcessQuickMotion     = False
         self._coForceVectorStrength        = 7.0
@@ -139,6 +141,11 @@ class Cameo(object):
         self._timeSelfTimerStarted         = None
 
         self._corners                      = None
+
+        # 背景差分 15/09/29
+        self._isTakingFrameBackground      = None
+        self._frameBackground              = None
+        self._diffBgFg                     = 50
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -174,7 +181,64 @@ class Cameo(object):
             else:
                 self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
-            densityTrackWindow = -1
+            densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
+
+            ### 背景差分 ###
+
+            if self._isTakingFrameBackground:
+                self._frameBackground = frameNow.copy()
+                self._isTakingFrameBackground = False
+            if self._frameBackground is not None:
+                # frameFgB, frameFgG, frameFgR = cv2.split(frameToDisplay)
+                # frameBgB, frameBgG, frameBgR = cv2.split(self._frameBackground)
+                frameNowHsv        = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
+                frameBackgroundHsv = cv2.cvtColor(self._frameBackground, cv2.COLOR_BGR2HSV)
+                frameFgB, frameFgG, frameFgR = cv2.split(frameNowHsv)
+                frameBgB, frameBgG, frameBgR = cv2.split(frameBackgroundHsv)
+                # 差分計算
+                diffB = cv2.absdiff(frameFgB, frameBgB)
+                diffG = cv2.absdiff(frameFgG, frameBgG)
+                diffR = cv2.absdiff(frameFgR, frameBgR)
+                # 差分が閾値より大きければTrue
+                maskB = self._diffBgFg < diffB
+                maskG = self._diffBgFg < diffG
+                maskR = self._diffBgFg < diffR
+                # 配列（画像）の高さ・幅
+                height = frameFgB.shape[0]
+                width  = frameFgB.shape[1]
+                # 背景画像と同じサイズの配列生成
+                im_mask_blue  = numpy.zeros((height, width), numpy.uint8)
+                im_mask_green = numpy.zeros((height, width), numpy.uint8)
+                im_mask_red   = numpy.zeros((height, width), numpy.uint8)
+                im_mask       = numpy.zeros((height, width), numpy.uint8)
+                # Trueの部分（背景）は白塗り
+                im_mask_blue [maskB] = 255
+                im_mask_green[maskG] = 255
+                im_mask_red  [maskR] = 255
+                # 積集合（RGBのどれか1つでも50より大きい差があれば真）
+                im_mask = cv2.bitwise_or(im_mask_blue, im_mask_green)
+                im_mask = cv2.bitwise_or(im_mask     , im_mask_red  )
+
+                # cv2.merge((im_mask, frameG, frameR), frameToDisplay)
+                frameNow[:] = cv2.bitwise_and(frameNow, frameNow, mask=im_mask)
+
+                # frameToDisplay[:] = self._frameBackground  # テスト用
+                # 差分計算
+                # diff = cv2.absdiff(frameToDisplay, self._frameBackground)
+                # 配列（画像）の高さ・幅
+                # height = frameToDisplay.shape[0]
+                # width  = frameToDisplay.shape[1]
+                # print diff
+                # # 背景画像と同じサイズの配列生成
+                # im_mask = numpy.zeros((height,width),numpy.uint8)
+                # for h in range(height):
+                #     for w in range(width):
+                #         # 差分が閾値より大きければ黒
+                #         if 20<diff[h][w][0] or 20<diff[h][w][1] or 20<diff[h][w][2]:
+                #             im_mask[h][w] = 0
+                #         else:
+                #             im_mask[h][w] = 255
+                # cv2.merge((im_mask, im_mask, im_mask), frameToDisplay)
 
             ### 画面表示 ###
 
@@ -687,6 +751,11 @@ class Cameo(object):
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
                 put('Should Draw Velocity Vectors X Component Vertically In Strobe Mode' ,
                     self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
+            elif cur == self.CAPTURE_BACKGROUND_FRAME:
+                put('Capture Background Frame' ,
+                    self._frameBackground is not None)
+            elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
+                put('Diff of Background and Foreground'       , self._diffBgFg)
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
@@ -936,6 +1005,11 @@ class Cameo(object):
                     not self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
+            elif self._currentAdjusting == self.CAPTURE_BACKGROUND_FRAME:
+                self._isTakingFrameBackground = True
+            elif self._currentAdjusting == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
+                pitch = 10 if keycode == 0 else -10
+                self._diffBgFg += pitch
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:
