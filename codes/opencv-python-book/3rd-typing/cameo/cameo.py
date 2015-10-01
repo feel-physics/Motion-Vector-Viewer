@@ -184,9 +184,6 @@ class Cameo(object):
 
             densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
 
-            ### 背景差分 ###
-
-
 
             ### 画面表示 ###
 
@@ -223,12 +220,14 @@ class Cameo(object):
                 self._frameBackground = frameToDisplay.copy()
                 self._isTakingFrameBackground = False
 
+            if self._frameBackground is not None:
+                # 円検出はframeNowに対して行われる
+                frameNow = utils.getSubtractedFrame(frameNow, self._frameBackground,
+                             self._diffBgFg)
+
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
-                # pass
-                # gray = getMaskToFindCircle(self, frameToDisplay)
                 gray = getMaskToFindCircle(self, frameNow)
                 cv2.merge((gray, gray, gray), frameToDisplay)
-
             elif self._currentShowing == self.ORIGINAL:
                 pass
             elif self._currentShowing == self.BEFORE_MASK:
