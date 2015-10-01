@@ -304,6 +304,9 @@ class Cameo(object):
                             or width < x+2*r+m \
                             or m < y-r \
                             or height < y+2*r+m:
+
+                        ### 新しい円を見つけた！ ###
+
                         # 追跡したい領域の初期設定
                         self._track_window = (x-r, y-r, 2*r, 2*r)
                         # 追跡のためのROI関心領域（Region of Interest)を設定
@@ -311,45 +314,6 @@ class Cameo(object):
                         roi = frameNow[y-r:y+r, x-r:x+r]
                         # HSV色空間に変換
                         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                        # マスク画像の作成
-                        # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
-                        # > OpenCV Error: Sizes of input arguments do not match
-                        # > (The lower boundary is neither
-                        # > an array of the same size and same type as src, nor a scalar)
-                        # > in inRange
-                        # print(hsv_roi)
-                        mask = cv2.inRange(hsv_roi,
-                                numpy.array([
-                                    self._hueMin / 2,           # H最小値
-                                    2 ** self._sThreshold - 1,  # S最小値
-                                    self._valueMin              # V最小値
-                                ], dtype=numpy.uint8),
-                                # ]),
-                                numpy.array([
-                                    self._hueMax / 2,           # H最大値
-                                    255,                        # S最大値
-                                    self._valueMax              # V最大値
-                                ], dtype=numpy.uint8))
-                                # ]))
-                        # ヒストグラムの計算
-                        self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-                        # ヒストグラムの正規化
-                        cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
-
-                        # # maskを描画するコード（デバッグ用）
-                        # mask3Channel = cv2.merge((mask, mask, mask))
-                        # if mask is not None and self._track_window is not None:
-                        #     utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
-
-                        self._isTracking = True
-
-                        # 新しい円を見つけたら
-
-                        ### History系の初期化 ###
-
-                        self._positionHistory = []
-                        self._velocityVectorsHistory = []
-                        self._velocityVectorsXComponentHistory = []
                         if hsv_roi is None:
                             pass
                         else:
@@ -377,14 +341,7 @@ class Cameo(object):
                             # ヒストグラムの正規化
                             cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
 
-                            # # maskを描画するコード（デバッグ用）
-                            # mask3Channel = cv2.merge((mask, mask, mask))
-                            # if mask is not None and self._track_window is not None:
-                            #     utils.pasteRect(frameToDisplay, frameToDisplay, mask3Channel, self._track_window)
-
                             self._isTracking = True
-
-                            # 新しい円を見つけたら
 
                             ### History系の初期化 ###
 
@@ -394,21 +351,16 @@ class Cameo(object):
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
-                # HSV色空間に変換
-                hsv = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
-                # バックプロジェクションの計算
-                dst = cv2.calcBackProject([hsv],[0],self._roi_hist,[0,180],1)
 
-                # 8近傍
-                element8 = numpy.array([[1,1,1],
-                                        [1,1,1],
-                                        [1,1,1]], numpy.uint8)
-                # オープニング
-                cv2.morphologyEx(dst, cv2.MORPH_OPEN, element8, dst, None, 2)
-
+                dst = utils.getBackProjectFrame(frameNow, self._roi_hist)
                 # バックプロジェクションを描画するコード（デバッグ用）
                 if self._currentShowing == self.WHAT_COMPUTER_SEE:
                     cv2.merge((dst, dst, dst), frameToDisplay)
+                # elif self._currentShowing == self.BEFORE_MASK:
+                #     dst_delayed = utils.getBackProjectFrame(frameToDisplay, self._roi_hist)
+                #     cv2.merge((dst_delayed, dst_delayed, dst_delayed), frameToDisplay)
+
+                dst = utils.getBackProjectFrame(frameNow, self._roi_hist)
 
                 # 新しい場所を取得するためにmeanshiftを適用
                 _, self._track_window = cv2.meanShift(dst, self._track_window,

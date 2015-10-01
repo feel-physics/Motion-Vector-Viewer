@@ -314,6 +314,20 @@ def getSubtractedFrame(frameFore, frameBackground, diffBgFg):
     # cv2.merge((im_mask, frameG, frameR), frameToDisplay)
     return cv2.bitwise_and(frameFore, frameFore, mask=im_mask)
 
+def getBackProjectFrame(frame, roi_hist):
+    # HSV色空間に変換
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    # バックプロジェクションの計算
+    dst = cv2.calcBackProject([hsv],[0],roi_hist,[0,180],1)
+
+    # 8近傍
+    element8 = numpy.array([[1,1,1],
+                            [1,1,1],
+                            [1,1,1]], numpy.uint8)
+    # オープニング
+    cv2.morphologyEx(dst, cv2.MORPH_OPEN, element8, dst, None, 2)
+    return dst
+
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
     入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
