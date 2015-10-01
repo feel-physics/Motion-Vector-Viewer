@@ -60,8 +60,9 @@ class Cameo(object):
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
-        WHAT_COMPUTER_SEE
-    ] = range(2)
+        WHAT_COMPUTER_SEE,
+        BEFORE_MASK
+    ] = range(3)
 
     def __init__(self):
 
@@ -185,62 +186,10 @@ class Cameo(object):
 
             ### 背景差分 ###
 
-            if self._isTakingFrameBackground:
-                self._frameBackground = frameNow.copy()
-                self._isTakingFrameBackground = False
-            if self._frameBackground is not None:
-                # frameFgB, frameFgG, frameFgR = cv2.split(frameToDisplay)
-                # frameBgB, frameBgG, frameBgR = cv2.split(self._frameBackground)
-                frameNowHsv        = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
-                frameBackgroundHsv = cv2.cvtColor(self._frameBackground, cv2.COLOR_BGR2HSV)
-                frameFgB, frameFgG, frameFgR = cv2.split(frameNowHsv)
-                frameBgB, frameBgG, frameBgR = cv2.split(frameBackgroundHsv)
-                # 差分計算
-                diffB = cv2.absdiff(frameFgB, frameBgB)
-                diffG = cv2.absdiff(frameFgG, frameBgG)
-                diffR = cv2.absdiff(frameFgR, frameBgR)
-                # 差分が閾値より大きければTrue
-                maskB = self._diffBgFg < diffB
-                maskG = self._diffBgFg < diffG
-                maskR = self._diffBgFg < diffR
-                # 配列（画像）の高さ・幅
-                height = frameFgB.shape[0]
-                width  = frameFgB.shape[1]
-                # 背景画像と同じサイズの配列生成
-                im_mask_blue  = numpy.zeros((height, width), numpy.uint8)
-                im_mask_green = numpy.zeros((height, width), numpy.uint8)
-                im_mask_red   = numpy.zeros((height, width), numpy.uint8)
-                im_mask       = numpy.zeros((height, width), numpy.uint8)
-                # Trueの部分（背景）は白塗り
-                im_mask_blue [maskB] = 255
-                im_mask_green[maskG] = 255
-                im_mask_red  [maskR] = 255
-                # 積集合（RGBのどれか1つでも50より大きい差があれば真）
-                im_mask = cv2.bitwise_or(im_mask_blue, im_mask_green)
-                im_mask = cv2.bitwise_or(im_mask     , im_mask_red  )
 
-                # cv2.merge((im_mask, frameG, frameR), frameToDisplay)
-                frameNow[:] = cv2.bitwise_and(frameNow, frameNow, mask=im_mask)
-
-                # frameToDisplay[:] = self._frameBackground  # テスト用
-                # 差分計算
-                # diff = cv2.absdiff(frameToDisplay, self._frameBackground)
-                # 配列（画像）の高さ・幅
-                # height = frameToDisplay.shape[0]
-                # width  = frameToDisplay.shape[1]
-                # print diff
-                # # 背景画像と同じサイズの配列生成
-                # im_mask = numpy.zeros((height,width),numpy.uint8)
-                # for h in range(height):
-                #     for w in range(width):
-                #         # 差分が閾値より大きければ黒
-                #         if 20<diff[h][w][0] or 20<diff[h][w][1] or 20<diff[h][w][2]:
-                #             im_mask[h][w] = 0
-                #         else:
-                #             im_mask[h][w] = 255
-                # cv2.merge((im_mask, im_mask, im_mask), frameToDisplay)
 
             ### 画面表示 ###
+
 
             def getMaskToFindCircle(self, frame):
                 """
@@ -270,6 +219,10 @@ class Cameo(object):
                     1)                        # 円の最大半径
                 return circles
 
+            if self._isTakingFrameBackground:
+                self._frameBackground = frameToDisplay.copy()
+                self._isTakingFrameBackground = False
+
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
                 # pass
                 # gray = getMaskToFindCircle(self, frameToDisplay)
@@ -278,6 +231,17 @@ class Cameo(object):
 
             elif self._currentShowing == self.ORIGINAL:
                 pass
+            elif self._currentShowing == self.BEFORE_MASK:
+                if self._frameBackground is not None:
+                    frameSubtracted = utils.getSubtractedFrame(frameToDisplay, self._frameBackground,
+                                                     self._diffBgFg)
+                    gray = getMaskToFindCircle(self, frameSubtracted)
+                    frameGray = frameToDisplay.copy()
+                    cv2.merge((gray, gray, gray), frameGray)
+                    frameToDisplay[:] = cv2.addWeighted(frameSubtracted, 0.3, frameGray, 1.0, 0)
+                else:
+                    pass
+
 
 
             ### ストロボ描画処理 ###
@@ -759,10 +723,10 @@ class Cameo(object):
             elif cur == self.SHOWING_FRAME:
                 if   self._currentShowing == self.ORIGINAL:
                     currentShowing = 'Original'
-                # elif self._currentShowing == self.GRAY_SCALE:
-                #     currentShowing = 'Gray Scale'
                 elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                     currentShowing = 'What Computer See'
+                elif self._currentShowing == self.BEFORE_MASK:
+                    currentShowing = 'Before Mask'
                 else:
                     raise ValueError('self._currentShowing')
 
