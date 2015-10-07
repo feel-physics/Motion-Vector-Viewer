@@ -19,12 +19,20 @@ class Cameo(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-        HOUGH_CIRCLE_RADIUS_MIN,
-        # SHOULD_DRAW_CANNY_EDGE,
-        # SHOULD_DRAW_CIRCLE,
-        SHOULD_DRAW_TRACKS,
-        # SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_DRAW_VELOCITY_VECTOR,
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
+        CAPTURE_BACKGROUND_FRAME,
+
+        SHOWING_FRAME
+    ] = range(12)
+
+    UNUSED_OPTIONS = [
+        DIFF_OF_BACKGROUND_AND_FOREGROUND,
+        CO_VELOCITY_VECTOR_STRENGTH,
         SHOULD_DRAW_ACCELERATION_VECTOR,
         IS_MODE_PENDULUM,
         NUM_FRAMES_DELAY,
@@ -36,19 +44,11 @@ class Cameo(object):
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
-        CO_VELOCITY_VECTOR_STRENGTH,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
-        CAPTURE_BACKGROUND_FRAME,
-        DIFF_OF_BACKGROUND_AND_FOREGROUND,
-
-        SHOWING_FRAME
-    ] = range(25)
-
-    UNUSED_OPTIONS = [
+        HOUGH_CIRCLE_RADIUS_MIN,
+        # SHOULD_DRAW_CANNY_EDGE,
+        # SHOULD_DRAW_CIRCLE,
+        SHOULD_DRAW_TRACKS,
+        # SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
         GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_PROCESS_CLOSING,
@@ -56,7 +56,7 @@ class Cameo(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-    ] = [-1 for x in range(7)]  # すべて-1
+    ] = [-1 for x in range(20)]  # すべて-1
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -77,7 +77,7 @@ class Cameo(object):
         self._hueMin                       = 50  # テニスボール
         self._hueMax                       = 80  # テニスボール
         self._sThreshold                   = 5
-        self._valueMin                     = 60
+        self._valueMin                     = 130 #220 #60
         self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -101,7 +101,7 @@ class Cameo(object):
         self._roi_hist                     = None
 
         self._shouldDrawCircle             = False
-        self._shouldDrawTracks             = False
+        self._shouldDrawTracks             = True
         self._shouldDrawDisplacementVector = False
         self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
@@ -129,10 +129,10 @@ class Cameo(object):
         self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
-        self._shouldDrawVelocityVectorXComponent = True
+        self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
         self._coVelocityVectorStrength     = 4
-        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = True
+        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = False
         self._velocityVectorsXComponentHistory = []
         self._colorVelocityVector          = utils.BLUE
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
