@@ -161,12 +161,10 @@ class Cameo(object):
         """
         # ウィンドウをつくる
         self._windowManager.createWindow()
-        # FPS計算用
-        self._fpsWithTick = utils.fpsWithTick()
 
         # ウィンドウが存在する限り・・・
         while self._windowManager.isWindowCreated:
-            # フレームを取得し・・・
+            # カメラからフレームを取得し・・・
             self._captureManager.enterFrame()
             frameToDisplay = self._captureManager.frame
             frameToDisplay[:] = numpy.fliplr(frameToDisplay)
@@ -176,7 +174,7 @@ class Cameo(object):
             # 最初のフレームを取り出して表示する。
             frameNow = frameToDisplay.copy()  # 本当の現在のフレーム
             self._enteredFrames.append(frameToDisplay.copy())  # ディープコピーしないと参照を持って行かれる
-            frameToDisplay[:] = self._enteredFrames[0]  # ためたフレームの最初のものを表示する
+            frameToDisplay[:] = self._enteredFrames[0]  # ためたフレームの最初のものを処理するフレームとする
             if len(self._enteredFrames) <= self._numFramesDelay:  # 最初はためる
                 pass
             else:
@@ -243,25 +241,25 @@ class Cameo(object):
 
 
 
-            ### ストロボ描画処理 ###
+            ### 履歴系描画処理 ###
 
 
             # 表示可能な軌跡があれば・・・
             if 0 < len(self._positionHistory) - self._numFramesDelay:
                 numPointsVisible = len(self._positionHistory) - self._numFramesDelay
 
-                # 位置の履歴を表示する
+                # 軌跡をストロボモードで描画する
                 if self._shouldDrawTracksInStrobeMode:
                     for i in range(numPointsVisible - 1):
                         if i % self._numStrobeModeSkips == 0:
                             cv2.circle(
                                 frameToDisplay, self._positionHistory[i], 5, utils.WHITE, -1)
-                # 速度ベクトルをストロボモードで表示する
+                # 速度ベクトルをストロボモードで描画する
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     utils.drawVelocityVectorsInStrobeMode(
                         frameToDisplay, self._positionHistory, self._numFramesDelay,
                         self._numStrobeModeSkips, self._velocityVectorsHistory)
-                # 速度ベクトルの大きさのグラフを表示する
+                # 速度ベクトルの大きさのグラフを描画する
                 if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
                     utils.drawVelocityVectorsVerticallyInStrobeMode(
                         frameToDisplay, self._positionHistory,
@@ -388,7 +386,8 @@ class Cameo(object):
                 if self._track_window is not None:
 
 
-                    ### History系の追加 ###
+                    ### 位置、速度ベクトル、速度x成分ベクトルを求める ###
+                    ### 履歴系に新たに追加 ###
 
 
                     # 通過点リストの最後に要素を追加する
@@ -500,6 +499,7 @@ class Cameo(object):
                             utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, utils.GREEN, 5)
                             # print aclVector
 
+                    # 力ベクトルを物体の底面を基点として描画する
                     if self._shouldDrawForceVectorBottom:
                         yPositionAclBegin = \
                             self._positionHistory[numPointsVisible-1][1] + h/2
@@ -509,6 +509,7 @@ class Cameo(object):
                         utils.drawForceVector(frameToDisplay, aclVector,
                                               positionAclBegin, self._gravityStrength)
 
+                    # 力ベクトルを物体のてっぺんを基点として描画する
                     if self._shouldDrawForceVectorTop:
                         yPositionAclBegin = \
                             self._positionHistory[numPointsVisible-1][1] - h/2
@@ -566,7 +567,7 @@ class Cameo(object):
                 cv2.merge((edge, edge, edge), frameToDisplay)
 
 
-            ### 情報表示 ###
+            ### 画面左上にテキストで情報表示 ###
 
 
             if self._isTracking:
