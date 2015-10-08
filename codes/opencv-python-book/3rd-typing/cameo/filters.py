@@ -353,51 +353,6 @@ def letMaskMoreBright(v, mask, gamma):
     cv2.bitwise_and(vBrightened, 255, v, mask)
     return v
 
-def getMaskByHsv(src, hueMin, hueMax, valueMin, valueMax, gamma=96, sThreshold=5,
-              shouldProcessGaussianBlur=False, gaussianBlurKernelSize=5,
-              shouldProcessClosing=True, iterations=1):
-
-    _hueMin = hueMin / 2
-    _hueMax = hueMax / 2
-
-    src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
-    # h, s, v = cv2.split(src)
-
-    # HSVで抽出する
-
-    # mask = getSimpleMaskByHsv(h, s, v, _hueMin, _hueMax, valueMin, valueMax, sThreshold)
-
-    mask = cv2.inRange(src, numpy.array((
-        _hueMin,              # H最小値
-        2 ** sThreshold - 1,  # S最小値
-        valueMin              # V最小値
-    )), numpy.array((
-        _hueMax,              # H最大値
-        255,                  # S最大値
-        valueMax)))           # V最大値
-
-    # 後処理する
-
-    if shouldProcessClosing:
-        # 8近傍
-        element8 = numpy.array([[1,1,1],
-                                [1,1,1],
-                                [1,1,1]], numpy.uint8)
-        # クロージング
-        # cv2.morphologyEx(hTarget, cv2.MORPH_CLOSE, element8, hTarget, None, iterations)
-        cv2.morphologyEx(mask, cv2.MORPH_OPEN, element8, mask, None, iterations)
-        # anchor – アンカー点．
-        # デフォルト値は(-1,-1) で、アンカーがカーネルの中心にあることを意味します
-
-    if shouldProcessGaussianBlur:
-        # ガウシアンフィルタを用いて画像の平滑化を行います．
-        # GaussianBlur(src, ksize, sigmaX[, dst[, sigmaY[, borderType]]]) -> dst
-        # ksize must pair of odd. (5,5),(7,7),(9,9)...
-        size = 2 * gaussianBlurKernelSize - 1
-        cv2.GaussianBlur(mask, (size,size), 0, mask)
-
-    return mask
-
 def equaliseHist(src, dst):
     src = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(src)

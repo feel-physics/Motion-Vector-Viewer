@@ -4,9 +4,8 @@ __author__ = 'weed'
 import cv2
 from datetime import datetime
 import numpy
-
-import filters
 from managers import WindowManager, CaptureManager
+from abc import *
 import utils
 
 ### TODO:このファイルが長すぎる。目的の箇所を探すのが大変。
@@ -101,7 +100,7 @@ class Cameo(object):
         self._roi_hist                     = None
 
         self._shouldDrawCircle             = False
-        self._shouldDrawTracks             = True
+        self._shouldDrawTrack              = False
         self._shouldDrawDisplacementVector = False
         self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
@@ -123,7 +122,7 @@ class Cameo(object):
         self._isModePendulum               = False
 
         # ストロボモード 15/08/12 -
-        self._shouldDrawTracksInStrobeMode = False
+        self._shouldDrawTracksInStrobeMode = True
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = False
@@ -147,6 +146,12 @@ class Cameo(object):
         self._isTakingFrameBackground      = None
         self._frameBackground              = None
         self._diffBgFg                     = 50
+
+        # FPS計算用
+        self._fpsWithTick                  = utils.fpsWithTick()
+
+        # クラス化 15/10/07
+        self._position                     = Position(self._numFramesDelay, self._numStrobeModeSkips)
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -191,7 +196,7 @@ class Cameo(object):
                 後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
                 SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
                 """
-                mask = filters.getMaskByHsv(frame, self._hueMin, self._hueMax, self._valueMin, self._valueMax,
+                mask = utils.getMaskByHsv(frame, self._hueMin, self._hueMax, self._valueMin, self._valueMax,
                                             self._gamma, self._sThreshold, self._shouldProcessGaussianBlur,
                                             self._gaussianBlurKernelSize, self._shouldProcessClosing,
                                             self._closingIterations)
@@ -250,10 +255,7 @@ class Cameo(object):
 
                 # 軌跡をストロボモードで描画する
                 if self._shouldDrawTracksInStrobeMode:
-                    for i in range(numPointsVisible - 1):
-                        if i % self._numStrobeModeSkips == 0:
-                            cv2.circle(
-                                frameToDisplay, self._positionHistory[i], 5, utils.WHITE, -1)
+                    self._position.drawInStrobeMode(frameToDisplay)
                 # 速度ベクトルをストロボモードで描画する
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     utils.drawVelocityVectorsInStrobeMode(
@@ -340,11 +342,13 @@ class Cameo(object):
 
                             self._isTracking = True
 
-                            ### History系の初期化 ###
+                            ### 履歴系の初期化 ###
 
                             self._positionHistory = []
                             self._velocityVectorsHistory = []
                             self._velocityVectorsXComponentHistory = []
+
+                            self._position.resetHistory()
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -391,7 +395,8 @@ class Cameo(object):
 
 
                     # 通過点リストの最後に要素を追加する
-                    self._positionHistory.append((x+w/2, y+h/2))
+                    self._position.addNewVector((x+w/2, y+h/2))
+                    # self._positionHistory.append((x+w/2, y+h/2))
                     # 速度ベクトルを記録する
                     lastVelocityVector = utils.getVelocityVector(
                         self._positionHistory, self._populationVelocity,
@@ -406,6 +411,7 @@ class Cameo(object):
                     )
 
 
+
                 ### 描画処理 ###
 
 
@@ -414,12 +420,11 @@ class Cameo(object):
                     numPointsVisible = len(self._positionHistory) - self._numFramesDelay
 
                     # 軌跡を描画する
-                    if self._shouldDrawTracks:
-                        for i in range(numPointsVisible - 1):
-                            cv2.line(frameToDisplay, self._positionHistory[i],
-                                     self._positionHistory[i+1], utils.WHITE, 5)
-                            # # 軌跡ではなく打点する（デバッグ用）
-                            # cv2.circle(frameToDisplay, self._passedPoints[i], 1, WHITE, 5)
+                    if self._shouldDrawTrack:
+                        self._position.drawTrack(frameToDisplay)
+                        # # 軌跡ではなく打点する（デバッグ用）
+                        # self._position.draw(frameToDisplay)
+                        # cv2.circle(frameToDisplay, self._passedPoints[i], 1, WHITE, 5)
 
                     lastPosition = self._positionHistory[numPointsVisible-1]
 
@@ -620,7 +625,7 @@ class Cameo(object):
             # elif cur == self.SHOULD_DRAW_CIRCLE:
             #     put('Should Draw Circle'                 , self._shouldDrawCircle)
             elif cur == self.SHOULD_DRAW_TRACKS:
-                put('Should Draw Tracks'                 , self._shouldDrawTracks)
+                put('Should Draw Tracks'                 , self._shouldDrawTrack)
             # elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
             #     put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
             elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
@@ -815,11 +820,11 @@ class Cameo(object):
             #     else:
             #         self._shouldDrawCircle = True
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                if  self._shouldDrawTracks:
-                    self._shouldDrawTracks = False
+                if  self._shouldDrawTrack:
+                    self._shouldDrawTrack = False
                 else:
                     self._positionHistory = []  # 軌跡を消去する
-                    self._shouldDrawTracks = True
+                    self._shouldDrawTrack = True
             # elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
             #     if  self._shouldDrawDisplacementVector:
             #         self._shouldDrawDisplacementVector = False
@@ -943,6 +948,110 @@ class Cameo(object):
 
         else:
             print keycode
+
+class BaseVector(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, numFramesDelay, numStrobeModeSkips):
+        self._history            = []
+        self._numFramesDelay     = numFramesDelay
+        self._numStrobeModeSkips = numStrobeModeSkips
+    def addNewVector(self, position):
+        self._history.append(position)
+    def resetHistory(self):
+        self._history = []
+
+    @abstractmethod
+    def addNewVector(self, vector):
+        raise NotImplementedError()
+    @abstractmethod
+    def resetHistory(self):
+        raise NotImplementedError()
+    @abstractmethod
+    def draw(self, frame):
+        raise NotImplementedError()
+    @abstractmethod
+    def drawInStrobeMode(self, frame):
+        raise NotImplementedError()
+
+class Position(BaseVector):
+    def __init__(self, numFramesDelay, numStrobeModeSkips):
+        self._history            = []
+        self._numFramesDelay     = numFramesDelay
+        self._numStrobeModeSkips = numStrobeModeSkips
+    def addNewVector(self, position):
+        # self._history.append(position)
+
+    def resetHistory(self):
+        self._history = []
+    def draw(self, frame):
+        """
+        追跡している点を軌跡として描画する
+        :param frame: 背景フレーム
+        :return:
+        """
+        if self._numFramesDelay < len(self._history):
+            cv2.circle(frame, self._history[-self._numFramesDelay], 1, utils.WHITE, 5)
+    def drawTrack(self, frame):
+        """
+        軌跡を描画する
+        :param frame: 背景フレーム
+        :return:
+        """
+        numPointsVisible = len(self._history) - self._numFramesDelay
+        if 0 < numPointsVisible:
+            for i in range(numPointsVisible - 1):
+                cv2.line(frame, self._history[i], self._history[i+1], utils.WHITE, 5)
+    def drawInStrobeMode(self, frame):
+        """
+        追跡している点をストロボ表示する
+        :param frame: 背景フレーム
+        :return:
+        """
+        numPointsVisible = len(self._history) - self._numFramesDelay
+        if 0 < numPointsVisible:
+            for i in range(numPointsVisible - 1):
+                if i % self._numStrobeModeSkips == 0:
+                    cv2.circle(frame, self._history[i], 5, utils.WHITE, -1)
+
+class VelocityVector(BaseVector):
+    def __init__(self, numFramesDelay, numStrobeModeSkips):
+        self._history            = []
+        self._numFramesDelay     = numFramesDelay
+        self._numStrobeModeSkips = numStrobeModeSkips
+    def addNewVector(self, position):
+        self._history.append(position)
+    def resetHistory(self):
+        self._history = []
+    def draw(self, frame):
+        """
+        追跡している点を軌跡として描画する
+        :param frame: 背景フレーム
+        :return:
+        """
+        if self._numFramesDelay < len(self._history):
+            cv2.circle(frame, self._history[-self._numFramesDelay], 1, utils.WHITE, 5)
+    def drawTrack(self, frame):
+        """
+        軌跡を描画する
+        :param frame: 背景フレーム
+        :return:
+        """
+        numPointsVisible = len(self._history) - self._numFramesDelay
+        if 0 < numPointsVisible:
+            for i in range(numPointsVisible - 1):
+                cv2.line(frame, self._history[i], self._history[i+1], utils.WHITE, 5)
+    def drawInStrobeMode(self, frame):
+        """
+        追跡している点をストロボ表示する
+        :param frame: 背景フレーム
+        :return:
+        """
+        numPointsVisible = len(self._history) - self._numFramesDelay
+        if 0 < numPointsVisible:
+            for i in range(numPointsVisible - 1):
+                if i % self._numStrobeModeSkips == 0:
+                    cv2.circle(frame, self._history[i], 5, utils.WHITE, -1)
 
 if __name__ == "__main__":
     Cameo().run()
