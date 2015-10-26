@@ -179,6 +179,13 @@ def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=
     if int(vector[0]) == 0 and int(vector[1]) == 0:
         pass
     else:
+        cvArrowBase(img, pt, vector, lengthTimes, WHITE, thickness+2, lineType=8, shift=0)
+        cvArrowBase(img, pt, vector, lengthTimes, color, thickness, lineType=8, shift=0)
+
+def cvArrowBase(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+    if int(vector[0]) == 0 and int(vector[1]) == 0:
+        pass
+    else:
         pt1 = pt
         pt2 = (int(pt1[0] + vector[0]*lengthTimes),
                int(pt1[1] + vector[1]*lengthTimes))
@@ -201,10 +208,10 @@ def cvVerticalArrow(img, x, vector, lengthTimes, color, isSigned=False, thicknes
     vx, vy = vector
     if isSigned:
         verticalVector = (0, -vx)
-        baseY = img.shape[0] * 2 / 3  # 画面の下から1/3の高さ
+        baseY = img.shape[0] * 1 / 3  # 画面の下から1/3の高さ
     else:
         verticalVector = (0, -math.sqrt(vx ** 2 + vy ** 2))
-        baseY = img.shape[0] - 20  # 画面下端から20px上
+        baseY = img.shape[0] * 1 / 2  # 画面下端から20px上
     cvArrow(img, (x, baseY), verticalVector,
             lengthTimes, color, thickness, lineType, shift)
 
