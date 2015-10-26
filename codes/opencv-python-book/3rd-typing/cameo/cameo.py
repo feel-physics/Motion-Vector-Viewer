@@ -18,16 +18,15 @@ class Cameo(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
+        SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
-        CAPTURE_BACKGROUND_FRAME,
 
+        CAPTURE_BACKGROUND_FRAME,
         SHOWING_FRAME
-    ] = range(12)
+    ] = range(11)
 
     UNUSED_OPTIONS = [
         DIFF_OF_BACKGROUND_AND_FOREGROUND,
@@ -46,7 +45,6 @@ class Cameo(object):
         HOUGH_CIRCLE_RADIUS_MIN,
         # SHOULD_DRAW_CANNY_EDGE,
         # SHOULD_DRAW_CIRCLE,
-        SHOULD_DRAW_TRACKS,
         # SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
         GAUSSIAN_BLUR_KERNEL_SIZE,
@@ -55,7 +53,9 @@ class Cameo(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-    ] = [-1 for x in range(20)]  # すべて-1
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
+    ] = [-1 for x in range(21)]  # すべて-1
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -76,7 +76,7 @@ class Cameo(object):
         self._hueMin                       = 50  # テニスボール
         self._hueMax                       = 80  # テニスボール
         self._sThreshold                   = 5
-        self._valueMin                     = 130 #220 #60
+        self._valueMin                     = 100 #220 #60
         self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -102,7 +102,7 @@ class Cameo(object):
         self._shouldDrawCircle             = False
         self._shouldDrawTrack              = False
         self._shouldDrawDisplacementVector = False
-        self._shouldDrawVelocityVector     = True
+        self._shouldDrawVelocityVector     = False
         self._shouldDrawAccelerationVector = False
         self._shouldDrawForceVectorBottom  = False
         self._shouldDrawForceVectorTop     = False
@@ -125,7 +125,7 @@ class Cameo(object):
         self._shouldDrawTrackInStrobeMode  = False
         self._numStrobeModeSkips           = 5
         self._velocityVectorsHistory       = []
-        self._shouldDrawVelocityVectorsInStrobeMode = True
+        self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = False
@@ -399,7 +399,7 @@ class Cameo(object):
 
                     # 通過点リストの最後に要素を追加する
                     self._position.addNewVector((x+w/2, y+h/2))
-                    # self._positionHistory.append((x+w/2, y+h/2))
+                    self._positionHistory.append((x+w/2, y+h/2))
                     # # 速度ベクトルを記録する
                     # lastVelocityVector = utils.getVelocityVector(
                     #     self._positionHistory, self._populationVelocity,
