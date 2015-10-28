@@ -10,7 +10,7 @@ import utils
 
 ### TODO:このファイルが長すぎる。目的の箇所を探すのが大変。
 
-class Cameo(object):
+class Main(object):
 
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
