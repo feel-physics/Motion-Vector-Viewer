@@ -14,19 +14,22 @@ class Cameo(object):
 
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
-        HUE_MIN,
-        HUE_MAX,
-        VALUE_MIN,
-        VALUE_MAX,
+        CAPTURE_BACKGROUND_FRAME,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
+        NUM_STROBE_SKIPS,
+        SPACE_BETWEEN_VERTICAL_VECTORS,
+        LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS,
 
-        CAPTURE_BACKGROUND_FRAME,
-        SHOWING_FRAME
-    ] = range(11)
+        SHOWING_FRAME,
+        HUE_MIN,
+        HUE_MAX,
+        VALUE_MIN,
+        VALUE_MAX
+    ] = range(14)
 
     UNUSED_OPTIONS = [
         DIFF_OF_BACKGROUND_AND_FOREGROUND,
@@ -73,8 +76,8 @@ class Cameo(object):
         ### Filtering
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
-        self._hueMin                       = 50  # テニスボール
-        self._hueMax                       = 80  # テニスボール
+        self._hueMin                       = 40 #マグネット # 50 # テニスボール
+        self._hueMax                       = 80 # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 100 #220 #60
         self._valueMax                     = 255
@@ -137,6 +140,7 @@ class Cameo(object):
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
         self._thicknessVelocityVector      = 5
         self._thicknessVelocityVectorXComponent = 3
+        self._lengthTimesVerticalVelocityVectors = 5
 
         self._timeSelfTimerStarted         = None
 
@@ -268,7 +272,9 @@ class Cameo(object):
                     utils.drawVelocityVectorsVerticallyInStrobeMode(
                         frameToDisplay, self._positionHistory,
                         self._velocityVectorsHistory, self._numFramesDelay,
-                        self._numStrobeModeSkips, self._spaceBetweenVerticalVectors)
+                        self._numStrobeModeSkips, self._spaceBetweenVerticalVectors,
+                        self._colorVelocityVector, self._thicknessVelocityVector, True,
+                        self._lengthTimesVerticalVelocityVectors)
                 # 速度x成分ベクトルをストロボモードで表示する
                 if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                     utils.drawVelocityVectorsInStrobeMode(
@@ -283,7 +289,8 @@ class Cameo(object):
                         self._numFramesDelay, self._numStrobeModeSkips,
                         self._spaceBetweenVerticalVectors,
                         self._colorVelocityVectorXComponent,
-                        self._thicknessVelocityVectorXComponent, True)
+                        self._thicknessVelocityVectorXComponent, True,
+                        self._lengthTimesVerticalVelocityVectors)
 
 
             ### 物体追跡 ###
@@ -679,6 +686,15 @@ class Cameo(object):
             elif cur == self.CAPTURE_BACKGROUND_FRAME:
                 put('Capture Background Frame' ,
                     self._frameBackground is not None)
+            elif cur == self.NUM_STROBE_SKIPS:
+                put('Number of Skip Frames in Strobe' ,
+                    self._numStrobeModeSkips)
+            elif cur == self.SPACE_BETWEEN_VERTICAL_VECTORS:
+                put('Space between Vertical Vectors' ,
+                    self._spaceBetweenVerticalVectors)
+            elif cur == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
+                put('Length Times of Vertical Velocity Vectors' ,
+                    self._lengthTimesVerticalVelocityVectors)
             elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
                 put('Diff of Background and Foreground'       , self._diffBgFg)
             elif cur == self.SHOWING_FRAME:
@@ -935,6 +951,15 @@ class Cameo(object):
             elif self._currentAdjusting == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
                 pitch = 10 if keycode == 0 else -10
                 self._diffBgFg += pitch
+            elif self._currentAdjusting == self.NUM_STROBE_SKIPS:
+                pitch = 1 if keycode == 0 else -1
+                self._numStrobeModeSkips += pitch
+            elif self._currentAdjusting == self.SPACE_BETWEEN_VERTICAL_VECTORS:
+                pitch = 1 if keycode == 0 else -1
+                self._spaceBetweenVerticalVectors += pitch
+            elif self._currentAdjusting == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
+                pitch = 1 if keycode == 0 else -1
+                self._lengthTimesVerticalVelocityVectors += pitch
             elif self._currentAdjusting == self.SHOWING_FRAME:
                 if   keycode == 0:  # up arrow
                     if not self._currentShowing == len(self.SHOWING_FRAME_OPTIONS) - 1:

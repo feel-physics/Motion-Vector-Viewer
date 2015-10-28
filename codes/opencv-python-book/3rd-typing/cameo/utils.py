@@ -244,14 +244,14 @@ def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
 def drawVelocityVectorsVerticallyInStrobeMode(frameToDisplay, positionHistory,
                                               velocityVectorsHistory, numFramesDelay,
                                               numStrobeModeSkips, spaceBetweenVerticalVectors,
-                                              color=BLUE, thickness=5, isSigned=False):
+                                              color=BLUE, thickness=5, isSigned=False, lengthTimes=5):
     for i in range(len(positionHistory) - numFramesDelay - 1):
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
             cvVerticalArrow(
                 frameToDisplay, spaceBetweenVerticalVectors*i,
                 velocityVectorsHistory[i],
-                4, color, isSigned, thickness
+                lengthTimes, color, isSigned, thickness
             )
 
 
