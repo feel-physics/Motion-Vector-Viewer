@@ -15,6 +15,7 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,
+        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
@@ -29,7 +30,7 @@ class Main(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX
-    ] = range(14)
+    ] = range(15)
 
     UNUSED_OPTIONS = [
         DIFF_OF_BACKGROUND_AND_FOREGROUND,
@@ -57,8 +58,7 @@ class Main(object):
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
-    ] = [-1 for x in range(21)]  # すべて-1
+    ] = [-1 for x in range(20)]  # すべて-1、合わせて35
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -129,7 +129,7 @@ class Main(object):
         self._numStrobeModeSkips           = 3 # 画面が狭い # 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = False
-        self._spaceBetweenVerticalVectors  = 5 # 画面が狭い  # 3
+        self._spaceBetweenVerticalVectors  = 20 # 画面が狭い  # 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
@@ -161,6 +161,11 @@ class Main(object):
                                                             self._coVelocityVectorStrength,
                                                             self._colorVelocityVector,
                                                             self._thicknessVelocityVector)
+        self._graph                        = Graph(self._numFramesDelay,
+                                                   self._numStrobeModeSkips,
+                                                   self._spaceBetweenVerticalVectors,
+                                                   self._lengthTimesVerticalVelocityVectors,
+                                                   utils.BLUE, False, 5)
 
     def _takeScreenShot(self):
         self._captureManager.writeImage(
@@ -258,39 +263,39 @@ class Main(object):
             ### 履歴系描画処理 ###
 
 
-            # 表示可能な軌跡があれば・・・
-            if 0 < len(self._positionHistory) - self._numFramesDelay:
-                numPointsVisible = len(self._positionHistory) - self._numFramesDelay
-
-                # 速度ベクトルをストロボモードで描画する
-                if self._shouldDrawVelocityVectorsInStrobeMode:
-                    utils.drawVelocityVectorsInStrobeMode(
-                        frameToDisplay, self._positionHistory, self._numFramesDelay,
-                        self._numStrobeModeSkips, self._velocityVectorsHistory)
-                # 速度ベクトルの大きさのグラフを描画する
-                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
-                    utils.drawVelocityVectorsVerticallyInStrobeMode(
-                        frameToDisplay, self._positionHistory,
-                        self._velocityVectorsHistory, self._numFramesDelay,
-                        self._numStrobeModeSkips, self._spaceBetweenVerticalVectors,
-                        self._colorVelocityVector, self._thicknessVelocityVector, True,
-                        self._lengthTimesVerticalVelocityVectors)
-                # 速度x成分ベクトルをストロボモードで表示する
-                if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
-                    utils.drawVelocityVectorsInStrobeMode(
-                        frameToDisplay, self._positionHistory, self._numFramesDelay,
-                        self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
-                        utils.SKY_BLUE, 3)
-                # 速度ベクトルのx成分（正負あり）のグラフを表示する
-                if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
-                    utils.drawVelocityVectorsVerticallyInStrobeMode(
-                        frameToDisplay, self._positionHistory,
-                        self._velocityVectorsXComponentHistory,
-                        self._numFramesDelay, self._numStrobeModeSkips,
-                        self._spaceBetweenVerticalVectors,
-                        self._colorVelocityVectorXComponent,
-                        self._thicknessVelocityVectorXComponent, True,
-                        self._lengthTimesVerticalVelocityVectors)
+            # # 表示可能な軌跡があれば・・・
+            # if 0 < len(self._positionHistory) - self._numFramesDelay:
+            #     numPointsVisible = len(self._positionHistory) - self._numFramesDelay
+            #
+            #     # 速度ベクトルをストロボモードで描画する
+            #     if self._shouldDrawVelocityVectorsInStrobeMode:
+            #         utils.drawVelocityVectorsInStrobeMode(
+            #             frameToDisplay, self._positionHistory, self._numFramesDelay,
+            #             self._numStrobeModeSkips, self._velocityVectorsHistory)
+            #     # 速度ベクトルの大きさのグラフを描画する
+            #     if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+            #         utils.drawVelocityVectorsVerticallyInStrobeMode(
+            #             frameToDisplay, self._positionHistory,
+            #             self._velocityVectorsHistory, self._numFramesDelay,
+            #             self._numStrobeModeSkips, self._spaceBetweenVerticalVectors,
+            #             self._colorVelocityVector, self._thicknessVelocityVector, True,
+            #             self._lengthTimesVerticalVelocityVectors)
+            #     # 速度x成分ベクトルをストロボモードで表示する
+            #     if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
+            #         utils.drawVelocityVectorsInStrobeMode(
+            #             frameToDisplay, self._positionHistory, self._numFramesDelay,
+            #             self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
+            #             utils.SKY_BLUE, 3)
+            #     # 速度ベクトルのx成分（正負あり）のグラフを表示する
+            #     if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+            #         utils.drawVelocityVectorsVerticallyInStrobeMode(
+            #             frameToDisplay, self._positionHistory,
+            #             self._velocityVectorsXComponentHistory,
+            #             self._numFramesDelay, self._numStrobeModeSkips,
+            #             self._spaceBetweenVerticalVectors,
+            #             self._colorVelocityVectorXComponent,
+            #             self._thicknessVelocityVectorXComponent, True,
+            #             self._lengthTimesVerticalVelocityVectors)
 
 
             ### 物体追跡 ###
@@ -353,9 +358,9 @@ class Main(object):
 
                             ### 履歴系の初期化 ###
 
-                            self._positionHistory = []
-                            self._velocityVectorsHistory = []
-                            self._velocityVectorsXComponentHistory = []
+                            # self._positionHistory = []
+                            # self._velocityVectorsHistory = []
+                            # self._velocityVectorsXComponentHistory = []
 
                             self._position.resetHistory()
                             self._velocityVector.resetHistory()
@@ -420,13 +425,13 @@ class Main(object):
                     )
                     self._velocityVector.addNewVector(lastVelocityVector)
 
-                    self._velocityVectorsHistory.append(lastVelocityVector)
-                    # 速度x成分ベクトルを記録する
-                    lastVelocityVectorXComponent = \
-                        utils.getComponentVector(lastVelocityVector, "x")
-                    self._velocityVectorsXComponentHistory.append(
-                        lastVelocityVectorXComponent
-                    )
+                    # self._velocityVectorsHistory.append(lastVelocityVector)
+                    # # 速度x成分ベクトルを記録する
+                    # lastVelocityVectorXComponent = \
+                    #     utils.getComponentVector(lastVelocityVector, "x")
+                    # self._velocityVectorsXComponentHistory.append(
+                    #     lastVelocityVectorXComponent
+                    # )
 
 
 
@@ -438,27 +443,27 @@ class Main(object):
                     numPointsVisible = len(self._positionHistory) - self._numFramesDelay
                     lastPosition = self._positionHistory[numPointsVisible-1]
 
-                    # 速度ベクトル関係
-                    if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
-                        c = self._coVelocityVectorStrength
-                        # 速度x成分ベクトルを描く
-                        if self._shouldDrawVelocityVectorXComponent:
-                            v  = self._velocityVectorsHistory[numPointsVisible - 1]
-                            # 成分ベクトルを求める
-                            vx = utils.getComponentVector(v, "x")
-                            utils.cvArrow(
-                                frameToDisplay, lastPosition, vx, c,
-                                self._colorVelocityVectorXComponent,
-                                self._thicknessVelocityVectorXComponent)
-
-                            # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
-                            # 2つのベクトルの先を結ぶ線分を描く
-                            if self._shouldDrawVelocityVector:
-                                # 元ベクトルの先から成分ベクトルの先へ線を引く
-                                utils.cvLine(frameToDisplay,
-                                             (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
-                                             (lastPosition[0] + v[0]*c, lastPosition[1]),
-                                             utils.WHITE, 2)
+                    # # 速度ベクトル関係
+                    # if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
+                    #     c = self._coVelocityVectorStrength
+                    #     # 速度x成分ベクトルを描く
+                    #     if self._shouldDrawVelocityVectorXComponent:
+                    #         v  = self._velocityVectorsHistory[numPointsVisible - 1]
+                    #         # 成分ベクトルを求める
+                    #         vx = utils.getComponentVector(v, "x")
+                    #         utils.cvArrow(
+                    #             frameToDisplay, lastPosition, vx, c,
+                    #             self._colorVelocityVectorXComponent,
+                    #             self._thicknessVelocityVectorXComponent)
+                    #
+                    #         # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
+                    #         # 2つのベクトルの先を結ぶ線分を描く
+                    #         if self._shouldDrawVelocityVector:
+                    #             # 元ベクトルの先から成分ベクトルの先へ線を引く
+                    #             utils.cvLine(frameToDisplay,
+                    #                          (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
+                    #                          (lastPosition[0] + v[0]*c, lastPosition[1]),
+                    #                          utils.WHITE, 2)
 
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
@@ -578,9 +583,12 @@ class Main(object):
                 # 速度ベクトルを描く
                 if self._shouldDrawVelocityVector:
                     self._velocityVector.drawJustDisplaying(frameToDisplay, self._position)
-                # 速度x成分ベクトルをストロボモードで表示する
+                # 速度ベクトルをストロボモードで表示する
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     self._velocityVector.drawInStrobeMode(frameToDisplay, self._position)
+                # 速度グラフを描く
+                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+                    self._graph.draw(frameToDisplay, self._velocityVector)
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -1097,6 +1105,41 @@ class VelocityVector(BaseVector, VectorWithPosition):
                 if i % self._numStrobeModeSkips == 0 and self.history[i] is not None:
                     self.draw(frame, position, i)
 
+class Graph(object):
+    def __init__(self, numFramesDelay, numStrobeModeSkips, spaceBetweenVerticalVectors,
+                 lengthTimes, color, isSigned, thickness):
+        """
+        コンストラクタ
+        :param numFramesDelay: int
+        :param numStrobeModeSkips: int
+        :param spaceBetweenVerticalVectors: int
+        :param lengthTimes: int
+        :param color: tuple
+        :param isSigned: bool
+        :param thickness: int
+        :return:
+        """
+        self._numFramesDelay              = numFramesDelay
+        self._numStrobeModeSkips          = numStrobeModeSkips
+        self._spaceBetweenVerticalVectors = spaceBetweenVerticalVectors
+        self._lengthTimes                 = lengthTimes
+        self._color                       = color
+        self._isSigned                    = isSigned
+        self._thickness                   = thickness
+    def draw(self, frame, vector):
+        """
+        グラフを描画する
+        :param frame: 背景フレーム
+        :param vector: VectorWithPosition
+        :return:
+        """
+        for i in range(len(vector.history) - self._numFramesDelay - 1):
+            if i % self._numStrobeModeSkips == 0 and \
+                            vector.history[i]  is not None:
+                utils.cvVerticalArrow(
+                    frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
+                    vector.history[i], self._lengthTimes, self._color,
+                    self._isSigned, self._thickness)
 
 if __name__ == "__main__":
     Main().run()
