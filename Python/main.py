@@ -76,10 +76,10 @@ class Main(object):
         ### Filtering
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
-        self._hueMin                       = 40 #マグネット # 50 # テニスボール
+        self._hueMin                       = 30 #マグネット # 50 # テニスボール
         self._hueMax                       = 80 # テニスボール
         self._sThreshold                   = 5
-        self._valueMin                     = 100 #220 #60
+        self._valueMin                     = 130 #220 #60
         self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -126,10 +126,10 @@ class Main(object):
 
         # ストロボモード 15/08/12 -
         self._shouldDrawTrackInStrobeMode  = False
-        self._numStrobeModeSkips           = 5
+        self._numStrobeModeSkips           = 3 # 画面が狭い # 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = False
-        self._spaceBetweenVerticalVectors  = 3
+        self._spaceBetweenVerticalVectors  = 5 # 画面が狭い  # 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
@@ -140,7 +140,7 @@ class Main(object):
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
         self._thicknessVelocityVector      = 5
         self._thicknessVelocityVectorXComponent = 3
-        self._lengthTimesVerticalVelocityVectors = 5
+        self._lengthTimesVerticalVelocityVectors = 3 # 画面が狭い # 5
 
         self._timeSelfTimerStarted         = None
 
@@ -1099,4 +1099,4 @@ class VelocityVector(BaseVector, VectorWithPosition):
 
 
 if __name__ == "__main__":
-    Cameo().run()
+    Main().run()
