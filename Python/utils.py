@@ -249,7 +249,7 @@ def drawVelocityVectorsVerticallyInStrobeMode(frameToDisplay, positionHistory,
         if i % numStrobeModeSkips == 0 and \
                         velocityVectorsHistory[i] is not None:
             cvVerticalArrow(
-                frameToDisplay, spaceBetweenVerticalVectors*i,
+                frameToDisplay, spaceBetweenVerticalVectors*i/numStrobeModeSkips,
                 velocityVectorsHistory[i],
                 lengthTimes, color, isSigned, thickness
             )
