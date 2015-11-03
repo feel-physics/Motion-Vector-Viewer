@@ -15,13 +15,13 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,
+        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
-        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
         NUM_STROBE_SKIPS,
         SPACE_BETWEEN_VERTICAL_VECTORS,
         LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS,
@@ -156,24 +156,37 @@ class Main(object):
 
         # クラス化 15/10/07
         self._resetKinetics()
-        self._velocityGraph                = Graph(self._numFramesDelay,
-                                                   self._numStrobeModeSkips,
-                                                   self._spaceBetweenVerticalVectors,
-                                                   self._lengthTimesVerticalVelocityVectors,
-                                                   utils.BLUE, False, 5)
 
     def _resetKinetics(self):
-        self._position                     = Position(self._numFramesDelay, self._numStrobeModeSkips)
-        self._velocityVector               = VelocityVector(self._numFramesDelay,
-                                                            self._numStrobeModeSkips,
-                                                            self._coVelocityVectorStrength,
-                                                            self._colorVelocityVector,
-                                                            self._thicknessVelocityVector)
-        self._velocityXComponentVector     = VelocityVectorXComponent(self._numFramesDelay,
-                                                                      self._numStrobeModeSkips,
-                                                                      self._coVelocityVectorStrength,
-                                                                      self._colorVelocityVector,
-                                                                      self._thicknessVelocityVector)
+        self._position                 = Position(self._numFramesDelay, self._numStrobeModeSkips)
+        self._velocityVector           = VelocityVector(
+            self._numFramesDelay,
+            self._numStrobeModeSkips,
+            self._coVelocityVectorStrength,
+            self._colorVelocityVector,
+            self._thicknessVelocityVector)
+        self._velocityXComponentVector = VelocityVectorXComponent(
+            self._numFramesDelay,
+            self._numStrobeModeSkips,
+            self._coVelocityVectorStrength,
+            self._colorVelocityVectorXComponent,
+            self._thicknessVelocityVectorXComponent)
+        # Todo: Graphの初期化変数にself._velocityVector, self._velocityVectorXComponentを渡す
+        self._velocityGraph            = Graph(self._velocityVector,
+                                               self._numFramesDelay,
+                                               self._numStrobeModeSkips,
+                                               self._spaceBetweenVerticalVectors,
+                                               self._lengthTimesVerticalVelocityVectors,
+                                               self._colorVelocityVector, False,
+                                               self._thicknessVelocityVector)
+        self._velocityXComponentGraph  = Graph(self._velocityXComponentVector,
+                                               self._numFramesDelay,
+                                               self._numStrobeModeSkips,
+                                               self._spaceBetweenVerticalVectors,
+                                               self._lengthTimesVerticalVelocityVectors,
+                                               self._colorVelocityVectorXComponent, True,
+                                               self._thicknessVelocityVectorXComponent)
+
     def _takeScreenShot(self):
         self._captureManager.writeImage(
             datetime.now().strftime('%y%m%d-%H%M%S')
@@ -577,7 +590,7 @@ class Main(object):
                     self._velocityVector.drawInStrobeMode(frameToDisplay, self._position)
                 # 速度グラフを描く
                 if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
-                    self._velocityGraph.draw(frameToDisplay, self._velocityVector)
+                    self._velocityGraph.draw(frameToDisplay)
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
                     self._velocityXComponentVector.draw(frameToDisplay, self._position)
@@ -595,7 +608,8 @@ class Main(object):
                 if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                     self._velocityXComponentVector.drawInStrobeMode(frameToDisplay, self._position)
                 # 速度ベクトルのx成分（正負あり）のグラフを表示する
-
+                if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                    self._velocityXComponentGraph.draw(frameToDisplay)
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -1117,10 +1131,11 @@ class VelocityVectorXComponent(VelocityVector):
         super(VelocityVectorXComponent, self).addNewVector(velocityXComponentVector)
 
 class Graph(object):
-    def __init__(self, numFramesDelay, numStrobeModeSkips, spaceBetweenVerticalVectors,
+    def __init__(self, vector, numFramesDelay, numStrobeModeSkips, spaceBetweenVerticalVectors,
                  lengthTimes, color, isSigned, thickness):
         """
         コンストラクタ
+        :param vector: VectorWithPosition
         :param numFramesDelay: int
         :param numStrobeModeSkips: int
         :param spaceBetweenVerticalVectors: int
@@ -1130,6 +1145,7 @@ class Graph(object):
         :param thickness: int
         :return:
         """
+        self._vector                      = vector
         self._numFramesDelay              = numFramesDelay
         self._numStrobeModeSkips          = numStrobeModeSkips
         self._spaceBetweenVerticalVectors = spaceBetweenVerticalVectors
@@ -1137,19 +1153,18 @@ class Graph(object):
         self._color                       = color
         self._isSigned                    = isSigned
         self._thickness                   = thickness
-    def draw(self, frame, vector):
+    def draw(self, frame):
         """
         グラフを描画する
         :param frame: 背景フレーム
-        :param vector: VectorWithPosition
         :return:
         """
-        for i in range(len(vector.history) - self._numFramesDelay - 1):
+        for i in range(len(self._vector.history) - self._numFramesDelay - 1):
             if i % self._numStrobeModeSkips == 0 and \
-                            vector.history[i]  is not None:
+                            self._vector.history[i]  is not None:
                 utils.cvVerticalArrow(
                     frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
-                    vector.history[i], self._lengthTimes, self._color,
+                    self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
 
 if __name__ == "__main__":
