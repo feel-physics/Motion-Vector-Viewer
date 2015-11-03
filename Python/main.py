@@ -15,6 +15,7 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
         SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
@@ -29,8 +30,8 @@ class Main(object):
         HUE_MIN,
         HUE_MAX,
         VALUE_MIN,
-        VALUE_MAX
-    ] = range(15)
+        VALUE_MAX,
+    ] = range(16)
 
     UNUSED_OPTIONS = [
         DIFF_OF_BACKGROUND_AND_FOREGROUND,
@@ -57,8 +58,7 @@ class Main(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-    ] = [-1 for x in range(20)]  # すべて-1、合わせて35
+    ] = [-1 for x in range(19)]  # すべて-1、合わせて35
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -454,28 +454,6 @@ class Main(object):
                     numPointsVisible = len(self._positionHistory) - self._numFramesDelay
                     lastPosition = self._positionHistory[numPointsVisible-1]
 
-                    # # 速度ベクトル関係
-                    # if self._velocityVectorsHistory[numPointsVisible - 1] is not None:
-                    #     c = self._coVelocityVectorStrength
-                    #     # 速度x成分ベクトルを描く
-                    #     if self._shouldDrawVelocityVectorXComponent:
-                    #         v  = self._velocityVectorsHistory[numPointsVisible - 1]
-                    #         # 成分ベクトルを求める
-                    #         vx = utils.getComponentVector(v, "x")
-                    #         utils.cvArrow(
-                    #             frameToDisplay, lastPosition, vx, c,
-                    #             self._colorVelocityVectorXComponent,
-                    #             self._thicknessVelocityVectorXComponent)
-                    #
-                    #         # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
-                    #         # 2つのベクトルの先を結ぶ線分を描く
-                    #         if self._shouldDrawVelocityVector:
-                    #             # 元ベクトルの先から成分ベクトルの先へ線を引く
-                    #             utils.cvLine(frameToDisplay,
-                    #                          (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
-                    #                          (lastPosition[0] + v[0]*c, lastPosition[1]),
-                    #                          utils.WHITE, 2)
-
                     # 加速度ベクトルを求める
                     # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
                     # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
@@ -603,22 +581,20 @@ class Main(object):
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
                     self._velocityXComponentVector.draw(frameToDisplay, self._position)
-                    #         v  = self._velocityVectorsHistory[numPointsVisible - 1]
-                    #         # 成分ベクトルを求める
-                    #         vx = utils.getComponentVector(v, "x")
-                    #         utils.cvArrow(
-                    #             frameToDisplay, lastPosition, vx, c,
-                    #             self._colorVelocityVectorXComponent,
-                    #             self._thicknessVelocityVectorXComponent)
                     #
-                    #         # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
-                    #         # 2つのベクトルの先を結ぶ線分を描く
-                    #         if self._shouldDrawVelocityVector:
-                    #             # 元ベクトルの先から成分ベクトルの先へ線を引く
-                    #             utils.cvLine(frameToDisplay,
-                    #                          (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
-                    #                          (lastPosition[0] + v[0]*c, lastPosition[1]),
-                    #                          utils.WHITE, 2)
+                    ### この機能のためにAPIを増やすか要検討 ###
+                    #
+                    # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
+                    # 2つのベクトルの先を結ぶ線分を描く
+                    # if self._shouldDrawVelocityVector:
+                    # 元ベクトルの先から成分ベクトルの先へ線を引く
+                    # utils.cvLine(frameToDisplay,
+                    #              (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
+                    #              (lastPosition[0] + v[0]*c, lastPosition[1]), utils.WHITE, 2)
+                # 速度x成分ベクトルをストロボモードで表示する
+                if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
+                    self._velocityXComponentVector.drawInStrobeMode(frameToDisplay, self._position)
+                # 速度ベクトルのx成分（正負あり）のグラフを表示する
 
 
 
