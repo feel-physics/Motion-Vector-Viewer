@@ -16,9 +16,9 @@ class Main(object):
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,
         SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH,
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
         SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
@@ -40,17 +40,17 @@ class Main(object):
         IS_MODE_PENDULUM,
         NUM_FRAMES_DELAY,
         GRAVITY_STRENGTH,
-        # SHOULD_PROCESS_QUICK_MOTION,
+        SHOULD_PROCESS_QUICK_MOTION,
         SHOULD_DRAW_FORCE_VECTOR_BOTTOM,
-        # SHOULD_DRAW_FORCE_VECTOR_TOP,
+        SHOULD_DRAW_FORCE_VECTOR_TOP,
         CO_FORCE_VECTOR_STRENGTH,
         SHOULD_DRAW_SYNTHESIZED_VECTOR,
         SHOULD_TRACK_CIRCLE,
         SHOULD_DRAW_TRACKS_IN_STROBE_MODE,
         HOUGH_CIRCLE_RADIUS_MIN,
-        # SHOULD_DRAW_CANNY_EDGE,
-        # SHOULD_DRAW_CIRCLE,
-        # SHOULD_DRAW_DISPLACEMENT_VECTOR,
+        SHOULD_DRAW_CANNY_EDGE,
+        SHOULD_DRAW_CIRCLE,
+        SHOULD_DRAW_DISPLACEMENT_VECTOR,
         SHOULD_PROCESS_GAUSSIAN_BLUR,
         GAUSSIAN_BLUR_KERNEL_SIZE,
         SHOULD_PROCESS_CLOSING,
@@ -58,7 +58,7 @@ class Main(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-    ] = [-1 for x in range(19)]  # すべて-1、合わせて35
+    ] = [-1 for x in range(24)]  # すべて-1、合わせて35
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -157,6 +157,9 @@ class Main(object):
         # クラス化 15/10/07
         self._resetKinetics()
 
+        # 整理 15/11/03
+        self._densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
+
     def _resetKinetics(self):
         self._position                 = Position(self._numFramesDelay, self._numStrobeModeSkips)
         self._velocityVector           = VelocityVector(
@@ -171,7 +174,6 @@ class Main(object):
             self._coVelocityVectorStrength,
             self._colorVelocityVectorXComponent,
             self._thicknessVelocityVectorXComponent)
-        # Todo: Graphの初期化変数にself._velocityVector, self._velocityVectorXComponentを渡す
         self._velocityGraph            = Graph(self._velocityVector,
                                                self._numFramesDelay,
                                                self._numStrobeModeSkips,
@@ -208,6 +210,11 @@ class Main(object):
             frameToDisplay = self._captureManager.frame
             frameToDisplay[:] = numpy.fliplr(frameToDisplay)
 
+
+            ### 遅延表示 ###
+
+
+            # Todo: numFramesDelayを変えたときは_enteredFramesをリセットする
             # 数フレームを配列にためて、
             # 新しいフレームを末尾に追加し、
             # 最初のフレームを取り出して表示する。
@@ -219,10 +226,8 @@ class Main(object):
             else:
                 self._enteredFrames.pop(0)  # たまったら最初のものは削除していく
 
-            densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
 
-
-            ### 画面表示 ###
+            ### 物体検出準備 ###
 
 
             def getMaskToFindCircle(self, frame):
@@ -279,46 +284,7 @@ class Main(object):
                     pass
 
 
-
-            ### 履歴系描画処理 ###
-
-
-            # # 表示可能な軌跡があれば・・・
-            # if 0 < len(self._positionHistory) - self._numFramesDelay:
-            #     numPointsVisible = len(self._positionHistory) - self._numFramesDelay
-            #
-            #     # 速度ベクトルをストロボモードで描画する
-            #     if self._shouldDrawVelocityVectorsInStrobeMode:
-            #         utils.drawVelocityVectorsInStrobeMode(
-            #             frameToDisplay, self._positionHistory, self._numFramesDelay,
-            #             self._numStrobeModeSkips, self._velocityVectorsHistory)
-            #     # 速度ベクトルの大きさのグラフを描画する
-            #     if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
-            #         utils.drawVelocityVectorsVerticallyInStrobeMode(
-            #             frameToDisplay, self._positionHistory,
-            #             self._velocityVectorsHistory, self._numFramesDelay,
-            #             self._numStrobeModeSkips, self._spaceBetweenVerticalVectors,
-            #             self._colorVelocityVector, self._thicknessVelocityVector, True,
-            #             self._lengthTimesVerticalVelocityVectors)
-            #     # 速度x成分ベクトルをストロボモードで表示する
-            #     if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
-            #         utils.drawVelocityVectorsInStrobeMode(
-            #             frameToDisplay, self._positionHistory, self._numFramesDelay,
-            #             self._numStrobeModeSkips, self._velocityVectorsXComponentHistory,
-            #             utils.SKY_BLUE, 3)
-            #     # 速度ベクトルのx成分（正負あり）のグラフを表示する
-            #     if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
-            #         utils.drawVelocityVectorsVerticallyInStrobeMode(
-            #             frameToDisplay, self._positionHistory,
-            #             self._velocityVectorsXComponentHistory,
-            #             self._numFramesDelay, self._numStrobeModeSkips,
-            #             self._spaceBetweenVerticalVectors,
-            #             self._colorVelocityVectorXComponent,
-            #             self._thicknessVelocityVectorXComponent, True,
-            #             self._lengthTimesVerticalVelocityVectors)
-
-
-            ### 物体追跡 ###
+            ### 物体検出 ###
 
 
             if self._shouldTrackCircle and not self._isTracking:
@@ -376,15 +342,13 @@ class Main(object):
 
                             self._isTracking = True
 
-                            ### 履歴系の初期化 ###
+                            ### 運動履歴の初期化 ###
 
-                            # self._positionHistory = []
-                            # self._velocityVectorsHistory = []
-                            # self._velocityVectorsXComponentHistory = []
-
-                            del self._position
-                            del self._velocityVector
                             self._resetKinetics()
+
+
+            ### 物体追跡 ###
+
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -424,42 +388,21 @@ class Main(object):
 
                 # 次の円を検出したら・・・
                 if self._track_window is not None:
-
-
-                    ### 位置、速度ベクトル、速度x成分ベクトルを求める ###
-                    ### 履歴系に新たに追加 ###
-
-
                     # 通過点リストの最後に要素を追加する
                     self._position.addNewVector((x+w/2, y+h/2))
                     self._positionHistory.append((x+w/2, y+h/2))
-                    # # 速度ベクトルを記録する
-                    # lastVelocityVector = utils.getVelocityVector(
-                    #     self._positionHistory, self._populationVelocity,
-                    #     self._numFramesDelay
-                    # )
-
                     # 速度ベクトルを記録する
                     lastVelocityVector = utils.getVelocityVector(
                         self._position.history, self._populationVelocity,
                         self._numFramesDelay
                     )
                     self._velocityVector.addNewVector(lastVelocityVector)
-
-                    # self._velocityVectorsHistory.append(lastVelocityVector)
-                    # # 速度x成分ベクトルを記録する
-                    # lastVelocityVectorXComponent = \
-                    #     utils.getComponentVector(lastVelocityVector, "x")
-                    # self._velocityVectorsXComponentHistory.append(
-                    #     lastVelocityVectorXComponent
-                    # )
-
                     # 速度x成分ベクトルを記録する
                     self._velocityXComponentVector.addNewVector(lastVelocityVector)
 
 
-
-                ### 描画処理 ###
+                ### 加速度処理 ###
+                # Todo: 必要になったらやる
 
 
                 # 次の円が見つかっても見つからなくても・・・
@@ -615,130 +558,7 @@ class Main(object):
             ### 画面左上にテキストで情報表示 ###
 
 
-            if self._isTracking:
-                strIsTracking = 'Tracking'
-            else:
-                strIsTracking = 'Finding'
-
-            # 情報を表示する
-            def putText(text, lineNumber):
-                cv2.putText(frameToDisplay, text, (50, 20 + 30 * lineNumber),
-                            cv2.FONT_HERSHEY_PLAIN, 1.5, utils.WHITE, 2)
-            def put(label, value):
-                fps = self._fpsWithTick.get()  # FPSを計算する
-                putText('FPS '+str(fps)
-                        +' '+strIsTracking
-                        +' '+"{0:.2f}".format(densityTrackWindow), 1)
-                putText(label, 2)
-                if value is True:
-                    value = 'True'
-                elif value is False:
-                    value = 'False'
-                putText(str(value), 3)
-
-            cur = self._currentAdjusting
-
-            if   cur == self.HUE_MIN:
-                put('Hue Min'                            , self._hueMin)
-            elif cur == self.HUE_MAX:
-                put('Hue Max'                            , self._hueMax)
-            elif cur == self.VALUE_MIN:
-                put('Value Min'                          , self._valueMin)
-            elif cur == self.VALUE_MAX:
-                put('Value Max'                          , self._valueMax)
-            # elif cur == self.HOUGH_CIRCLE_RESOLUTION:
-            #     put('Hough Circle Resolution'            , self._houghCircleDp)
-            # elif cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-            #     put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
-            # elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
-            #     put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
-            elif cur == self.HOUGH_CIRCLE_RADIUS_MIN:
-                put('Hough Circle Radius Min'              , self._houghCircleRadiusMin)
-            # elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-            #     put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
-            # elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-            #     put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
-            # elif cur == self.SHOULD_PROCESS_CLOSING:
-            #     put('Process Closing'                    , self._shouldProcessClosing)
-            # elif cur == self.CLOSING_ITERATIONS:
-            #     put('Closing Iterations'                 , self._closingIterations)
-            # elif cur == self.SHOULD_DRAW_CIRCLE:
-            #     put('Should Draw Circle'                 , self._shouldDrawCircle)
-            elif cur == self.SHOULD_DRAW_TRACKS:
-                put('Should Draw Tracks'                 , self._shouldDrawTrack)
-            # elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
-            #     put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
-                put('Should Draw Velocity Vector'        , self._shouldDrawVelocityVector)
-            elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
-                put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
-            elif cur == self.GRAVITY_STRENGTH:
-                put('Gravity Strength'                   , self._gravityStrength)
-            # elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
-            #     put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
-            elif cur == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
-                put('Should Draw Force Vector Bottom'    , self._shouldDrawForceVectorBottom)
-            # elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
-            #     put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
-            elif cur == self.CO_FORCE_VECTOR_STRENGTH:
-                put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
-            elif cur == self.IS_MODE_PENDULUM:
-                put('Pendulum Mode'                      , self._isModePendulum)
-            elif cur == self.NUM_FRAMES_DELAY:
-                put('Number of Delay Frames'             , self._numFramesDelay)
-            elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
-                put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
-            elif cur == self.SHOULD_TRACK_CIRCLE:
-                put('Should Track Circle'                , self._shouldTrackCircle)
-            # elif cur == self.SHOULD_DRAW_CANNY_EDGE:
-            #     put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
-            elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
-                put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTrackInStrobeMode)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
-                put('Should Draw Velocity Vectors In Strobe Mode' ,
-                    self._shouldDrawVelocityVectorsInStrobeMode)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE:
-                put('Should Draw Velocity Vectors Vertically In Strobe Mode' ,
-                    self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
-                put('Should Draw Velocity Vector X Component' ,
-                    self._shouldDrawVelocityVectorXComponent)
-            elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
-                put('Coefficient of Velocity Vector Strength' ,
-                    self._coVelocityVectorStrength)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
-                put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
-                    self._shouldDrawVelocityVectorsXComponentInStrobeMode)
-            elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
-                put('Should Draw Velocity Vectors X Component Vertically In Strobe Mode' ,
-                    self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
-            elif cur == self.CAPTURE_BACKGROUND_FRAME:
-                put('Capture Background Frame' ,
-                    self._frameBackground is not None)
-            elif cur == self.NUM_STROBE_SKIPS:
-                put('Number of Skip Frames in Strobe' ,
-                    self._numStrobeModeSkips)
-            elif cur == self.SPACE_BETWEEN_VERTICAL_VECTORS:
-                put('Space between Vertical Vectors' ,
-                    self._spaceBetweenVerticalVectors)
-            elif cur == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
-                put('Length Times of Vertical Velocity Vectors' ,
-                    self._lengthTimesVerticalVelocityVectors)
-            elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
-                put('Diff of Background and Foreground'       , self._diffBgFg)
-            elif cur == self.SHOWING_FRAME:
-                if   self._currentShowing == self.ORIGINAL:
-                    currentShowing = 'Original'
-                elif self._currentShowing == self.WHAT_COMPUTER_SEE:
-                    currentShowing = 'What Computer See'
-                elif self._currentShowing == self.BEFORE_MASK:
-                    currentShowing = 'Before Mask'
-                else:
-                    raise ValueError('self._currentShowing')
-
-                put('Showing Frame'                , currentShowing)
-            else:
-                raise ValueError('self._currentAdjusting')
+            self._putInfo(frameToDisplay)
 
 
             ### 1フレーム終了 ###
@@ -839,46 +659,46 @@ class Main(object):
             elif self._currentAdjusting == self.VALUE_MAX:
                 pitch = 10 if keycode == 0 else -10
                 self._valueMax          += pitch
-            # elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
-            #     pitch = 1  if keycode == 0 else -1
-            #     self._houghCircleDp     += pitch
-            # elif self._currentAdjusting == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
-            #     pitch = 20 if keycode == 0 else -20
-            #     self._houghCircleParam1 += pitch
-            # elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
-            #     pitch = 50 if keycode == 0 else -50
-            #     self._houghCircleParam2 += pitch
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
+                pitch = 1  if keycode == 0 else -1
+                self._houghCircleDp     += pitch
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
+                pitch = 20 if keycode == 0 else -20
+                self._houghCircleParam1 += pitch
+            elif self._currentAdjusting == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
+                pitch = 50 if keycode == 0 else -50
+                self._houghCircleParam2 += pitch
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RADIUS_MIN:
                 pitch = 10 if keycode == 0 else -10
                 self._houghCircleRadiusMin += pitch
-            # elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
-            #     pitch = 1  if keycode == 0 else -1
-            #     self._gaussianBlurKernelSize += pitch
-            # elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
-            #     self._shouldProcessGaussianBlur = \
-            #         not self._shouldProcessGaussianBlur
-            # elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
-            #     self._shouldProcessClosing = \
-            #         not self._shouldProcessClosing
-            # elif self._currentAdjusting == self.CLOSING_ITERATIONS:
-            #     pitch = 1  if keycode == 0 else -1
-            #     self._closingIterations += pitch
-            # elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
-            #     if  self._shouldDrawCircle:
-            #         self._shouldDrawCircle = False
-            #     else:
-            #         self._shouldDrawCircle = True
+            elif self._currentAdjusting == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+                pitch = 1  if keycode == 0 else -1
+                self._gaussianBlurKernelSize += pitch
+            elif self._currentAdjusting == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+                self._shouldProcessGaussianBlur = \
+                    not self._shouldProcessGaussianBlur
+            elif self._currentAdjusting == self.SHOULD_PROCESS_CLOSING:
+                self._shouldProcessClosing = \
+                    not self._shouldProcessClosing
+            elif self._currentAdjusting == self.CLOSING_ITERATIONS:
+                pitch = 1  if keycode == 0 else -1
+                self._closingIterations += pitch
+            elif self._currentAdjusting == self.SHOULD_DRAW_CIRCLE:
+                if  self._shouldDrawCircle:
+                    self._shouldDrawCircle = False
+                else:
+                    self._shouldDrawCircle = True
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
                 if  self._shouldDrawTrack:
                     self._shouldDrawTrack = False
                 else:
-                    self._positionHistory = []  # 軌跡を消去する
+                    self._resetKinetics()  # 軌跡を消去する
                     self._shouldDrawTrack = True
-            # elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
-            #     if  self._shouldDrawDisplacementVector:
-            #         self._shouldDrawDisplacementVector = False
-            #     else:
-            #         self._shouldDrawDisplacementVector = True
+            elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
+                if  self._shouldDrawDisplacementVector:
+                    self._shouldDrawDisplacementVector = False
+                else:
+                    self._shouldDrawDisplacementVector = True
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
                 if  self._shouldDrawVelocityVector:
                     self._shouldDrawVelocityVector = False
@@ -920,17 +740,17 @@ class Main(object):
                     self._coForceVectorStrength        = 13.0
                     self._shouldProcessQuickMotion     = False
                     self._isModePendulum = True
-            # elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
-            #     self._shouldProcessQuickMotion = \
-            #         not self._shouldProcessQuickMotion
+            elif self._currentAdjusting == self.SHOULD_PROCESS_QUICK_MOTION:
+                self._shouldProcessQuickMotion = \
+                    not self._shouldProcessQuickMotion
             elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
                 if  self._shouldDrawForceVectorBottom:
                     self._shouldDrawForceVectorBottom = False
                 else:
                     self._shouldDrawForceVectorBottom = True
-            # elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
-            #     self._shouldDrawForceVectorTop = not \
-            #         self._shouldDrawForceVectorTop
+            elif self._currentAdjusting == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+                self._shouldDrawForceVectorTop = not \
+                    self._shouldDrawForceVectorTop
             elif self._currentAdjusting == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
                 if  self._shouldDrawSynthesizedVector:
                     self._shouldDrawSynthesizedVector = False
@@ -941,9 +761,9 @@ class Main(object):
                     self._shouldTrackCircle = False
                 else:
                     self._shouldTrackCircle = True
-            # elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
-            #     self._shouldDrawCannyEdge = \
-            #         not self._shouldDrawCannyEdge
+            elif self._currentAdjusting == self.SHOULD_DRAW_CANNY_EDGE:
+                self._shouldDrawCannyEdge = \
+                    not self._shouldDrawCannyEdge
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
                 self._shouldDrawTrackInStrobeMode = \
                     not self._shouldDrawTrackInStrobeMode
@@ -952,7 +772,7 @@ class Main(object):
                     not self._shouldDrawVelocityVectorsInStrobeMode
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
-            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_VERTICALLY_IN_STROBE_MODE:
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
                 self._shouldDrawVelocityVectorsVerticallyInStrobeMode = \
                     not self._shouldDrawVelocityVectorsVerticallyInStrobeMode
                 self._positionHistory = []
@@ -970,7 +790,7 @@ class Main(object):
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
             elif self._currentAdjusting == \
-                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_VERTICALLY_IN_STROBE_MODE:
+                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH:
                 self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = \
                     not self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode
                 self._positionHistory = []
@@ -1008,6 +828,133 @@ class Main(object):
             print keycode
 
 
+    def _putInfo(self, frame):
+        if self._isTracking:
+            strIsTracking = 'Tracking'
+        else:
+            strIsTracking = 'Finding'
+
+        # 情報を表示する
+        def putText(text, lineNumber):
+            cv2.putText(frame, text, (50, 20 + 30 * lineNumber),
+                        cv2.FONT_HERSHEY_PLAIN, 1.2, utils.TEAL , 8)
+            cv2.putText(frame, text, (50, 20 + 30 * lineNumber),
+                        cv2.FONT_HERSHEY_PLAIN, 1.2, utils.WHITE, 2)
+        def put(label, value):
+            fps = self._fpsWithTick.get()  # FPSを計算する
+            putText('FPS '+str(fps)
+                    +' '+strIsTracking
+                    +' '+"{0:.2f}".format(self._densityTrackWindow), 1)
+            putText(label, 2)
+            if value is True:
+                value = 'True'
+            elif value is False:
+                value = 'False'
+            putText(str(value), 3)
+
+        cur = self._currentAdjusting
+
+        if   cur == self.HUE_MIN:
+            put('Hue Min'                            , self._hueMin)
+        elif cur == self.HUE_MAX:
+            put('Hue Max'                            , self._hueMax)
+        elif cur == self.VALUE_MIN:
+            put('Value Min'                          , self._valueMin)
+        elif cur == self.VALUE_MAX:
+            put('Value Max'                          , self._valueMax)
+        elif cur == self.HOUGH_CIRCLE_RESOLUTION:
+            put('Hough Circle Resolution'            , self._houghCircleDp)
+        elif cur == self.HOUGH_CIRCLE_CANNY_THRESHOLD:
+            put('Hough Circle Canny Threshold'       , self._houghCircleParam1)
+        elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
+            put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
+        elif cur == self.HOUGH_CIRCLE_RADIUS_MIN:
+            put('Hough Circle Radius Min'              , self._houghCircleRadiusMin)
+        elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
+            put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
+        elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
+            put('Process Gaussian Blur'              , self._shouldProcessGaussianBlur)
+        elif cur == self.SHOULD_PROCESS_CLOSING:
+            put('Process Closing'                    , self._shouldProcessClosing)
+        elif cur == self.CLOSING_ITERATIONS:
+            put('Closing Iterations'                 , self._closingIterations)
+        elif cur == self.SHOULD_DRAW_CIRCLE:
+            put('Should Draw Circle'                 , self._shouldDrawCircle)
+        elif cur == self.SHOULD_DRAW_TRACKS:
+            put('Should Draw Tracks'                 , self._shouldDrawTrack)
+        elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
+            put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
+            put('Should Draw Velocity Vector'        , self._shouldDrawVelocityVector)
+        elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
+            put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
+        elif cur == self.GRAVITY_STRENGTH:
+            put('Gravity Strength'                   , self._gravityStrength)
+        elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
+            put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
+        elif cur == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
+            put('Should Draw Force Vector Bottom'    , self._shouldDrawForceVectorBottom)
+        elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
+            put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
+        elif cur == self.CO_FORCE_VECTOR_STRENGTH:
+            put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
+        elif cur == self.IS_MODE_PENDULUM:
+            put('Pendulum Mode'                      , self._isModePendulum)
+        elif cur == self.NUM_FRAMES_DELAY:
+            put('Number of Delay Frames'             , self._numFramesDelay)
+        elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
+            put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
+        elif cur == self.SHOULD_TRACK_CIRCLE:
+            put('Should Track Circle'                , self._shouldTrackCircle)
+        elif cur == self.SHOULD_DRAW_CANNY_EDGE:
+            put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
+        elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
+            put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTrackInStrobeMode)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
+            put('Should Draw Velocity Vectors In Strobe Mode' ,
+                self._shouldDrawVelocityVectorsInStrobeMode)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
+            put('Should Draw Velocity Vectors Graph' ,
+                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
+            put('Should Draw Velocity Vector X Component' ,
+                self._shouldDrawVelocityVectorXComponent)
+        elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
+            put('Coefficient of Velocity Vector Strength' ,
+                self._coVelocityVectorStrength)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
+            put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
+                self._shouldDrawVelocityVectorsXComponentInStrobeMode)
+        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH:
+            put('Should Draw Velocity Vectors X Component Graph' ,
+                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
+        elif cur == self.CAPTURE_BACKGROUND_FRAME:
+            put('Capture Background Frame' ,
+                self._frameBackground is not None)
+        elif cur == self.NUM_STROBE_SKIPS:
+            put('Number of Skip Frames in Strobe' ,
+                self._numStrobeModeSkips)
+        elif cur == self.SPACE_BETWEEN_VERTICAL_VECTORS:
+            put('Space between Vertical Vectors' ,
+                self._spaceBetweenVerticalVectors)
+        elif cur == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
+            put('Length Times of Vertical Velocity Vectors' ,
+                self._lengthTimesVerticalVelocityVectors)
+        elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
+            put('Diff of Background and Foreground'       , self._diffBgFg)
+        elif cur == self.SHOWING_FRAME:
+            if   self._currentShowing == self.ORIGINAL:
+                currentShowing = 'Original'
+            elif self._currentShowing == self.WHAT_COMPUTER_SEE:
+                currentShowing = 'What Computer See'
+            elif self._currentShowing == self.BEFORE_MASK:
+                currentShowing = 'Before Mask'
+            else:
+                raise ValueError('self._currentShowing')
+
+            put('Showing Frame'                , currentShowing)
+        else:
+            raise ValueError('self._currentAdjusting')
 ### クラス設計方針：historyを隠蔽する ###
 
 
@@ -1166,6 +1113,7 @@ class Graph(object):
                     frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
                     self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
+
 
 if __name__ == "__main__":
     Main().run()
