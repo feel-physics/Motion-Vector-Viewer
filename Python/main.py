@@ -963,37 +963,14 @@ class Main(object):
 
 
 class BaseVector(object):
-    __metaclass__ = ABCMeta
-    @abstractmethod
     def __init__(self, numFramesDelay, numStrobeModeSkips):
         self.history             = []
         self._numFramesDelay     = numFramesDelay
         self._numStrobeModeSkips = numStrobeModeSkips
-    @abstractmethod
     def addNewVector(self, vector):
         self.history.append(vector)
 
-class VectorWithPosition(BaseVector):
-    __metaclass__ = ABCMeta
-    def __init__(self, numFramesDelay, numStrobeModeSkips, position):
-        super(VectorWithPosition, self).__init__(numFramesDelay, numStrobeModeSkips)
-        self._position = position
-    @abstractmethod
-    def _drawWithIndex(self, frame, i):
-        pass
-    @abstractmethod
-    def draw(self, frame):
-        pass
-    @abstractmethod
-    def drawInStrobeMode(self, frame):
-        pass
-
 class Position(BaseVector):
-    # Todo: 次の初期化メソッドは要らない。削除してみる。
-    def __init__(self, numFramesDelay, numStrobeModeSkips):
-        super(Position, self).__init__(numFramesDelay, numStrobeModeSkips)
-    def addNewVector(self, vector):
-        super(Position, self).addNewVector(vector)
     def draw(self, frame):
         """
         追跡している点を描画する
@@ -1033,6 +1010,21 @@ class Position(BaseVector):
             if vector is not None:
                 utils.cvArrow(frame, self.history[0], vector, 1, utils.WHITE, 5)
 
+class VectorWithPosition(BaseVector):
+    __metaclass__ = ABCMeta
+    def __init__(self, numFramesDelay, numStrobeModeSkips, position):
+        super(VectorWithPosition, self).__init__(numFramesDelay, numStrobeModeSkips)
+        self._position = position
+    @abstractmethod
+    def _drawWithIndex(self, frame, i):
+        pass
+    @abstractmethod
+    def draw(self, frame):
+        pass
+    @abstractmethod
+    def drawInStrobeMode(self, frame):
+        pass
+
 class VelocityVector(VectorWithPosition):
     def __init__(self, position, numFramesDelay, numStrobeModeSkips, coVelocityVectorStrength,
                  colorVelocityVector, thicknessVelocityVector):
@@ -1041,8 +1033,6 @@ class VelocityVector(VectorWithPosition):
         self._coVelocityVectorStrength = coVelocityVectorStrength
         self._colorVelocityVector      = colorVelocityVector
         self._thicknessVelocityVector  = thicknessVelocityVector
-    def addNewVector(self, vector):
-        super(VelocityVector, self).addNewVector(vector)
     def _drawWithIndex(self, frame, i):
         """
         速度ベクトルを描画する
