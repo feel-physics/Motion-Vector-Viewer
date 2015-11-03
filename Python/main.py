@@ -155,18 +155,25 @@ class Main(object):
         self._fpsWithTick                  = utils.fpsWithTick()
 
         # クラス化 15/10/07
+        self._resetKinetics()
+        self._velocityGraph                = Graph(self._numFramesDelay,
+                                                   self._numStrobeModeSkips,
+                                                   self._spaceBetweenVerticalVectors,
+                                                   self._lengthTimesVerticalVelocityVectors,
+                                                   utils.BLUE, False, 5)
+
+    def _resetKinetics(self):
         self._position                     = Position(self._numFramesDelay, self._numStrobeModeSkips)
         self._velocityVector               = VelocityVector(self._numFramesDelay,
                                                             self._numStrobeModeSkips,
                                                             self._coVelocityVectorStrength,
                                                             self._colorVelocityVector,
                                                             self._thicknessVelocityVector)
-        self._graph                        = Graph(self._numFramesDelay,
-                                                   self._numStrobeModeSkips,
-                                                   self._spaceBetweenVerticalVectors,
-                                                   self._lengthTimesVerticalVelocityVectors,
-                                                   utils.BLUE, False, 5)
-
+        self._velocityXComponentVector     = VelocityVectorXComponent(self._numFramesDelay,
+                                                                      self._numStrobeModeSkips,
+                                                                      self._coVelocityVectorStrength,
+                                                                      self._colorVelocityVector,
+                                                                      self._thicknessVelocityVector)
     def _takeScreenShot(self):
         self._captureManager.writeImage(
             datetime.now().strftime('%y%m%d-%H%M%S')
@@ -362,8 +369,9 @@ class Main(object):
                             # self._velocityVectorsHistory = []
                             # self._velocityVectorsXComponentHistory = []
 
-                            self._position.resetHistory()
-                            self._velocityVector.resetHistory()
+                            del self._position
+                            del self._velocityVector
+                            self._resetKinetics()
 
             # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
@@ -432,6 +440,9 @@ class Main(object):
                     # self._velocityVectorsXComponentHistory.append(
                     #     lastVelocityVectorXComponent
                     # )
+
+                    # 速度x成分ベクトルを記録する
+                    self._velocityXComponentVector.addNewVector(lastVelocityVector)
 
 
 
@@ -582,13 +593,33 @@ class Main(object):
                     self._position.drawDisplacementVector(frameToDisplay)
                 # 速度ベクトルを描く
                 if self._shouldDrawVelocityVector:
-                    self._velocityVector.drawJustDisplaying(frameToDisplay, self._position)
+                    self._velocityVector.draw(frameToDisplay, self._position)
                 # 速度ベクトルをストロボモードで表示する
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     self._velocityVector.drawInStrobeMode(frameToDisplay, self._position)
                 # 速度グラフを描く
                 if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
-                    self._graph.draw(frameToDisplay, self._velocityVector)
+                    self._velocityGraph.draw(frameToDisplay, self._velocityVector)
+                # 速度x成分ベクトルを描く
+                if self._shouldDrawVelocityVectorXComponent:
+                    self._velocityXComponentVector.draw(frameToDisplay, self._position)
+                    #         v  = self._velocityVectorsHistory[numPointsVisible - 1]
+                    #         # 成分ベクトルを求める
+                    #         vx = utils.getComponentVector(v, "x")
+                    #         utils.cvArrow(
+                    #             frameToDisplay, lastPosition, vx, c,
+                    #             self._colorVelocityVectorXComponent,
+                    #             self._thicknessVelocityVectorXComponent)
+                    #
+                    #         # 速度ベクトルと速度x成分ベクトルの両方が表示しているときは
+                    #         # 2つのベクトルの先を結ぶ線分を描く
+                    #         if self._shouldDrawVelocityVector:
+                    #             # 元ベクトルの先から成分ベクトルの先へ線を引く
+                    #             utils.cvLine(frameToDisplay,
+                    #                          (lastPosition[0] + v[0]*c, lastPosition[1] + v[1]*c),
+                    #                          (lastPosition[0] + v[0]*c, lastPosition[1]),
+                    #                          utils.WHITE, 2)
+
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -986,6 +1017,10 @@ class Main(object):
         else:
             print keycode
 
+
+### クラス設計方針：historyを隠蔽する ###
+
+
 class BaseVector(object):
     __metaclass__ = ABCMeta
     @abstractmethod
@@ -996,17 +1031,14 @@ class BaseVector(object):
     @abstractmethod
     def addNewVector(self, vector):
         self.history.append(vector)
-    @abstractmethod
-    def resetHistory(self):
-        self.history = []
 
-class VectorWithPosition(object):
+class VectorWithPosition(BaseVector):
     __metaclass__ = ABCMeta
     @abstractmethod
-    def draw(self, frame, position, i):
+    def _drawWithIndex(self, frame, position, i):
         pass
     @abstractmethod
-    def drawJustDisplaying(self, frame, position):
+    def draw(self, frame, position):
         pass
     @abstractmethod
     def drawInStrobeMode(self, frame, position):
@@ -1017,8 +1049,6 @@ class Position(BaseVector):
         super(Position, self).__init__(numFramesDelay, numStrobeModeSkips)
     def addNewVector(self, vector):
         super(Position, self).addNewVector(vector)
-    def resetHistory(self):
-        super(Position, self).resetHistory()
     def draw(self, frame):
         """
         追跡している点を描画する
@@ -1058,7 +1088,7 @@ class Position(BaseVector):
             if vector is not None:
                 utils.cvArrow(frame, self.history[0], vector, 1, utils.WHITE, 5)
 
-class VelocityVector(BaseVector, VectorWithPosition):
+class VelocityVector(VectorWithPosition):
     def __init__(self, numFramesDelay, numStrobeModeSkips, coVelocityVectorStrength,
                  colorVelocityVector, thicknessVelocityVector):
         super(VelocityVector, self).__init__(numFramesDelay, numStrobeModeSkips)
@@ -1067,9 +1097,7 @@ class VelocityVector(BaseVector, VectorWithPosition):
         self._thicknessVelocityVector = thicknessVelocityVector
     def addNewVector(self, vector):
         super(VelocityVector, self).addNewVector(vector)
-    def resetHistory(self):
-        super(VelocityVector, self).resetHistory()
-    def draw(self, frame, position, i):
+    def _drawWithIndex(self, frame, position, i):
         """
         速度ベクトルを描画する
         :param frame: 背景フレーム
@@ -1081,7 +1109,7 @@ class VelocityVector(BaseVector, VectorWithPosition):
             frame, position.history[i], self.history[i],
             self._coVelocityVectorStrength, self._colorVelocityVector,
             self._thicknessVelocityVector)
-    def drawJustDisplaying(self, frame, position):
+    def draw(self, frame, position):
         """
         最新の速度ベクトルを描画する
         :param frame: 背景フレーム
@@ -1091,7 +1119,7 @@ class VelocityVector(BaseVector, VectorWithPosition):
         indexJustDisplaying = len(self.history) - self._numFramesDelay - 1
         if 0 <= indexJustDisplaying \
                 and self.history[indexJustDisplaying] is not None:
-            self.draw(frame, position, indexJustDisplaying)
+            self._drawWithIndex(frame, position, indexJustDisplaying)
     def drawInStrobeMode(self, frame, position):
         """
         速度ベクトルをストロボ描画する
@@ -1103,7 +1131,14 @@ class VelocityVector(BaseVector, VectorWithPosition):
         if 0 <= indexJustDisplaying:
             for i in range(indexJustDisplaying):
                 if i % self._numStrobeModeSkips == 0 and self.history[i] is not None:
-                    self.draw(frame, position, i)
+                    self._drawWithIndex(frame, position, i)
+
+class VelocityVectorXComponent(VelocityVector):
+    def addNewVector(self, velocityVector):
+        # 成分ベクトルを求める
+        velocityXComponentVector = utils.getComponentVector(velocityVector, "x")
+        # 追加する
+        super(VelocityVectorXComponent, self).addNewVector(velocityXComponentVector)
 
 class Graph(object):
     def __init__(self, numFramesDelay, numStrobeModeSkips, spaceBetweenVerticalVectors,
