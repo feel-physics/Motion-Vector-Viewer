@@ -15,13 +15,13 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,
-        SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,
         SHOULD_DRAW_TRACKS,
         SHOULD_DRAW_VELOCITY_VECTOR,
-        SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR,
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE,
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH,
         NUM_STROBE_SKIPS,
         SPACE_BETWEEN_VERTICAL_VECTORS,
         LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS,
@@ -77,9 +77,9 @@ class Main(object):
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
         self._hueMin                       = 30 #マグネット # 50 # テニスボール
-        self._hueMax                       = 80 # テニスボール
+        self._hueMax                       = 60 # テニスボール
         self._sThreshold                   = 5
-        self._valueMin                     = 130 #220 #60
+        self._valueMin                     = 180 #220 #60
         self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -126,10 +126,10 @@ class Main(object):
 
         # ストロボモード 15/08/12 -
         self._shouldDrawTrackInStrobeMode  = False
-        self._numStrobeModeSkips           = 3 # 画面が狭い # 5
+        self._numStrobeModeSkips           = 2 # 画面が狭い # 5
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = False
-        self._spaceBetweenVerticalVectors  = 20 # 画面が狭い  # 3
+        self._spaceBetweenVerticalVectors  = 15 # 画面が狭い  # 3
         self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
         self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
@@ -140,7 +140,7 @@ class Main(object):
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
         self._thicknessVelocityVector      = 5
         self._thicknessVelocityVectorXComponent = 3
-        self._lengthTimesVerticalVelocityVectors = 3 # 画面が狭い # 5
+        self._lengthTimesVerticalVelocityVectors = 5 # 画面が狭い # 5
 
         self._timeSelfTimerStarted         = None
 
@@ -161,7 +161,15 @@ class Main(object):
         self._densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
 
     def _resetKinetics(self):
+        """
+        運動の情報をリセットする
+        :return:
+        """
+
+        # 位置
         self._position                 = Position(self._numFramesDelay, self._numStrobeModeSkips)
+
+        # 速度ベクトル
         self._velocityVector           = VelocityVector(
             self._position,
             self._numFramesDelay,
@@ -169,6 +177,8 @@ class Main(object):
             self._coVelocityVectorStrength,
             self._colorVelocityVector,
             self._thicknessVelocityVector)
+
+        # 速度x成分ベクトル
         self._velocityXComponentVector = VelocityVectorXComponent(
             self._position,
             self._numFramesDelay,
@@ -176,6 +186,8 @@ class Main(object):
             self._coVelocityVectorStrength,
             self._colorVelocityVectorXComponent,
             self._thicknessVelocityVectorXComponent)
+
+        # 速度グラフ
         self._velocityGraph            = Graph(self._velocityVector,
                                                self._numFramesDelay,
                                                self._numStrobeModeSkips,
@@ -183,6 +195,8 @@ class Main(object):
                                                self._lengthTimesVerticalVelocityVectors,
                                                self._colorVelocityVector, False,
                                                self._thicknessVelocityVector)
+
+        # 速度x成分グラフ
         self._velocityXComponentGraph  = Graph(self._velocityXComponentVector,
                                                self._numFramesDelay,
                                                self._numStrobeModeSkips,
@@ -202,6 +216,7 @@ class Main(object):
         メインループを実行する
         :return:
         """
+
         # ウィンドウをつくる
         self._windowManager.createWindow()
 
@@ -372,10 +387,10 @@ class Main(object):
 
                 # 追跡中のウィンドウの密度を計算する
                 x, y, w, h = self._track_window
-                densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
+                self._densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
 
                 # 密度が0.05未満なら追跡を中断する
-                if densityTrackWindow < 0.05:
+                if self._densityTrackWindow < 0.05:
                         self._isTracking = False
                         # self._positionHistory = []  # 軌跡を消去する
                         # self._velocityVectorsHistory = []
@@ -779,20 +794,20 @@ class Main(object):
                     not self._shouldDrawVelocityVectorsVerticallyInStrobeMode
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
-            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
                 self._shouldDrawVelocityVectorXComponent = \
                     not self._shouldDrawVelocityVectorXComponent
             elif self._currentAdjusting == self.CO_VELOCITY_VECTOR_STRENGTH:
                 pitch = 1  if keycode == 0 else -1
                 self._coVelocityVectorStrength += pitch
             elif self._currentAdjusting == \
-                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
+                    self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE:
                 self._shouldDrawVelocityVectorsXComponentInStrobeMode = \
                     not self._shouldDrawVelocityVectorsXComponentInStrobeMode
                 self._positionHistory = []
                 self._velocityVectorsHistory = []
             elif self._currentAdjusting == \
-                    self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH:
+                    self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
                 self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = \
                     not self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode
                 self._positionHistory = []
@@ -806,7 +821,7 @@ class Main(object):
                 pitch = 1 if keycode == 0 else -1
                 self._numStrobeModeSkips += pitch
             elif self._currentAdjusting == self.SPACE_BETWEEN_VERTICAL_VECTORS:
-                pitch = 1 if keycode == 0 else -1
+                pitch = 5 if keycode == 0 else -5
                 self._spaceBetweenVerticalVectors += pitch
             elif self._currentAdjusting == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
                 pitch = 1 if keycode == 0 else -1
@@ -918,16 +933,16 @@ class Main(object):
         elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
             put('Should Draw Velocity Vectors Graph' ,
                 self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
-        elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR_X_COMPONENT:
+        elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
             put('Should Draw Velocity Vector X Component' ,
                 self._shouldDrawVelocityVectorXComponent)
         elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
             put('Coefficient of Velocity Vector Strength' ,
                 self._coVelocityVectorStrength)
-        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_IN_STROBE_MODE:
+        elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE:
             put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
                 self._shouldDrawVelocityVectorsXComponentInStrobeMode)
-        elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_X_COMPONENT_GRAPH:
+        elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
             put('Should Draw Velocity Vectors X Component Graph' ,
                 self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
         elif cur == self.CAPTURE_BACKGROUND_FRAME:
