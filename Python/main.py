@@ -76,10 +76,10 @@ class Main(object):
         ### Filtering
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
-        self._hueMin                       = 30 #マグネット # 50 # テニスボール
-        self._hueMax                       = 60 # テニスボール
+        self._hueMin                       = 60 #マグネット # 50 # テニスボール
+        self._hueMax                       = 70 # テニスボール
         self._sThreshold                   = 5
-        self._valueMin                     = 180 #220 #60
+        self._valueMin                     = 150 #220 #60
         self._valueMax                     = 255
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
@@ -160,57 +160,6 @@ class Main(object):
         # 整理 15/11/03
         self._densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
 
-    def _resetKinetics(self):
-        """
-        運動の情報をリセットする
-        :return:
-        """
-
-        # 位置
-        self._position                 = Position(self._numFramesDelay, self._numStrobeModeSkips)
-
-        # 速度ベクトル
-        self._velocityVector           = VelocityVector(
-            self._position,
-            self._numFramesDelay,
-            self._numStrobeModeSkips,
-            self._coVelocityVectorStrength,
-            self._colorVelocityVector,
-            self._thicknessVelocityVector)
-
-        # 速度x成分ベクトル
-        self._velocityXComponentVector = VelocityVectorXComponent(
-            self._position,
-            self._numFramesDelay,
-            self._numStrobeModeSkips,
-            self._coVelocityVectorStrength,
-            self._colorVelocityVectorXComponent,
-            self._thicknessVelocityVectorXComponent)
-
-        # 速度グラフ
-        self._velocityGraph            = Graph(self._velocityVector,
-                                               self._numFramesDelay,
-                                               self._numStrobeModeSkips,
-                                               self._spaceBetweenVerticalVectors,
-                                               self._lengthTimesVerticalVelocityVectors,
-                                               self._colorVelocityVector, False,
-                                               self._thicknessVelocityVector)
-
-        # 速度x成分グラフ
-        self._velocityXComponentGraph  = Graph(self._velocityXComponentVector,
-                                               self._numFramesDelay,
-                                               self._numStrobeModeSkips,
-                                               self._spaceBetweenVerticalVectors,
-                                               self._lengthTimesVerticalVelocityVectors,
-                                               self._colorVelocityVectorXComponent, True,
-                                               self._thicknessVelocityVectorXComponent)
-
-    def _takeScreenShot(self):
-        self._captureManager.writeImage(
-            datetime.now().strftime('%y%m%d-%H%M%S')
-            + '-screenshot.png')
-        print 'captured'
-
     def run(self):
         """
         メインループを実行する
@@ -247,45 +196,19 @@ class Main(object):
             ### 物体検出準備 ###
 
 
-            def getMaskToFindCircle(self, frame):
-                """
-                後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
-                SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
-                """
-                mask = utils.getMaskByHsv(frame, self._hueMin, self._hueMax, self._valueMin, self._valueMax,
-                                            self._gamma, self._sThreshold, self._shouldProcessGaussianBlur,
-                                            self._gaussianBlurKernelSize, self._shouldProcessClosing,
-                                            self._closingIterations)
-                return mask
-
-            def getCircles(self, frame):
-                """
-                Hough変換で円を検出する
-                :return: 検出した円のx,y,r
-                """
-                height, width = frame.shape
-                circles = cv2.HoughCircles(
-                    frame,        # 画像
-                    cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
-                    self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
-                    width / 10,               # 円同士の間の最小距離
-                    self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
-                    self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
-                    self._houghCircleRadiusMin,  # 円の最小半径
-                    1)                        # 円の最大半径
-                return circles
-
+            # 背景フレームを取得する
             if self._isTakingFrameBackground:
                 self._frameBackground = frameToDisplay.copy()
                 self._isTakingFrameBackground = False
 
+            # 背景フレームがあれば、見えているフレームを背景差分して検出用フレームをつくる
             if self._frameBackground is not None:
                 # 円検出はframeNowに対して行われる
                 frameNow = utils.getSubtractedFrame(frameNow, self._frameBackground,
                              self._diffBgFg)
 
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
-                gray = getMaskToFindCircle(self, frameNow)
+                gray = self._getMaskToFindCircle(frameNow)
                 cv2.merge((gray, gray, gray), frameToDisplay)
             elif self._currentShowing == self.ORIGINAL:
                 pass
@@ -293,7 +216,7 @@ class Main(object):
                 if self._frameBackground is not None:
                     frameSubtracted = utils.getSubtractedFrame(frameToDisplay, self._frameBackground,
                                                      self._diffBgFg)
-                    gray = getMaskToFindCircle(self, frameSubtracted)
+                    gray = self._getMaskToFindCircle(frameSubtracted)
                     frameGray = frameToDisplay.copy()
                     cv2.merge((gray, gray, gray), frameGray)
                     frameToDisplay[:] = cv2.addWeighted(frameSubtracted, 0.3, frameGray, 1.0, 0)
@@ -305,116 +228,50 @@ class Main(object):
 
 
             if self._shouldTrackCircle and not self._isTracking:
-                # 検出用フレームをつくる
-                frameToFindCircle = getMaskToFindCircle(self, frameNow)
-                circles = getCircles(self, frameToFindCircle)  # 円を検出する
 
-                if circles is not None:  # もし円を見つけたら・・・
-                    x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・
-                    x, y ,r = int(x), int(y), int(r)  # 整数にする
-                    # 画面外に円がはみ出す場合は・・・
-                    height, width = frameToFindCircle.shape
-                    m = 10  # マージン
-                    # 画面の中に円が収まる場合
-                    if m < x-r \
-                            or width < x+2*r+m \
-                            or m < y-r \
-                            or height < y+2*r+m:
-
-                        ### 新しい円を見つけた！ ###
-
-                        # 追跡したい領域の初期設定
-                        self._track_window = (x-r, y-r, 2*r, 2*r)
-                        # 追跡のためのROI関心領域（Region of Interest)を設定
-                        # print(x, y, r)
-                        roi = frameNow[y-r:y+r, x-r:x+r]
-                        # HSV色空間に変換
-                        hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                        if hsv_roi is None:
-                            pass
-                        else:
-                            # マスク画像の作成
-                            # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
-                            # > OpenCV Error: Sizes of input arguments do not match
-                            # > (The lower boundary is neither
-                            # > an array of the same size and same type as src, nor a scalar)
-                            # > in inRange
-                            mask = cv2.inRange(hsv_roi,
-                                    numpy.array([
-                                        self._hueMin / 2,           # H最小値
-                                        2 ** self._sThreshold - 1,  # S最小値
-                                        self._valueMin              # V最小値
-                                    ], dtype=numpy.uint8),
-                                    # ]),
-                                    numpy.array([
-                                        self._hueMax / 2,           # H最大値
-                                        255,                        # S最大値
-                                        self._valueMax              # V最大値
-                                    ], dtype=numpy.uint8))
-                                    # ]))
-                            # ヒストグラムの計算
-                            self._roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-                            # ヒストグラムの正規化
-                            cv2.normalize(self._roi_hist,self._roi_hist,0,255,cv2.NORM_MINMAX)
-
-                            self._isTracking = True
-
-                            ### 運動履歴の初期化 ###
-
-                            self._resetKinetics()
+                # 円を見つける
+                var = self._findCircle(frameNow)
+                # 円が見つかった！
+                if var is not None:
+                    self._track_window, self._roi_hist = var
+                    self._isTracking = True
+                    # 運動履歴の初期化
+                    self._resetKinetics()
 
 
             ### 物体追跡 ###
 
 
-            # if self._shouldTrackCircle and not self._isTracking:
             elif self._shouldTrackCircle:  # and self._isTracking:
 
-                dst = utils.getBackProjectFrame(frameNow, self._roi_hist)
                 # バックプロジェクションを描画するコード（デバッグ用）
                 if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                    dst = utils.getBackProjectFrame(frameNow, self._roi_hist)
                     cv2.merge((dst, dst, dst), frameToDisplay)
-                # elif self._currentShowing == self.BEFORE_MASK:
-                #     dst_delayed = utils.getBackProjectFrame(frameToDisplay, self._roi_hist)
-                #     cv2.merge((dst_delayed, dst_delayed, dst_delayed), frameToDisplay)
 
-                dst = utils.getBackProjectFrame(frameNow, self._roi_hist)
+                # 円を追跡する
+                var = self._trackCircle(frameNow)
+                # 追跡できた!
+                if var is not None:
+                    x,y,w,h = var
 
-                # 新しい場所を取得するためにmeanshiftを適用
-                _, self._track_window = cv2.meanShift(dst, self._track_window,
-                                                        ( cv2.TERM_CRITERIA_EPS |
-                                                          cv2.TERM_CRITERIA_COUNT, 10, 1 ))
+                    # 追跡している領域を描く
+                    if self._currentShowing == self.WHAT_COMPUTER_SEE:
+                        cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),5)
 
-                # 追跡中のウィンドウの密度を計算する
-                x, y, w, h = self._track_window
-                self._densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
+                    # 運動の情報を追加する
 
-                # 密度が0.05未満なら追跡を中断する
-                if self._densityTrackWindow < 0.05:
-                        self._isTracking = False
-                        # self._positionHistory = []  # 軌跡を消去する
-                        # self._velocityVectorsHistory = []
-                        self._indexQuickMotion = 0
-                        # print 'tracking interrupted'
-
-                x,y,w,h = self._track_window
-
-                # 追跡している領域を描く
-                if self._currentShowing == self.WHAT_COMPUTER_SEE:
-                    cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),5)
-
-                # 次の円を検出したら・・・
-                if self._track_window is not None:
-                    # 通過点リストの最後に要素を追加する
+                    # 位置
                     self._position.addNewVector((x+w/2, y+h/2))
-                    self._positionHistory.append((x+w/2, y+h/2))
-                    # 速度ベクトルを記録する
+                    # self._positionHistory.append((x+w/2, y+h/2))
+
+                    # 速度ベクトル
                     lastVelocityVector = utils.getVelocityVector(
                         self._position.history, self._populationVelocity,
-                        self._numFramesDelay
-                    )
+                        self._numFramesDelay)
                     self._velocityVector.addNewVector(lastVelocityVector)
-                    # 速度x成分ベクトルを記録する
+
+                    # 速度x成分ベクトル
                     self._velocityXComponentVector.addNewVector(lastVelocityVector)
 
 
@@ -973,6 +830,168 @@ class Main(object):
         else:
             raise ValueError('self._currentAdjusting')
 
+    def _resetKinetics(self):
+        """
+        運動の情報をリセットする
+        :return:
+        """
+
+        # 位置
+        self._position                 = Position(self._numFramesDelay, self._numStrobeModeSkips)
+
+        # 速度ベクトル
+        self._velocityVector           = VelocityVector(
+            self._position,
+            self._numFramesDelay,
+            self._numStrobeModeSkips,
+            self._coVelocityVectorStrength,
+            self._colorVelocityVector,
+            self._thicknessVelocityVector)
+
+        # 速度x成分ベクトル
+        self._velocityXComponentVector = VelocityVectorXComponent(
+            self._position,
+            self._numFramesDelay,
+            self._numStrobeModeSkips,
+            self._coVelocityVectorStrength,
+            self._colorVelocityVectorXComponent,
+            self._thicknessVelocityVectorXComponent)
+
+        # 速度グラフ
+        self._velocityGraph            = Graph(self._velocityVector,
+                                               self._numFramesDelay,
+                                               self._numStrobeModeSkips,
+                                               self._spaceBetweenVerticalVectors,
+                                               self._lengthTimesVerticalVelocityVectors,
+                                               self._colorVelocityVector, False,
+                                               self._thicknessVelocityVector)
+
+        # 速度x成分グラフ
+        self._velocityXComponentGraph  = Graph(self._velocityXComponentVector,
+                                               self._numFramesDelay,
+                                               self._numStrobeModeSkips,
+                                               self._spaceBetweenVerticalVectors,
+                                               self._lengthTimesVerticalVelocityVectors,
+                                               self._colorVelocityVectorXComponent, True,
+                                               self._thicknessVelocityVectorXComponent)
+
+    def _takeScreenShot(self):
+        self._captureManager.writeImage(
+            datetime.now().strftime('%y%m%d-%H%M%S')
+            + '-screenshot.png')
+        print 'captured'
+
+    def _getMaskToFindCircle(self, frame):
+        """
+        後で円を検出するために、検出用フレームに対して色相フィルタやぼかしなどの処理をする。
+        SHOWING_WHAT_COMPUTER_SEEのときは、表示用フレームに対しても同じ処理をする。
+        """
+        mask = utils.getMaskByHsv(frame, self._hueMin, self._hueMax, self._valueMin, self._valueMax,
+                                    self._gamma, self._sThreshold, self._shouldProcessGaussianBlur,
+                                    self._gaussianBlurKernelSize, self._shouldProcessClosing,
+                                    self._closingIterations)
+        return mask
+
+    def _getCirclesWithHoughTransform(self, frame):
+        """
+        Hough変換で円を検出する
+        :return: 検出した円のx,y,r
+        """
+        height, width = frame.shape
+        circles = cv2.HoughCircles(
+            frame,        # 画像
+            cv2.cv.CV_HOUGH_GRADIENT, # アルゴリズムの指定
+            self._houghCircleDp,      # 内部でアキュムレーションに使う画像の分解能(入力画像の解像度に対する逆比)
+            width / 10,               # 円同士の間の最小距離
+            self._houghCircleParam1,  # 内部のエッジ検出(Canny)で使う閾値
+            self._houghCircleParam2,  # 内部のアキュムレーション処理で使う閾値
+            self._houghCircleRadiusMin,  # 円の最小半径
+            1)                        # 円の最大半径
+        return circles
+
+    def _findCircle(self, frame):
+        """
+        円を検出する
+        :param frame: frameNow
+        :return:
+        """
+        frameToFindCircle = self._getMaskToFindCircle(frame)
+        circles = self._getCirclesWithHoughTransform(frameToFindCircle)  # 円を検出する
+
+        if circles is not None:  # もし円を見つけたら・・・
+            x, y, r = circles[0][0]  # 中心座標と半径を取得して・・・
+            x, y ,r = int(x), int(y), int(r)  # 整数にする
+            # 画面外に円がはみ出す場合は・・・
+            height, width = frameToFindCircle.shape
+            m = 10  # マージン
+            # 画面の中に円が収まる場合
+            if m < x-r \
+                    or width < x+2*r+m \
+                    or m < y-r \
+                    or height < y+2*r+m:
+
+                ### 新しい円を見つけた！ ###
+
+                # 追跡したい領域の初期設定
+                track_window = (x-r, y-r, 2*r, 2*r)
+                # 追跡のためのROI関心領域（Region of Interest)を設定
+                # print(x, y, r)
+                roi = frame[y-r:y+r, x-r:x+r]
+                # HSV色空間に変換
+                hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                if hsv_roi is None:
+                    pass
+                else:
+                    # マスク画像の作成
+                    # 以下の行で「dtype=numpy.uint8」を指定しないと以下のエラーが出る。
+                    # > OpenCV Error: Sizes of input arguments do not match
+                    # > (The lower boundary is neither
+                    # > an array of the same size and same type as src, nor a scalar)
+                    # > in inRange
+                    mask = cv2.inRange(hsv_roi,
+                            numpy.array([
+                                self._hueMin / 2,           # H最小値
+                                2 ** self._sThreshold - 1,  # S最小値
+                                self._valueMin              # V最小値
+                            ], dtype=numpy.uint8),
+                            # ]),
+                            numpy.array([
+                                self._hueMax / 2,           # H最大値
+                                255,                        # S最大値
+                                self._valueMax              # V最大値
+                            ], dtype=numpy.uint8))
+                            # ]))
+                    # ヒストグラムの計算
+                    roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+                    # ヒストグラムの正規化
+                    cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
+                    # track_window, roi_histを返す
+                    return track_window, roi_hist
+
+        # 円が見つからなければNoneを返す
+        return None
+
+    def _trackCircle(self, frame):
+        dst = utils.getBackProjectFrame(frame, self._roi_hist)
+        # 新しい場所を取得するためにmeanshiftを適用
+        _, self._track_window = cv2.meanShift(dst, self._track_window,
+                                                ( cv2.TERM_CRITERIA_EPS |
+                                                  cv2.TERM_CRITERIA_COUNT, 10, 1 ))
+
+        # 追跡中のウィンドウの密度を計算する
+        x, y, w, h = self._track_window
+        self._densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
+
+        # 密度が0.05未満なら追跡を中断する
+        if self._densityTrackWindow < 0.05:
+            self._isTracking = False
+            # self._positionHistory = []  # 軌跡を消去する
+            # self._velocityVectorsHistory = []
+            self._indexQuickMotion = 0
+            # print 'tracking interrupted'
+            return None
+        return x,y,w,h
+
 
 ### クラス設計方針：historyを隠蔽する ###
 
@@ -1124,7 +1143,6 @@ class Graph(object):
                     frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
                     self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
-
 
 if __name__ == "__main__":
     Main().run()
