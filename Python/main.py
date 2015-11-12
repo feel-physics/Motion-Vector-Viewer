@@ -14,14 +14,12 @@ class Main(object):
 
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
-        CAPTURE_BACKGROUND_FRAME,
-        SHOULD_DRAW_TRACKS,
-        SHOULD_DRAW_VELOCITY_VECTOR,
-        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,
-        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR,
-        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE,
-        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH,
+        CAPTURE_BACKGROUND_FRAME,                                # 背景を記録して検出対象から外す
+        SHOULD_DRAW_TRACKS,                                      # 軌跡を描画する
+        SHOULD_DRAW_VELOCITY_VECTOR,                             # 速度ベクトルを描画する
+        SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,                      # 速度ベクトルのグラフを描画する
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR,                 # 速度x成分ベクトルを描画する
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH,          # 速度x成分ベクトルのグラフを描画する
         NUM_STROBE_SKIPS,
         SPACE_BETWEEN_VERTICAL_VECTORS,
         LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS,
@@ -31,9 +29,11 @@ class Main(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-    ] = range(16)
+    ] = range(14)
 
     UNUSED_OPTIONS = [
+        SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,             # 速度ベクトルをストロボモードで描画する
+        SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE, # 速度x成分ベクトルをストロボモードで描画する
         DIFF_OF_BACKGROUND_AND_FOREGROUND,
         CO_VELOCITY_VECTOR_STRENGTH,
         SHOULD_DRAW_ACCELERATION_VECTOR,
@@ -58,7 +58,7 @@ class Main(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-    ] = [-1 for x in range(24)]  # すべて-1、合わせて35
+    ] = [-1 for x in range(26)]  # すべて-1、合わせて35
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -130,11 +130,11 @@ class Main(object):
         self._velocityVectorsHistory       = []
         self._shouldDrawVelocityVectorsInStrobeMode = False
         self._spaceBetweenVerticalVectors  = 15 # 画面が狭い  # 3
-        self._shouldDrawVelocityVectorsVerticallyInStrobeMode = False
+        self._shouldDrawVelocityVectorsGraph = False
         self._shouldDrawVelocityVectorXComponent = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
         self._coVelocityVectorStrength     = 4
-        self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = False
+        self._shouldDrawVelocityVectorsXComponentGraph = False
         self._velocityVectorsXComponentHistory = []
         self._colorVelocityVector          = utils.BLUE
         self._colorVelocityVectorXComponent = utils.SKY_BLUE
@@ -158,7 +158,10 @@ class Main(object):
         self._resetKinetics()
 
         # 整理 15/11/03
-        self._densityTrackWindow = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
+        self._densityTrackWindow           = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
+
+        # ユーザテスト用の簡単操作モード
+        self._isSimpleOperationMode          = True
 
     def run(self):
         """
@@ -206,6 +209,10 @@ class Main(object):
                 # 円検出はframeNowに対して行われる
                 frameNow = utils.getSubtractedFrame(frameNow, self._frameBackground,
                              self._diffBgFg)
+
+
+            ### デバッグモード
+
 
             if self._currentShowing == self.WHAT_COMPUTER_SEE:
                 gray = self._getMaskToFindCircle(frameNow)
@@ -255,11 +262,13 @@ class Main(object):
                 if var is not None:
                     x,y,w,h = var
 
-                    # 追跡している領域を描く
+                    # 追跡している領域を描く（デバッグ用）
                     if self._currentShowing == self.WHAT_COMPUTER_SEE:
                         cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),(0,0,200),5)
 
-                    # 運動の情報を追加する
+
+                    ### 運動の情報を追加 ###
+
 
                     # 位置
                     self._position.addNewVector((x+w/2, y+h/2))
@@ -278,108 +287,7 @@ class Main(object):
                 ### 加速度処理 ###
                 # Todo: 必要になったらやる
 
-
-                # 次の円が見つかっても見つからなくても・・・
-                if len(self._positionHistory) - self._numFramesDelay > 0:
-                    numPointsVisible = len(self._positionHistory) - self._numFramesDelay
-                    lastPosition = self._positionHistory[numPointsVisible-1]
-
-                    # 加速度ベクトルを求める
-                    # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                    # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
-                    aclVector = None
-                    if self._shouldProcessQuickMotion:
-                        result = utils.getAccelerationVectorStartStop(
-                            self._positionHistory, self._populationAcceleration, 3, self._coForceVectorStrength
-                        )
-                        if result[0] is 'quickMotion':
-                            self._indexQuickMotion = len(self._positionHistory)
-                            aclVector = result[1]
-                        # 急発進／静止後3フレームは通常の加速度を表示しない
-                        elif result == 'usual' \
-                                and self._indexQuickMotion is not None \
-                                and self._indexQuickMotion+4 < numPointsVisible:
-                            aclVector = utils.getAccelerationVectorFirFilter(
-                                self._positionHistory,
-                                self._populationAcceleration,
-                                0,
-                                self._coForceVectorStrength
-                            )
-                    else:
-                        # aclVector = utils.getAccelerationVectorFirFilter(
-                        #     self._positionHistory,
-                        #     self._populationAcceleration,
-                        #     0,
-                        #     self._coForceVectorStrength
-                        # )
-                        aclVector = utils.getAccelerationVector2(
-                            self._positionHistory, self._populationVelocity,
-                            self._populationAcceleration)
-
-                    # 加速度ベクトルを描画する
-                    if self._shouldDrawAccelerationVector:
-                        if aclVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, utils.GREEN, 5)
-                            # print aclVector
-
-                    # 力ベクトルを物体の底面を基点として描画する
-                    if self._shouldDrawForceVectorBottom:
-                        yPositionAclBegin = \
-                            self._positionHistory[numPointsVisible-1][1] + h/2
-                        positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
-                                        yPositionAclBegin)
-                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        utils.drawForceVector(frameToDisplay, aclVector,
-                                              positionAclBegin, self._gravityStrength)
-
-                    # 力ベクトルを物体のてっぺんを基点として描画する
-                    if self._shouldDrawForceVectorTop:
-                        yPositionAclBegin = \
-                            self._positionHistory[numPointsVisible-1][1] - h/2
-                        positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
-                                        yPositionAclBegin)
-                        utils.drawForceVector(frameToDisplay, aclVector,
-                                              positionAclBegin, self._gravityStrength)
-
-                    # 力ベクトルの合成を描画する
-                    if self._shouldDrawSynthesizedVector:
-                        # 手による接触力
-                        # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
-                        if aclVector is None:
-                            aclVector = (0,0)
-                        contactForceVector = \
-                            (aclVector[0], aclVector[1] - self._gravityStrength)
-                        if contactForceVector is not None:
-                            utils.cvArrow(frameToDisplay, lastPosition,
-                                          contactForceVector, 1, (128,0,255), 2)
-                        # 重力
-                        gravityForceVector = (0, self._gravityStrength)
-                        utils.cvArrow(frameToDisplay, lastPosition,
-                                      gravityForceVector, 1, (0,128,255), 2)
-                        # 合力
-                        # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
-                        #                                                 self._numFramesDelay*2)
-                        synthesizedVector = aclVector
-                        if synthesizedVector is not None:
-                            utils.cvArrow(
-                                frameToDisplay, lastPosition, synthesizedVector,
-                                1, utils.BLUE, 5
-                            )
-                            # 接触力ベクトルと加速度ベクトルのあいだに線を引く
-                            positionSVBegin = \
-                                (lastPosition[0]+synthesizedVector[0],
-                                 lastPosition[1]+synthesizedVector[1])
-                            if contactForceVector is not None:
-                                positionCFBegin = \
-                                    (lastPosition[0]+contactForceVector[0],
-                                     lastPosition[1]+contactForceVector[1])
-                                utils.cvLine(frameToDisplay, positionSVBegin,
-                                             positionCFBegin, utils.BLUE, 1)
-                            # 重力ベクトルと加速度ベクトルのあいだに線を引く
-                            positionGFBegin = \
-                                (lastPosition[0], lastPosition[1]+self._gravityStrength)
-                            utils.cvLine(frameToDisplay, positionSVBegin,
-                                         positionGFBegin, utils.BLUE, 1)
+                self._processAcceleration(frameToDisplay)
 
 
             ### 描画処理 ###
@@ -406,7 +314,7 @@ class Main(object):
                 if self._shouldDrawVelocityVectorsInStrobeMode:
                     self._velocityVector.drawInStrobeMode(frameToDisplay)
                 # 速度グラフを描く
-                if self._shouldDrawVelocityVectorsVerticallyInStrobeMode:
+                if self._shouldDrawVelocityVectorsGraph:
                     self._velocityGraph.draw(frameToDisplay)
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
@@ -425,7 +333,7 @@ class Main(object):
                 if self._shouldDrawVelocityVectorsXComponentInStrobeMode:
                     self._velocityXComponentVector.drawInStrobeMode(frameToDisplay)
                 # 速度ベクトルのx成分（正負あり）のグラフを表示する
-                if self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode:
+                if self._shouldDrawVelocityVectorsXComponentGraph:
                     self._velocityXComponentGraph.draw(frameToDisplay)
 
 
@@ -562,22 +470,11 @@ class Main(object):
                     self._shouldDrawCircle = False
                 else:
                     self._shouldDrawCircle = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                if  self._shouldDrawTrack:
-                    self._shouldDrawTrack = False
-                else:
-                    self._resetKinetics()  # 軌跡を消去する
-                    self._shouldDrawTrack = True
             elif self._currentAdjusting == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
                 if  self._shouldDrawDisplacementVector:
                     self._shouldDrawDisplacementVector = False
                 else:
                     self._shouldDrawDisplacementVector = True
-            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
-                if  self._shouldDrawVelocityVector:
-                    self._shouldDrawVelocityVector = False
-                else:
-                    self._shouldDrawVelocityVector = True
             elif self._currentAdjusting == self.SHOULD_DRAW_ACCELERATION_VECTOR:
                 if  self._shouldDrawAccelerationVector:
                     self._shouldDrawAccelerationVector = False
@@ -644,16 +541,7 @@ class Main(object):
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
                 self._shouldDrawVelocityVectorsInStrobeMode = \
                     not self._shouldDrawVelocityVectorsInStrobeMode
-                self._positionHistory = []
-                self._velocityVectorsHistory = []
-            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
-                self._shouldDrawVelocityVectorsVerticallyInStrobeMode = \
-                    not self._shouldDrawVelocityVectorsVerticallyInStrobeMode
-                self._positionHistory = []
-                self._velocityVectorsHistory = []
-            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
-                self._shouldDrawVelocityVectorXComponent = \
-                    not self._shouldDrawVelocityVectorXComponent
+                self._resetKinetics()
             elif self._currentAdjusting == self.CO_VELOCITY_VECTOR_STRENGTH:
                 pitch = 1  if keycode == 0 else -1
                 self._coVelocityVectorStrength += pitch
@@ -661,14 +549,7 @@ class Main(object):
                     self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE:
                 self._shouldDrawVelocityVectorsXComponentInStrobeMode = \
                     not self._shouldDrawVelocityVectorsXComponentInStrobeMode
-                self._positionHistory = []
-                self._velocityVectorsHistory = []
-            elif self._currentAdjusting == \
-                    self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
-                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode = \
-                    not self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode
-                self._positionHistory = []
-                self._velocityVectorsHistory = []
+                self._resetKinetics()
             elif self._currentAdjusting == self.CAPTURE_BACKGROUND_FRAME:
                 self._isTakingFrameBackground = True
             elif self._currentAdjusting == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
@@ -695,12 +576,57 @@ class Main(object):
                     else:
                         self._currentShowing = len(self.SHOWING_FRAME_OPTIONS) - 1
 
+            elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
+                if self._isSimpleOperationMode:
+                    self._setAllOptionsFalse()
+                self._resetKinetics()  # 軌跡を消去する
+                self._shouldDrawTrack = not self._shouldDrawTrack
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
+                if self._isSimpleOperationMode:
+                    self._setAllOptionsFalse()
+                self._resetKinetics()  # 軌跡を消去する
+                self._shouldDrawVelocityVector = \
+                    not self._shouldDrawVelocityVector
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
+                if self._isSimpleOperationMode:
+                    self._setAllOptionsFalse()
+                self._resetKinetics()  # 軌跡を消去する
+                if self._shouldDrawVelocityVectorsGraph:
+                    self._shouldDrawVelocityVectorsGraph = False
+                else:
+                    self._shouldDrawVelocityVectorsGraph = True
+                    self._shouldDrawVelocityVector = True
+                self._resetKinetics()
+            elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
+                if self._isSimpleOperationMode:
+                    self._setAllOptionsFalse()
+                self._resetKinetics()  # 軌跡を消去する
+                self._shouldDrawVelocityVectorXComponent = \
+                    not self._shouldDrawVelocityVectorXComponent
+                self._resetKinetics()
+            elif self._currentAdjusting == \
+                    self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
+                if self._isSimpleOperationMode:
+                    self._setAllOptionsFalse()
+                self._resetKinetics()  # 軌跡を消去する
+                if self._shouldDrawVelocityVectorsXComponentGraph:
+                    self._shouldDrawVelocityVectorsXComponentGraph = False
+                else:
+                    self._shouldDrawVelocityVectorsXComponentGraph = True
+                    self._shouldDrawVelocityVectorXComponent = True
+
             else:
                 raise ValueError('self._currentAdjusting')
 
         else:
             print keycode
 
+    def _setAllOptionsFalse(self):
+        self._shouldDrawTrack                          = False
+        self._shouldDrawVelocityVector                 = False
+        self._shouldDrawVelocityVectorsGraph           = False
+        self._shouldDrawVelocityVectorXComponent       = False
+        self._shouldDrawVelocityVectorsXComponentGraph = False
 
     def _putInfo(self, frame):
         if self._isTracking:
@@ -788,8 +714,8 @@ class Main(object):
             put('Should Draw Velocity Vectors In Strobe Mode' ,
                 self._shouldDrawVelocityVectorsInStrobeMode)
         elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
-            put('Should Draw Velocity Vectors Graph' ,
-                self._shouldDrawVelocityVectorsVerticallyInStrobeMode)
+            put('Should Draw Velocity Vectors Graph',
+                self._shouldDrawVelocityVectorsGraph)
         elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
             put('Should Draw Velocity Vector X Component' ,
                 self._shouldDrawVelocityVectorXComponent)
@@ -800,8 +726,8 @@ class Main(object):
             put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
                 self._shouldDrawVelocityVectorsXComponentInStrobeMode)
         elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
-            put('Should Draw Velocity Vectors X Component Graph' ,
-                self._shouldDrawVelocityVectorsXComponentVerticallyInStrobeMode)
+            put('Should Draw Velocity Vectors X Component Graph',
+                self._shouldDrawVelocityVectorsXComponentGraph)
         elif cur == self.CAPTURE_BACKGROUND_FRAME:
             put('Capture Background Frame' ,
                 self._frameBackground is not None)
@@ -992,6 +918,108 @@ class Main(object):
             return None
         return x,y,w,h
 
+    def _processAcceleration(self, frameToDisplay):
+        # 次の円が見つかっても見つからなくても・・・
+        if len(self._positionHistory) - self._numFramesDelay > 0:
+            numPointsVisible = len(self._positionHistory) - self._numFramesDelay
+            lastPosition = self._positionHistory[numPointsVisible-1]
+
+            # 加速度ベクトルを求める
+            # vector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+            # vector = utils.getAccelerationVectorVelocitySensitive(self._passedPoints)
+            aclVector = None
+            if self._shouldProcessQuickMotion:
+                result = utils.getAccelerationVectorStartStop(
+                    self._positionHistory, self._populationAcceleration, 3, self._coForceVectorStrength
+                )
+                if result[0] is 'quickMotion':
+                    self._indexQuickMotion = len(self._positionHistory)
+                    aclVector = result[1]
+                # 急発進／静止後3フレームは通常の加速度を表示しない
+                elif result == 'usual' \
+                        and self._indexQuickMotion is not None \
+                        and self._indexQuickMotion+4 < numPointsVisible:
+                    aclVector = utils.getAccelerationVectorFirFilter(
+                        self._positionHistory,
+                        self._populationAcceleration,
+                        0,
+                        self._coForceVectorStrength
+                    )
+            else:
+                # aclVector = utils.getAccelerationVectorFirFilter(
+                #     self._positionHistory,
+                #     self._populationAcceleration,
+                #     0,
+                #     self._coForceVectorStrength
+                # )
+                aclVector = utils.getAccelerationVector2(
+                    self._positionHistory, self._populationVelocity,
+                    self._populationAcceleration)
+
+            # 加速度ベクトルを描画する
+            if self._shouldDrawAccelerationVector:
+                if aclVector is not None:
+                    utils.cvArrow(frameToDisplay, lastPosition, aclVector, 1, utils.GREEN, 5)
+                    # print aclVector
+
+            # 力ベクトルを物体の底面を基点として描画する
+            if self._shouldDrawForceVectorBottom:
+                yPositionAclBegin = \
+                    self._positionHistory[numPointsVisible-1][1] + h/2
+                positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
+                                yPositionAclBegin)
+                # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                utils.drawForceVector(frameToDisplay, aclVector,
+                                      positionAclBegin, self._gravityStrength)
+
+            # 力ベクトルを物体のてっぺんを基点として描画する
+            if self._shouldDrawForceVectorTop:
+                yPositionAclBegin = \
+                    self._positionHistory[numPointsVisible-1][1] - h/2
+                positionAclBegin  = (self._positionHistory[numPointsVisible-1][0],
+                                yPositionAclBegin)
+                utils.drawForceVector(frameToDisplay, aclVector,
+                                      positionAclBegin, self._gravityStrength)
+
+            # 力ベクトルの合成を描画する
+            if self._shouldDrawSynthesizedVector:
+                # 手による接触力
+                # aclVector = utils.getAccelerationVector(self._passedPoints, self._numFramesDelay*2)
+                if aclVector is None:
+                    aclVector = (0,0)
+                contactForceVector = \
+                    (aclVector[0], aclVector[1] - self._gravityStrength)
+                if contactForceVector is not None:
+                    utils.cvArrow(frameToDisplay, lastPosition,
+                                  contactForceVector, 1, (128,0,255), 2)
+                # 重力
+                gravityForceVector = (0, self._gravityStrength)
+                utils.cvArrow(frameToDisplay, lastPosition,
+                              gravityForceVector, 1, (0,128,255), 2)
+                # 合力
+                # synthesizedVector = utils.getAccelerationVector(self._passedPoints,
+                #                                                 self._numFramesDelay*2)
+                synthesizedVector = aclVector
+                if synthesizedVector is not None:
+                    utils.cvArrow(
+                        frameToDisplay, lastPosition, synthesizedVector,
+                        1, utils.BLUE, 5
+                    )
+                    # 接触力ベクトルと加速度ベクトルのあいだに線を引く
+                    positionSVBegin = \
+                        (lastPosition[0]+synthesizedVector[0],
+                         lastPosition[1]+synthesizedVector[1])
+                    if contactForceVector is not None:
+                        positionCFBegin = \
+                            (lastPosition[0]+contactForceVector[0],
+                             lastPosition[1]+contactForceVector[1])
+                        utils.cvLine(frameToDisplay, positionSVBegin,
+                                     positionCFBegin, utils.BLUE, 1)
+                    # 重力ベクトルと加速度ベクトルのあいだに線を引く
+                    positionGFBegin = \
+                        (lastPosition[0], lastPosition[1]+self._gravityStrength)
+                    utils.cvLine(frameToDisplay, positionSVBegin,
+                                 positionGFBegin, utils.BLUE, 1)
 
 ### クラス設計方針：historyを隠蔽する ###
 
