@@ -76,8 +76,8 @@ class Main(object):
         ### Filtering
         # self._hueMin                       = 40  # 色紙
         # self._hueMax                       = 60  # 色紙
-        self._hueMin                       = 60 #マグネット # 50 # テニスボール
-        self._hueMax                       = 70 # テニスボール
+        self._hueMin                       = 40 #マグネット # 50 # テニスボール
+        self._hueMax                       = 80 # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 150 #220 #60
         self._valueMax                     = 255

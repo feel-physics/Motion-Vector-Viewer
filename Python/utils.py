@@ -295,33 +295,35 @@ class fpsWithTick(object):
         return fpsRounded
 
 def getSubtractedFrame(frameFore, frameBackground, diffBgFg):
-    frameNowHsv        = cv2.cvtColor(frameFore, cv2.COLOR_BGR2HSV)
+    # まずカメラ画像をHSVに変換する
+    frameNowHsv        = cv2.cvtColor(frameFore,       cv2.COLOR_BGR2HSV)
+    # 保存しておいた画像もHSVに変換する
     frameBackgroundHsv = cv2.cvtColor(frameBackground, cv2.COLOR_BGR2HSV)
-    frameFgB, frameFgG, frameFgR = cv2.split(frameNowHsv)
-    frameBgB, frameBgG, frameBgR = cv2.split(frameBackgroundHsv)
+    # 変換した2つの画像をH,S,V各要素に分割する
+    frameFgH, frameFgS, frameFgV = cv2.split(frameNowHsv)
+    frameBgH, frameBgS, frameBgV = cv2.split(frameBackgroundHsv)
     # 差分計算
-    diffB = cv2.absdiff(frameFgB, frameBgB)
-    diffG = cv2.absdiff(frameFgG, frameBgG)
-    diffR = cv2.absdiff(frameFgR, frameBgR)
+    diffH = cv2.absdiff(frameFgH, frameBgH)
+    diffS = cv2.absdiff(frameFgS, frameBgS)
+    diffV = cv2.absdiff(frameFgV, frameBgV)
     # 差分が閾値より大きければTrue
-    maskB = diffBgFg < diffB
-    maskG = diffBgFg < diffG
-    maskR = diffBgFg < diffR
+    maskH = diffBgFg < diffH
+    maskS = diffBgFg < diffS
+    maskV = diffBgFg < diffV
     # 配列（画像）の高さ・幅
-    height = frameFgB.shape[0]
-    width  = frameFgB.shape[1]
+    height = frameFgH.shape[0]
+    width  = frameFgH.shape[1]
     # 背景画像と同じサイズの配列生成
-    im_mask_blue  = numpy.zeros((height, width), numpy.uint8)
-    im_mask_green = numpy.zeros((height, width), numpy.uint8)
-    im_mask_red   = numpy.zeros((height, width), numpy.uint8)
+    im_mask_h = numpy.zeros((height, width), numpy.uint8)
+    im_mask_s = numpy.zeros((height, width), numpy.uint8)
+    im_mask_v = numpy.zeros((height, width), numpy.uint8)
     # Trueの部分（背景）は白塗り
-    im_mask_blue [maskB] = 255
-    im_mask_green[maskG] = 255
-    im_mask_red  [maskR] = 255
-    # 積集合（RGBのどれか1つでも50より大きい差があれば真）
-    im_mask = cv2.bitwise_or(im_mask_blue, im_mask_green)
-    im_mask = cv2.bitwise_or(im_mask     , im_mask_red  )
-    # cv2.merge((im_mask, frameG, frameR), frameToDisplay)
+    im_mask_h[maskH] = 255
+    im_mask_s[maskS] = 255
+    im_mask_v[maskV] = 255
+    # 積集合（HSVのどれか1つでもdiffBgFgより大きい差があれば真）
+    im_mask = cv2.bitwise_or(im_mask_h, im_mask_s)
+    im_mask = cv2.bitwise_or(im_mask  , im_mask_v)
     return cv2.bitwise_and(frameFore, frameFore, mask=im_mask)
 
 def getBackProjectFrame(frame, roi_hist):
