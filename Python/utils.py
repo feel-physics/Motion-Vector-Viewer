@@ -397,15 +397,23 @@ def scan_color(frame, x, y, w, h):
         for ix in range(y, y+h):
             dot = frameHSV[ix][iy]
             # 色相
-            dotHue = dot[0] * 2
-            hueArray.append(dotHue)
-            if 10 < len(hueArray):
-                hueArray.pop()
+            if dot[0] == 0:
+                pass
+            else:
+                dotHue = dot[0] * 2
+                hueArray.append(dotHue)
+                if 1000 < len(hueArray):
+                    hueArray.pop()
             # 明度
-            dotValue = dot[2]
-            valueArray.append(dotValue)
-            if 10 < len(valueArray):
-                valueArray.pop()
+            if dot[2] == 0:
+                pass
+            else:
+                dotValue = dot[2]
+                valueArray.append(dotValue)
+                print dotValue
+                if 1000 < len(valueArray):
+                    valueArray.pop()
+
     hueMax   = max(hueArray)
     hueMin   = min(hueArray)
     valueMax = max(valueArray)

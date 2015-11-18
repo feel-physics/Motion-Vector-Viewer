@@ -15,7 +15,7 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,                                # 背景を記録して検出対象から外す
-        SCAN_TARGET_COLOR,
+        TARGET_CALIBRATION,
         SHOULD_DRAW_TRACKS,                                      # 軌跡を描画する
         SHOULD_DRAW_VELOCITY_VECTOR,                             # 速度ベクトルを描画する
         SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,                      # 速度ベクトルのグラフを描画する
@@ -164,10 +164,10 @@ class Main(object):
 
         # キャリブレーション
         self._isScanningColor              = True
-        self._hueMin                       = 0
-        self._hueMax                       = 0
-        self._valueMin                     = 0
-        self._valueMax                     = 0
+        self._hueMinScanned                = 0
+        self._hueMaxScanned                = 0
+        self._valueMinScanned              = 0
+        self._valueMaxScanned              = 0
 
     def run(self):
         """
@@ -346,26 +346,25 @@ class Main(object):
             ### キャリブレーション ###
 
 
-            if self._isScanningColor:
+            if self._isScanningColor and self._currentShowing == self.ORIGINAL:
+                x,y,r = 350, 200, 10
 
                 height, width, numChannels = frameToDisplay.shape
                 maskOfSquare    = numpy.zeros((height, width), dtype=numpy.uint8)
                 maskOfCircle    = numpy.zeros((height, width), dtype=numpy.uint8)
                 FILL = -1
-                cv2.rectangle(maskOfSquare, (100,100), (300,300), 255, FILL)
-                cv2.circle(maskOfCircle, (200,200), 100, 255, FILL)
+                cv2.rectangle(maskOfSquare, (x-2*r,y-2*r), (x+2*r,y+2*r), 255, FILL)
+                cv2.circle(maskOfCircle, (x, y), r, 255, FILL)
                 maskOutOfCircle = 255 - maskOfCircle
                 mask = 255 - cv2.bitwise_and(maskOfSquare, maskOutOfCircle)
                 frameOfRectangleWithoutCircle = numpy.zeros((height, width, 3), dtype=numpy.uint8)
                 cv2.merge((mask, mask, mask), frameOfRectangleWithoutCircle)
                 frameToDisplay[:] = cv2.bitwise_and(frameToDisplay, frameOfRectangleWithoutCircle)
 
-                x, y, w, h = 200, 200, 100, 100
-                var = utils.scan_color(frameToDisplay, x, y, w, h)
+                var = utils.scan_color(frameToDisplay, x-r, y-r, 2*r, 2*r)
                 if var is not None:
-                    self._hueMin, self._hueMax, self._valueMin, self._valueMax = var
-                    cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),utils.DARKSLATEGRAY,5)
-
+                    self._hueMinScanned, self._hueMaxScanned, \
+                    self._valueMinScanned, self._valueMaxScanned = var
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -645,8 +644,19 @@ class Main(object):
                 else:
                     self._shouldDrawVelocityVectorsXComponentGraph = True
                     self._shouldDrawVelocityVectorXComponent = True
-            elif self._currentAdjusting == self.SCAN_TARGET_COLOR:
-                self._isScanningColor = not self._isScanningColor
+            elif self._currentAdjusting == self.TARGET_CALIBRATION:
+                if self._isScanningColor:
+                    self._isScanningColor = False
+                    # 検出用閾値を設定する
+                    self._hueMin   = self._hueMinScanned - 10
+                    self._hueMax   = self._hueMaxScanned + 10
+                    self._valueMin = self._valueMinScanned - 30
+                    self._valueMax = self._valueMaxScanned + 30
+                    # 白飛び箇所の誤検知を回避する
+                    if 250 < self._valueMax:
+                        self._valueMax = 250
+                else:
+                    self._isScanningColor = True
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -771,9 +781,15 @@ class Main(object):
                 self._lengthTimesVerticalVelocityVectors)
         elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
             put('Diff of Background and Foreground'  , self._diffBgFg)
-        elif cur == self.SCAN_TARGET_COLOR:
-            put('Scan Target Color',
-                str((self._hueMin, self._hueMax, self._valueMin, self._valueMax)))
+        elif cur == self.TARGET_CALIBRATION:
+            if self._isScanningColor:
+                message = str((
+                    self._hueMinScanned, self._hueMaxScanned,
+                    self._valueMinScanned, self._valueMaxScanned))
+            else:
+                message = str((
+                    self._hueMin, self._hueMax, self._valueMin, self._valueMax))
+            put('Target Calibration', message)
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
                 currentShowing = 'Original'
