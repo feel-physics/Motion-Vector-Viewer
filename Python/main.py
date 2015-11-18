@@ -75,8 +75,6 @@ class Main(object):
             cv2.VideoCapture(0), self._windowManager, False, self._scaleRatio)
 
         ### Filtering
-        # self._hueMin                       = 40  # 色紙
-        # self._hueMax                       = 60  # 色紙
         self._hueMin                       = 40 #マグネット # 50 # テニスボール
         self._hueMax                       = 80 # テニスボール
         self._sThreshold                   = 5
@@ -96,7 +94,7 @@ class Main(object):
         self._shouldDrawCannyEdge          = False
 
         self._centerPointOfCircle          = None
-        self._positionHistory                 = []
+        self._positionHistory              = []
 
         self._shouldTrackCircle            = True
         self._isTracking                   = False
@@ -126,22 +124,22 @@ class Main(object):
         self._isModePendulum               = False
 
         # ストロボモード 15/08/12 -
-        self._shouldDrawTrackInStrobeMode  = False
-        self._numStrobeModeSkips           = 2 # 画面が狭い # 5
-        self._velocityVectorsHistory       = []
-        self._shouldDrawVelocityVectorsInStrobeMode = False
-        self._spaceBetweenVerticalVectors  = 15 # 画面が狭い  # 3
-        self._shouldDrawVelocityVectorsGraph = False
-        self._shouldDrawVelocityVectorXComponent = False
+        self._shouldDrawTrackInStrobeMode                     = False
+        self._numStrobeModeSkips                              = 2 # 画面が狭い # 5
+        self._velocityVectorsHistory                          = []
+        self._shouldDrawVelocityVectorsInStrobeMode           = False
+        self._spaceBetweenVerticalVectors                     = 15 # 画面が狭い  # 3
+        self._shouldDrawVelocityVectorsGraph                  = False
+        self._shouldDrawVelocityVectorXComponent              = False
         self._shouldDrawVelocityVectorsXComponentInStrobeMode = False
-        self._coVelocityVectorStrength     = 4
-        self._shouldDrawVelocityVectorsXComponentGraph = False
-        self._velocityVectorsXComponentHistory = []
-        self._colorVelocityVector          = utils.BLUE
-        self._colorVelocityVectorXComponent = utils.SKY_BLUE
-        self._thicknessVelocityVector      = 5
-        self._thicknessVelocityVectorXComponent = 3
-        self._lengthTimesVerticalVelocityVectors = 5 # 画面が狭い # 5
+        self._coVelocityVectorStrength                        = 4
+        self._shouldDrawVelocityVectorsXComponentGraph        = False
+        self._velocityVectorsXComponentHistory                = []
+        self._colorVelocityVector                             = utils.BLUE
+        self._colorVelocityVectorXComponent                   = utils.SKY_BLUE
+        self._thicknessVelocityVector                         = 5
+        self._thicknessVelocityVectorXComponent               = 3
+        self._lengthTimesVerticalVelocityVectors              = 5 # 画面が狭い # 5
 
         self._timeSelfTimerStarted         = None
 
@@ -635,7 +633,7 @@ class Main(object):
                     self._shouldDrawVelocityVectorsXComponentGraph = True
                     self._shouldDrawVelocityVectorXComponent = True
             elif self._currentAdjusting == self.SCAN_TARGET_COLOR:
-                self._isScanningColor = True
+                self._isScanningColor = not self._isScanningColor
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -690,7 +688,7 @@ class Main(object):
         elif cur == self.HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD:
             put('Hough Circle Accumulator Threshold' , self._houghCircleParam2)
         elif cur == self.HOUGH_CIRCLE_RADIUS_MIN:
-            put('Hough Circle Radius Min'              , self._houghCircleRadiusMin)
+            put('Hough Circle Radius Min'            , self._houghCircleRadiusMin)
         elif cur == self.GAUSSIAN_BLUR_KERNEL_SIZE:
             put('Gaussian Blur Kernel Size'          , self._gaussianBlurKernelSize)
         elif cur == self.SHOULD_PROCESS_GAUSSIAN_BLUR:
@@ -700,23 +698,23 @@ class Main(object):
         elif cur == self.CLOSING_ITERATIONS:
             put('Closing Iterations'                 , self._closingIterations)
         elif cur == self.SHOULD_DRAW_CIRCLE:
-            put('Should Draw Circle'                 , self._shouldDrawCircle)
+            put('Draw Circle'                        , self._shouldDrawCircle)
         elif cur == self.SHOULD_DRAW_TRACKS:
-            put('Should Draw Tracks'                 , self._shouldDrawTrack)
+            put('Draw Tracks'                        , self._shouldDrawTrack)
         elif cur == self.SHOULD_DRAW_DISPLACEMENT_VECTOR:
-            put('Should Draw Displacement Vector'    , self._shouldDrawDisplacementVector)
+            put('Draw Displacement Vector'           , self._shouldDrawDisplacementVector)
         elif cur == self.SHOULD_DRAW_VELOCITY_VECTOR:
-            put('Should Draw Velocity Vector'        , self._shouldDrawVelocityVector)
+            put('Draw Velocity Vector'               , self._shouldDrawVelocityVector)
         elif cur == self.SHOULD_DRAW_ACCELERATION_VECTOR:
-            put('Should Draw Acceleration Vector'    , self._shouldDrawAccelerationVector)
+            put('Draw Acceleration Vector'           , self._shouldDrawAccelerationVector)
         elif cur == self.GRAVITY_STRENGTH:
             put('Gravity Strength'                   , self._gravityStrength)
         elif cur == self.SHOULD_PROCESS_QUICK_MOTION:
-            put('Should Process Quick Motion'        , self._shouldProcessQuickMotion)
+            put('Process Quick Motion'               , self._shouldProcessQuickMotion)
         elif cur == self.SHOULD_DRAW_FORCE_VECTOR_BOTTOM:
-            put('Should Draw Force Vector Bottom'    , self._shouldDrawForceVectorBottom)
+            put('Draw Force Vector Bottom'           , self._shouldDrawForceVectorBottom)
         elif cur == self.SHOULD_DRAW_FORCE_VECTOR_TOP:
-            put('Should Draw Force Vector Top'       , self._shouldDrawForceVectorTop)
+            put('Draw Force Vector Top'              , self._shouldDrawForceVectorTop)
         elif cur == self.CO_FORCE_VECTOR_STRENGTH:
             put('Coefficient of Force Vector Strength',self._coForceVectorStrength)
         elif cur == self.IS_MODE_PENDULUM:
@@ -724,45 +722,42 @@ class Main(object):
         elif cur == self.NUM_FRAMES_DELAY:
             put('Number of Delay Frames'             , self._numFramesDelay)
         elif cur == self.SHOULD_DRAW_SYNTHESIZED_VECTOR:
-            put('Should Draw Synthesized Vector'     , self._shouldDrawSynthesizedVector)
+            put('Draw Synthesized Vector'            , self._shouldDrawSynthesizedVector)
         elif cur == self.SHOULD_TRACK_CIRCLE:
-            put('Should Track Circle'                , self._shouldTrackCircle)
+            put('Track Circle'                       , self._shouldTrackCircle)
         elif cur == self.SHOULD_DRAW_CANNY_EDGE:
-            put('Should Draw Canny Edge'             , self._shouldDrawCannyEdge)
+            put('Draw Canny Edge'                    , self._shouldDrawCannyEdge)
         elif cur == self.SHOULD_DRAW_TRACKS_IN_STROBE_MODE:
-            put('Should Draw Tracks In Strobe Mode'  , self._shouldDrawTrackInStrobeMode)
+            put('Draw Tracks In Strobe Mode'         , self._shouldDrawTrackInStrobeMode)
         elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE:
-            put('Should Draw Velocity Vectors In Strobe Mode' ,
+            put('Draw Velocity Vectors In Strobe Mode' ,
                 self._shouldDrawVelocityVectorsInStrobeMode)
         elif cur == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
-            put('Should Draw Velocity Vectors Graph',
+            put('Draw Velocity Vectors Graph',
                 self._shouldDrawVelocityVectorsGraph)
         elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
-            put('Should Draw Velocity Vector X Component' ,
+            put('Draw Velocity Vector X Component' ,
                 self._shouldDrawVelocityVectorXComponent)
         elif cur == self.CO_VELOCITY_VECTOR_STRENGTH:
             put('Coefficient of Velocity Vector Strength' ,
                 self._coVelocityVectorStrength)
         elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_IN_STROBE_MODE:
-            put('Should Draw Velocity Vectors X Component In Strobe Mode' ,
+            put('Draw Velocity Vectors X Component In Strobe Mode' ,
                 self._shouldDrawVelocityVectorsXComponentInStrobeMode)
         elif cur == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
-            put('Should Draw Velocity Vectors X Component Graph',
+            put('Draw Velocity Vectors X Component Graph',
                 self._shouldDrawVelocityVectorsXComponentGraph)
         elif cur == self.CAPTURE_BACKGROUND_FRAME:
-            put('Capture Background Frame' ,
-                self._frameBackground is not None)
+            put('Capture Background Frame'           ,self._frameBackground is not None)
         elif cur == self.NUM_STROBE_SKIPS:
-            put('Number of Skip Frames in Strobe' ,
-                self._numStrobeModeSkips)
+            put('Number of Skip Frames in Strobe'    ,self._numStrobeModeSkips)
         elif cur == self.SPACE_BETWEEN_VERTICAL_VECTORS:
-            put('Space between Vertical Vectors' ,
-                self._spaceBetweenVerticalVectors)
+            put('Space between Vertical Vectors'     ,self._spaceBetweenVerticalVectors)
         elif cur == self.LENGTH_TIMES_VERTICAL_VELOCITY_VECTORS:
             put('Length Times of Vertical Velocity Vectors' ,
                 self._lengthTimesVerticalVelocityVectors)
         elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
-            put('Diff of Background and Foreground'       , self._diffBgFg)
+            put('Diff of Background and Foreground'  , self._diffBgFg)
         elif cur == self.SCAN_TARGET_COLOR:
             put('Scan Target Color',
                 str((self._hueMin, self._hueMax, self._valueMin, self._valueMax)))
