@@ -15,6 +15,7 @@ class Main(object):
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
         CAPTURE_BACKGROUND_FRAME,                                # 背景を記録して検出対象から外す
+        SCAN_TARGET_COLOR,
         SHOULD_DRAW_TRACKS,                                      # 軌跡を描画する
         SHOULD_DRAW_VELOCITY_VECTOR,                             # 速度ベクトルを描画する
         SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,                      # 速度ベクトルのグラフを描画する
@@ -29,7 +30,7 @@ class Main(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-    ] = range(14)
+    ] = range(15)
 
     UNUSED_OPTIONS = [
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,             # 速度ベクトルをストロボモードで描画する
@@ -63,7 +64,7 @@ class Main(object):
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
         WHAT_COMPUTER_SEE,
-        BEFORE_MASK
+        BACKGROUND_SUBTRACTED
     ] = range(3)
 
     def __init__(self):
@@ -161,7 +162,14 @@ class Main(object):
         self._densityTrackWindow           = -1  # 追跡判定用の変数。0.05未満になれば追跡をやめる。
 
         # ユーザテスト用の簡単操作モード
-        self._isSimpleOperationMode          = True
+        self._isSimpleOperationMode        = True
+
+        # キャリブレーション
+        self._isScanningColor              = True
+        self._hueMin                       = 0
+        self._hueMax                       = 0
+        self._valueMin                     = 0
+        self._valueMax                     = 0
 
     def run(self):
         """
@@ -219,7 +227,7 @@ class Main(object):
                 cv2.merge((gray, gray, gray), frameToDisplay)
             elif self._currentShowing == self.ORIGINAL:
                 pass
-            elif self._currentShowing == self.BEFORE_MASK:
+            elif self._currentShowing == self.BACKGROUND_SUBTRACTED:
                 if self._frameBackground is not None:
                     frameSubtracted = utils.getSubtractedFrame(frameToDisplay, self._frameBackground,
                                                      self._diffBgFg)
@@ -335,6 +343,18 @@ class Main(object):
                 # 速度ベクトルのx成分（正負あり）のグラフを表示する
                 if self._shouldDrawVelocityVectorsXComponentGraph:
                     self._velocityXComponentGraph.draw(frameToDisplay)
+
+
+            ### キャリブレーション ###
+
+
+            if self._isScanningColor:
+                x, y, w, h = 200, 200, 100, 100
+                var = utils.scan_color(frameToDisplay, x, y, w, h)
+                if var is not None:
+                    self._hueMin, self._hueMax, self._valueMin, self._valueMax = var
+                    cv2.rectangle(frameToDisplay, (x,y), (x+w,y+h),utils.DARKSLATEGRAY,5)
+
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -614,7 +634,8 @@ class Main(object):
                 else:
                     self._shouldDrawVelocityVectorsXComponentGraph = True
                     self._shouldDrawVelocityVectorXComponent = True
-
+            elif self._currentAdjusting == self.SCAN_TARGET_COLOR:
+                self._isScanningColor = True
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -742,13 +763,16 @@ class Main(object):
                 self._lengthTimesVerticalVelocityVectors)
         elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
             put('Diff of Background and Foreground'       , self._diffBgFg)
+        elif cur == self.SCAN_TARGET_COLOR:
+            put('Scan Target Color',
+                str((self._hueMin, self._hueMax, self._valueMin, self._valueMax)))
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
                 currentShowing = 'Original'
             elif self._currentShowing == self.WHAT_COMPUTER_SEE:
                 currentShowing = 'What Computer See'
-            elif self._currentShowing == self.BEFORE_MASK:
-                currentShowing = 'Before Mask'
+            elif self._currentShowing == self.BACKGROUND_SUBTRACTED:
+                currentShowing = 'Background Subtracted'
             else:
                 raise ValueError('self._currentShowing')
 
@@ -1020,6 +1044,7 @@ class Main(object):
                         (lastPosition[0], lastPosition[1]+self._gravityStrength)
                     utils.cvLine(frameToDisplay, positionSVBegin,
                                  positionGFBegin, utils.BLUE, 1)
+
 
 ### クラス設計方針：historyを隠蔽する ###
 

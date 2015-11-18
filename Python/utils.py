@@ -380,6 +380,38 @@ def getMaskByHsv(src, hueMin, hueMax, valueMin, valueMax, gamma=96, sThreshold=5
 
     return mask
 
+def scan_color(frame, x, y, w, h):
+    """
+    矩形内の色相Hue、明度Valueの最小値・最大値を求める
+    :param frame: カメラ画像
+    :param x: int 矩形左上の点のx座標
+    :param y: int 矩形左上の点のy座標
+    :param w: int 矩形の横幅
+    :param h: int 矩形の高さ
+    :return:
+    """
+    hueArray   = []
+    valueArray = []
+    frameHSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    for iy in range(x, x+w):
+        for ix in range(y, y+h):
+            dot = frameHSV[ix][iy]
+            # 色相
+            dotHue = dot[0] * 2
+            hueArray.append(dotHue)
+            if 10 < len(hueArray):
+                hueArray.pop()
+            # 明度
+            dotValue = dot[2]
+            valueArray.append(dotValue)
+            if 10 < len(valueArray):
+                valueArray.pop()
+    hueMax   = max(hueArray)
+    hueMin   = min(hueArray)
+    valueMax = max(valueArray)
+    valueMin = min(valueArray)
+    return hueMin, hueMax, valueMin, valueMax
+
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
     入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
