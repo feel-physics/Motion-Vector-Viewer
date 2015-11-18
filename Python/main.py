@@ -347,6 +347,19 @@ class Main(object):
 
 
             if self._isScanningColor:
+
+                height, width, numChannels = frameToDisplay.shape
+                maskOfSquare    = numpy.zeros((height, width), dtype=numpy.uint8)
+                maskOfCircle    = numpy.zeros((height, width), dtype=numpy.uint8)
+                FILL = -1
+                cv2.rectangle(maskOfSquare, (100,100), (300,300), 255, FILL)
+                cv2.circle(maskOfCircle, (200,200), 100, 255, FILL)
+                maskOutOfCircle = 255 - maskOfCircle
+                mask = 255 - cv2.bitwise_and(maskOfSquare, maskOutOfCircle)
+                frameOfRectangleWithoutCircle = numpy.zeros((height, width, 3), dtype=numpy.uint8)
+                cv2.merge((mask, mask, mask), frameOfRectangleWithoutCircle)
+                frameToDisplay[:] = cv2.bitwise_and(frameToDisplay, frameOfRectangleWithoutCircle)
+
                 x, y, w, h = 200, 200, 100, 100
                 var = utils.scan_color(frameToDisplay, x, y, w, h)
                 if var is not None:
