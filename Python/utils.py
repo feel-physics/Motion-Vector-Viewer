@@ -410,14 +410,21 @@ def scan_color(frame, x, y, w, h):
             else:
                 dotValue = dot[2]
                 valueArray.append(dotValue)
-                print dotValue
                 if 1000 < len(valueArray):
                     valueArray.pop()
 
-    hueMax   = max(hueArray)
-    hueMin   = min(hueArray)
-    valueMax = max(valueArray)
-    valueMin = min(valueArray)
+    if 0 < len(hueArray):
+        hueMax   = max(hueArray)
+        hueMin   = min(hueArray)
+    else:
+        hueMin   = -1
+        hueMax   = -1
+    if 0 < len(valueArray):
+        valueMax = max(valueArray)
+        valueMin = min(valueArray)
+    else:
+        valueMin = -1
+        valueMax = -1
     return hueMin, hueMax, valueMin, valueMax
 
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
