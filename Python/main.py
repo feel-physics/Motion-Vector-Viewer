@@ -79,7 +79,7 @@ class Main(object):
         self._hueMax                       = 80 # テニスボール
         self._sThreshold                   = 5
         self._valueMin                     = 150 #220 #60
-        self._valueMax                     = 255
+        self._valueMax                     = 250 # 白飛びに捕まらないように
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
         self._gaussianBlurKernelSize       = 20
@@ -163,7 +163,7 @@ class Main(object):
         self._isSimpleOperationMode        = True
 
         # キャリブレーション
-        self._isScanningColor              = True
+        self._isScanningColor              = False
         self._hueMinScanned                = 0
         self._hueMaxScanned                = 0
         self._valueMinScanned              = 0
@@ -607,19 +607,19 @@ class Main(object):
                         self._currentShowing = len(self.SHOWING_FRAME_OPTIONS) - 1
 
             elif self._currentAdjusting == self.SHOULD_DRAW_TRACKS:
-                if self._isSimpleOperationMode:
-                    self._setAllOptionsFalse()
+                if self._isSimpleOperationMode and not self._shouldDrawTrack:
+                    self._setAllOtherOptionsFalse()
                 self._resetKinetics()  # 軌跡を消去する
                 self._shouldDrawTrack = not self._shouldDrawTrack
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTOR:
-                if self._isSimpleOperationMode:
-                    self._setAllOptionsFalse()
+                if self._isSimpleOperationMode and not self._shouldDrawVelocityVector:
+                    self._setAllOtherOptionsFalse()
                 self._resetKinetics()  # 軌跡を消去する
                 self._shouldDrawVelocityVector = \
                     not self._shouldDrawVelocityVector
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH:
-                if self._isSimpleOperationMode:
-                    self._setAllOptionsFalse()
+                if self._isSimpleOperationMode and not self._shouldDrawVelocityVectorsGraph:
+                    self._setAllOtherOptionsFalse()
                 self._resetKinetics()  # 軌跡を消去する
                 if self._shouldDrawVelocityVectorsGraph:
                     self._shouldDrawVelocityVectorsGraph = False
@@ -628,16 +628,16 @@ class Main(object):
                     self._shouldDrawVelocityVector = True
                 self._resetKinetics()
             elif self._currentAdjusting == self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR:
-                if self._isSimpleOperationMode:
-                    self._setAllOptionsFalse()
+                if self._isSimpleOperationMode and not self._shouldDrawVelocityVectorXComponent:
+                    self._setAllOtherOptionsFalse()
                 self._resetKinetics()  # 軌跡を消去する
                 self._shouldDrawVelocityVectorXComponent = \
                     not self._shouldDrawVelocityVectorXComponent
                 self._resetKinetics()
             elif self._currentAdjusting == \
                     self.SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTORS_GRAPH:
-                if self._isSimpleOperationMode:
-                    self._setAllOptionsFalse()
+                if self._isSimpleOperationMode and not self._shouldDrawVelocityVectorsXComponentGraph:
+                    self._setAllOtherOptionsFalse()
                 self._resetKinetics()  # 軌跡を消去する
                 if self._shouldDrawVelocityVectorsXComponentGraph:
                     self._shouldDrawVelocityVectorsXComponentGraph = False
@@ -663,7 +663,7 @@ class Main(object):
         else:
             print keycode
 
-    def _setAllOptionsFalse(self):
+    def _setAllOtherOptionsFalse(self):
         self._shouldDrawTrack                          = False
         self._shouldDrawVelocityVector                 = False
         self._shouldDrawVelocityVectorsGraph           = False
