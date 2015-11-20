@@ -348,19 +348,7 @@ class Main(object):
 
             if self._isScanningColor and self._currentShowing == self.ORIGINAL:
                 x,y,r = 350, 200, 10
-
-                height, width, numChannels = frameToDisplay.shape
-                maskOfSquare    = numpy.zeros((height, width), dtype=numpy.uint8)
-                maskOfCircle    = numpy.zeros((height, width), dtype=numpy.uint8)
-                FILL = -1
-                cv2.rectangle(maskOfSquare, (x-2*r,y-2*r), (x+2*r,y+2*r), 255, FILL)
-                cv2.circle(maskOfCircle, (x, y), r, 255, FILL)
-                maskOutOfCircle = 255 - maskOfCircle
-                mask = 255 - cv2.bitwise_and(maskOfSquare, maskOutOfCircle)
-                frameOfRectangleWithoutCircle = numpy.zeros((height, width, 3), dtype=numpy.uint8)
-                cv2.merge((mask, mask, mask), frameOfRectangleWithoutCircle)
-                frameToDisplay[:] = cv2.bitwise_and(frameToDisplay, frameOfRectangleWithoutCircle)
-
+                utils.drawCalibrationTarget(frameToDisplay, x, y, r)
                 var = utils.scan_color(frameToDisplay, x-r, y-r, 2*r, 2*r)
                 if var is not None:
                     self._hueMinScanned, self._hueMaxScanned, \
@@ -370,7 +358,7 @@ class Main(object):
             ### 画面左上にテキストで情報表示 ###
 
 
-            self._putInfo(frameToDisplay)
+            self._putInfo(frameToDisplay, frameNow)
 
 
             ### 1フレーム終了 ###
@@ -670,11 +658,24 @@ class Main(object):
         self._shouldDrawVelocityVectorXComponent       = False
         self._shouldDrawVelocityVectorsXComponentGraph = False
 
-    def _putInfo(self, frame):
-        if self._isTracking:
-            strIsTracking = 'Tracking'
-        else:
-            strIsTracking = 'Finding'
+    def _putInfo(self, frame, frameNow):
+
+        def ratioZero(frameNow):
+            frameB, frameG, frameR = cv2.split(frameNow)
+            frameSum = frameB + frameG + frameR
+            numNonzero = numpy.count_nonzero(frameSum.tolist())
+            height, width, _ = frameNow.shape
+            numWholePixels = height * width
+            return float(numWholePixels - numNonzero) / numWholePixels
+
+        def firstLine():
+            fps = self._fpsWithTick.get()  # FPSを計算する
+            message = "FPS:{0:2.0f} Mask:{1:2.0f}% ".format(fps, ratioZero(frameNow) * 100)
+            if self._isTracking:
+                message += "Track:{0:2.0f}%".format(self._densityTrackWindow * 100)
+            else:
+                message += 'Searching Target...'
+            return message
 
         # 情報を表示する
         def putText(text, lineNumber):
@@ -683,10 +684,7 @@ class Main(object):
             cv2.putText(frame, text, (50, 20 + 30 * lineNumber),
                         cv2.FONT_HERSHEY_PLAIN, 1.2, utils.WHITE, 2)
         def put(label, value):
-            fps = self._fpsWithTick.get()  # FPSを計算する
-            putText('FPS '+str(fps)
-                    +' '+strIsTracking
-                    +' '+"{0:.2f}".format(self._densityTrackWindow), 1)
+            putText(firstLine(), 1)
             putText(label, 2)
             if value is True:
                 value = 'True'
