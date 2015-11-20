@@ -427,6 +427,19 @@ def scan_color(frame, x, y, w, h):
         valueMax = -1
     return hueMin, hueMax, valueMin, valueMax
 
+def drawCalibrationTarget(frame, x, y, r):
+    height, width, numChannels = frame.shape
+    maskOfSquare = numpy.zeros((height, width), dtype=numpy.uint8)
+    maskOfCircle = numpy.zeros((height, width), dtype=numpy.uint8)
+    FILL = -1
+    cv2.rectangle(maskOfSquare, (x-2*r,y-2*r), (x+2*r,y+2*r), 255, FILL)  # 白い正方形
+    cv2.circle   (maskOfCircle, (x, y)       , r            , 255, FILL)  # 白い円
+    maskOutOfCircle = 255 - maskOfCircle                                  # 円の外側が白い
+    mask = 255 - cv2.bitwise_and(maskOfSquare, maskOutOfCircle)           # 黒いターゲットマーク
+    frameOfRectangleWithoutCircle = numpy.zeros((height, width, 3), dtype=numpy.uint8)
+    cv2.merge((mask, mask, mask), frameOfRectangleWithoutCircle)
+    frame[:] = cv2.bitwise_and(frame, frameOfRectangleWithoutCircle)
+
 def pasteRect(src, dst, frameToPaste, dstRect, interpolation = cv2.INTER_LINEAR):
     """
     入力画像の部分矩形画像をリサイズして出力画像の部分矩形に貼り付ける
