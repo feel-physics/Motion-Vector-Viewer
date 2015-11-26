@@ -788,12 +788,12 @@ class Main(object):
             put('Diff of Background and Foreground'  , self._diffBgFg)
         elif cur == self.TARGET_CALIBRATION:
             if self._isScanningColor:
-                message = str((
+                message = "H: {0}-{1}, V: {2}-{3}".format(
                     self._hueMinScanned, self._hueMaxScanned,
-                    self._valueMinScanned, self._valueMaxScanned))
+                    self._valueMinScanned, self._valueMaxScanned)
             else:
-                message = str((
-                    self._hueMin, self._hueMax, self._valueMin, self._valueMax))
+                message = "H: {0}-{1}, V: {2}-{3}".format(
+                    self._hueMin, self._hueMax, self._valueMin, self._valueMax)
             put('Target Calibration', message)
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
