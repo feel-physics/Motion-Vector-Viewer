@@ -214,7 +214,7 @@ class Main(object):
             if self._frameBackground is not None:
                 # 円検出はframeNowに対して行われる
                 frameNow = utils.getSubtractedFrame(frameNow, self._frameBackground,
-                             self._diffBgFg)
+                             self._diffBgFg, self._closingIterations)
 
 
             ### デバッグモード
@@ -228,7 +228,7 @@ class Main(object):
             elif self._currentShowing == self.BACKGROUND_SUBTRACTED:
                 if self._frameBackground is not None:
                     frameSubtracted = utils.getSubtractedFrame(frameToDisplay, self._frameBackground,
-                                                     self._diffBgFg)
+                                                     self._diffBgFg, self._closingIterations)
                     gray = self._getMaskToFindCircle(frameSubtracted)
                     frameGray = frameToDisplay.copy()
                     cv2.merge((gray, gray, gray), frameGray)

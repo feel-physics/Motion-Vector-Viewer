@@ -294,7 +294,7 @@ class fpsWithTick(object):
         fpsRounded      = round(fps, 1)
         return fpsRounded
 
-def getSubtractedFrame(frameFore, frameBackground, diffBgFg):
+def getSubtractedFrame(frameFore, frameBackground, diffBgFg, iterations):
     # まずカメラ画像をHSVに変換する
     frameNowHsv        = cv2.cvtColor(frameFore,       cv2.COLOR_BGR2HSV)
     # 保存しておいた画像もHSVに変換する
@@ -324,6 +324,13 @@ def getSubtractedFrame(frameFore, frameBackground, diffBgFg):
     # 積集合（HSVのどれか1つでもdiffBgFgより大きい差があれば真）
     im_mask = cv2.bitwise_or(im_mask_h, im_mask_s)
     im_mask = cv2.bitwise_or(im_mask  , im_mask_v)
+    # ノイズ除去
+    # 8近傍
+    element8 = numpy.array([[1,1,1],
+                            [1,1,1],
+                            [1,1,1]], numpy.uint8)
+    # cv2.morphologyEx(hTarget, cv2.MORPH_CLOSE, element8, hTarget, None, iterations)
+    cv2.morphologyEx(im_mask, cv2.MORPH_OPEN, element8, im_mask, None, iterations)
     return cv2.bitwise_and(frameFore, frameFore, mask=im_mask)
 
 def getBackProjectFrame(frame, roi_hist):
