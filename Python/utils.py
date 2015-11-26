@@ -308,7 +308,7 @@ def getSubtractedFrame(frameFore, frameBackground, diffBgFg):
     diffV = cv2.absdiff(frameFgV, frameBgV)
     # 差分が閾値より大きければTrue
     maskH = diffBgFg < diffH
-    maskS = diffBgFg < diffS
+    maskS = diffBgFg * 2 < diffS  # 自動露出補正対策
     maskV = diffBgFg < diffV
     # 配列（画像）の高さ・幅
     height = frameFgH.shape[0]

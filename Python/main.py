@@ -361,6 +361,13 @@ class Main(object):
             self._putInfo(frameToDisplay, frameNow)
 
 
+            ### 露出補正検証
+            # frameHsv = cv2.cvtColor(frameNow, cv2.COLOR_BGR2HSV)
+            # x, y = 50, 400
+            # print "{0}, {1}, {2}".format(frameHsv[y][x][0],frameHsv[y][x][1],frameHsv[y][x][2])
+            # frameToDisplay[y][x] = numpy.array([0, 0, 255])
+
+
             ### 1フレーム終了 ###
 
 
