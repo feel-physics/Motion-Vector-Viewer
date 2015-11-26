@@ -787,7 +787,9 @@ class Main(object):
         elif cur == self.DIFF_OF_BACKGROUND_AND_FOREGROUND:
             put('Diff of Background and Foreground'  , self._diffBgFg)
         elif cur == self.TARGET_CALIBRATION:
-            if self._isScanningColor:
+            if self._currentShowing is not self.ORIGINAL:
+                message = "Set Showing Mode Original"
+            elif self._isScanningColor:
                 message = "H: {0}-{1}, V: {2}-{3}".format(
                     self._hueMinScanned, self._hueMaxScanned,
                     self._valueMinScanned, self._valueMaxScanned)
@@ -912,7 +914,8 @@ class Main(object):
                 ### 新しい円を見つけた！ ###
 
                 # 追跡したい領域の初期設定
-                track_window = (x-r, y-r, 2*r, 2*r)
+                # track_window = (x-r, y-r, 2*r, 2*r)
+                track_window = (x-r/2, y-r/2, r, r)  # 検出窓を小さくして追跡精度を上げる
                 # 追跡のためのROI関心領域（Region of Interest)を設定
                 # print(x, y, r)
                 roi = frame[y-r:y+r, x-r:x+r]
