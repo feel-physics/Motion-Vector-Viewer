@@ -648,8 +648,8 @@ class Main(object):
                     self._valueMin = self._valueMinScanned - 30
                     self._valueMax = self._valueMaxScanned + 30
                     # 白飛び箇所の誤検知を回避する
-                    if 250 < self._valueMax:
-                        self._valueMax = 250
+                    # if 250 < self._valueMax:
+                    #     self._valueMax = 250
                 else:
                     self._isScanningColor = True
             else:
