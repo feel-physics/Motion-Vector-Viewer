@@ -250,6 +250,7 @@ class Main(object):
                     self._isTracking = True
                     # 運動履歴の初期化
                     self._resetKinetics()
+                    print "\a"
 
 
             ### 物体追跡 ###
