@@ -14,6 +14,7 @@ class Main(object):
 
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
+        SHOULD_SAVE_GRAPH,
         CAPTURE_BACKGROUND_FRAME,                                # 背景を記録して検出対象から外す
         TARGET_CALIBRATION,
         SHOULD_DRAW_TRACKS,                                      # 軌跡を描画する
@@ -30,7 +31,7 @@ class Main(object):
         HUE_MAX,
         VALUE_MIN,
         VALUE_MAX,
-    ] = range(15)
+    ] = range(16)
 
     UNUSED_OPTIONS = [
         SHOULD_DRAW_VELOCITY_VECTORS_IN_STROBE_MODE,             # 速度ベクトルをストロボモードで描画する
@@ -59,7 +60,7 @@ class Main(object):
         HOUGH_CIRCLE_RESOLUTION,
         HOUGH_CIRCLE_CANNY_THRESHOLD,
         HOUGH_CIRCLE_ACCUMULATOR_THRESHOLD,
-    ] = [-1 for x in range(26)]  # すべて-1、合わせて35
+    ] = [-1 for x in range(26)]  # すべて-1、合わせて42
 
     SHOWING_FRAME_OPTIONS = [
         ORIGINAL,
@@ -169,6 +170,9 @@ class Main(object):
         self._valueMinScanned              = 0
         self._valueMaxScanned              = 0
 
+        # グラフの保存
+        self._shouldSaveGraph              = False
+
     def run(self):
         """
         メインループを実行する
@@ -250,7 +254,6 @@ class Main(object):
                     self._isTracking = True
                     # 運動履歴の初期化
                     self._resetKinetics()
-                    print "\a"
 
 
             ### 物体追跡 ###
@@ -465,7 +468,10 @@ class Main(object):
                 pitch = 10 if keycode == 0 else -10
                 self._valueMin          += pitch
             elif self._currentAdjusting == self.VALUE_MAX:
-                pitch = 10 if keycode == 0 else -10
+                if 245 < self._valueMax:
+                    pitch = 1 if keycode == 0 else -1
+                else:
+                    pitch = 10 if keycode == 0 else -10
                 self._valueMax          += pitch
             elif self._currentAdjusting == self.HOUGH_CIRCLE_RESOLUTION:
                 pitch = 1  if keycode == 0 else -1
@@ -653,6 +659,8 @@ class Main(object):
                     #     self._valueMax = 250
                 else:
                     self._isScanningColor = True
+            elif self._currentAdjusting == self.SHOULD_SAVE_GRAPH:
+                self._shouldSaveGraph = not self._shouldSaveGraph
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -798,6 +806,8 @@ class Main(object):
                 message = "H: {0}-{1}, V: {2}-{3}".format(
                     self._hueMin, self._hueMax, self._valueMin, self._valueMax)
             put('Target Calibration', message)
+        elif cur == self.SHOULD_SAVE_GRAPH:
+            put('Should Save Graph'  , self._shouldSaveGraph)
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
                 currentShowing = 'Original'
