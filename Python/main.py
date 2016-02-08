@@ -2,10 +2,12 @@
 __author__ = 'weed'
 
 import cv2
-from datetime import datetime
 import numpy
 from managers import WindowManager, CaptureManager
+from datetime import datetime
 from abc import *
+import copy
+
 import utils
 
 ### TODO:このファイルが長すぎる。目的の箇所を探すのが大変。
@@ -172,6 +174,14 @@ class Main(object):
 
         # グラフの保存
         self._shouldSaveGraph              = False
+        self._velocityGraphOld             = None
+        # 初期化するのを忘れていた
+        self._position                     = None
+        self._velocityVector               = None
+        self._velocityXComponentVector     = None
+        self._velocityGraph                = None
+        self._velocityXComponentGraph      = None
+        
 
     def run(self):
         """
@@ -325,6 +335,8 @@ class Main(object):
                     self._velocityVector.drawInStrobeMode(frameToDisplay)
                 # 速度グラフを描く
                 if self._shouldDrawVelocityVectorsGraph:
+                    if self._velocityGraphOld is not None:
+                        self._velocityGraphOld.draw(frameToDisplay)
                     self._velocityGraph.draw(frameToDisplay)
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
@@ -357,6 +369,14 @@ class Main(object):
                 if var is not None:
                     self._hueMinScanned, self._hueMaxScanned, \
                     self._valueMinScanned, self._valueMaxScanned = var
+
+
+            ### グラフを保存する ###
+
+
+            if self._shouldSaveGraph:
+                self._velocityGraphOld = copy.deepcopy(self._velocityGraph)
+                self._shouldSaveGraph = False
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -653,14 +673,19 @@ class Main(object):
                     self._hueMin   = self._hueMinScanned - 10
                     self._hueMax   = self._hueMaxScanned + 10
                     self._valueMin = self._valueMinScanned - 30
-                    self._valueMax = self._valueMaxScanned + 30
-                    # 白飛び箇所の誤検知を回避する
-                    # if 250 < self._valueMax:
-                    #     self._valueMax = 250
+                    # valueMaxが256以上になるとTrackできなくなる
+                    if self._valueMaxScanned < 256 - 30:
+                        self._valueMax = self._valueMaxScanned + 30
+                    else:
+                        self._valueMax = 255
                 else:
                     self._isScanningColor = True
             elif self._currentAdjusting == self.SHOULD_SAVE_GRAPH:
-                self._shouldSaveGraph = not self._shouldSaveGraph
+                if not self._shouldSaveGraph:
+                    self._shouldSaveGraph = True
+                else:
+                    self._velocityGraphOld = None  # オフにしたときは保存したグラフを削除する
+                    self._shouldSaveGraph = False
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -807,7 +832,7 @@ class Main(object):
                     self._hueMin, self._hueMax, self._valueMin, self._valueMax)
             put('Target Calibration', message)
         elif cur == self.SHOULD_SAVE_GRAPH:
-            put('Should Save Graph'  , self._shouldSaveGraph)
+            put('Should Save Graph'  , self._velocityGraphOld is not None)
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
                 currentShowing = 'Original'
@@ -1239,6 +1264,19 @@ class Graph(object):
                     frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
                     self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
+    def darken(self):
+        """
+        グラフを暗くする
+        :param frame: 背景フレーム
+        :return:
+        """
+        b, g, r = self._color
+        self._color = b-20, g-20, r-20
+    # def copy(self):
+    #     """
+    #     自身のコピーを返す
+    #     :return: Graphオブジェクト
+    #     """
 
 if __name__ == "__main__":
     Main().run()
