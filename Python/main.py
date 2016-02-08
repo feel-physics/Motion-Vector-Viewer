@@ -16,10 +16,10 @@ class Main(object):
 
     ##### TODO: 不要になったオプションは廃止する
     ADJUSTING_OPTIONS = [
-        SHOULD_SAVE_GRAPH,
         CAPTURE_BACKGROUND_FRAME,                                # 背景を記録して検出対象から外す
         TARGET_CALIBRATION,
         SHOULD_DRAW_TRACKS,                                      # 軌跡を描画する
+        SHOULD_SAVE_GRAPH,
         SHOULD_DRAW_VELOCITY_VECTOR,                             # 速度ベクトルを描画する
         SHOULD_DRAW_VELOCITY_VECTORS_GRAPH,                      # 速度ベクトルのグラフを描画する
         SHOULD_DRAW_VELOCITY_X_COMPONENT_VECTOR,                 # 速度x成分ベクトルを描画する
@@ -181,6 +181,8 @@ class Main(object):
         self._velocityXComponentVector     = None
         self._velocityGraph                = None
         self._velocityXComponentGraph      = None
+        # x成分グラフも
+        self._velocityXComponentGraphOld   = None
 
         self._resetKinetics()
 
@@ -338,10 +340,12 @@ class Main(object):
                 # 速度グラフを描く
                 if self._shouldDrawVelocityVectorsGraph:
                     if self._velocityGraphOld is not None:
-                        self._velocityGraphOld.draw(frameToDisplay)
+                        self._velocityGraphOld.draw(frameToDisplay, True)
                     self._velocityGraph.draw(frameToDisplay)
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
+                    if self._velocityXComponentGraphOld is not None:
+                        self._velocityXComponentGraphOld.draw(frameToDisplay, True)
                     self._velocityXComponentVector.draw(frameToDisplay)
                     #
                     ### この機能のためにAPIを増やすか要検討 ###
@@ -379,7 +383,12 @@ class Main(object):
             if self._shouldSaveGraph:
                 # self._velocityGraphOld = (copy.deepcopy(self._velocityGraph)).darken()
                 self._velocityGraphOld = copy.deepcopy(self._velocityGraph)
+                """:type : Graph"""
+                self._velocityGraphOld.darken()
+                self._velocityXComponentGraphOld = copy.deepcopy(self._velocityXComponentGraph)
+                self._velocityXComponentGraphOld.darken()
                 self._shouldSaveGraph = False
+                self._resetKinetics()
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -675,7 +684,7 @@ class Main(object):
                     # 検出用閾値を設定する
                     self._hueMin   = self._hueMinScanned - 10
                     self._hueMax   = self._hueMaxScanned + 10
-                    self._valueMin = self._valueMinScanned - 30
+                    self._valueMin = self._valueMinScanned - 50
                     # valueMaxが256以上になるとTrackできなくなる
                     if self._valueMaxScanned < 256 - 30:
                         self._valueMax = self._valueMaxScanned + 30
@@ -685,9 +694,11 @@ class Main(object):
                     self._isScanningColor = True
             elif self._currentAdjusting == self.SHOULD_SAVE_GRAPH:
                 if self._velocityGraphOld is None:
-                    self._shouldSaveGraph  = True  # グラフを保存する
+                    self._shouldSaveGraph  = True   # グラフを保存する
                 else:
-                    self._velocityGraphOld = None   # グラフを消す
+                    self._velocityGraphOld = None   # 保存したグラフを消す
+                    self._velocityXComponentGraphOld = None
+                    self._resetKinetics()           # グラフを消す
                     self._shouldSaveGraph  = False  # グラフを保存しない
             else:
                 raise ValueError('self._currentAdjusting')
@@ -1254,19 +1265,26 @@ class Graph(object):
         self._color                       = color
         self._isSigned                    = isSigned
         self._thickness                   = thickness
-    def draw(self, frame):
+    def draw(self, frame, shouldShift=False):
         """
         グラフを描画する
         :param frame: 背景フレーム
+        :param shouldShift: （グラフを重ねるために）間隔の半分だけ右にずらして描画する
         :return:
         """
         for i in range(len(self._vector.history) - self._numFramesDelay - 1):
             if i % self._numStrobeModeSkips == 0 and \
                             self._vector.history[i]  is not None:
+                if shouldShift:
+                    shift = self._spaceBetweenVerticalVectors / 2
+                else:
+                    shift = 0
                 utils.cvVerticalArrow(
-                    frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
+                    frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips + shift,
                     self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
+
+
     def darken(self):
         """
         グラフを暗くする
@@ -1274,7 +1292,7 @@ class Graph(object):
         :return:
         """
         b, g, r = self._color
-        self._color = b-50, g-50, r-50
+        self._color = utils.RED
 
 
 if __name__ == "__main__":
