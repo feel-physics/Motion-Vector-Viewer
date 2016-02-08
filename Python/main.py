@@ -181,7 +181,9 @@ class Main(object):
         self._velocityXComponentVector     = None
         self._velocityGraph                = None
         self._velocityXComponentGraph      = None
-        
+
+        self._resetKinetics()
+
 
     def run(self):
         """
@@ -375,6 +377,7 @@ class Main(object):
 
 
             if self._shouldSaveGraph:
+                # self._velocityGraphOld = (copy.deepcopy(self._velocityGraph)).darken()
                 self._velocityGraphOld = copy.deepcopy(self._velocityGraph)
                 self._shouldSaveGraph = False
 
@@ -681,11 +684,11 @@ class Main(object):
                 else:
                     self._isScanningColor = True
             elif self._currentAdjusting == self.SHOULD_SAVE_GRAPH:
-                if not self._shouldSaveGraph:
-                    self._shouldSaveGraph = True
+                if self._velocityGraphOld is None:
+                    self._shouldSaveGraph  = True  # グラフを保存する
                 else:
-                    self._velocityGraphOld = None  # オフにしたときは保存したグラフを削除する
-                    self._shouldSaveGraph = False
+                    self._velocityGraphOld = None   # グラフを消す
+                    self._shouldSaveGraph  = False  # グラフを保存しない
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -1271,12 +1274,8 @@ class Graph(object):
         :return:
         """
         b, g, r = self._color
-        self._color = b-20, g-20, r-20
-    # def copy(self):
-    #     """
-    #     自身のコピーを返す
-    #     :return: Graphオブジェクト
-    #     """
+        self._color = b-50, g-50, r-50
+
 
 if __name__ == "__main__":
     Main().run()
