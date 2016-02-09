@@ -186,6 +186,18 @@ def cvArrow(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=
         cvArrowBase(img, pt, vector, lengthTimes, color, thickness, lineType=8, shift=0)
 
 def cvArrowBase(img, pt, vector, lengthTimes, color, thickness=1, lineType=8, shift=0):
+    """
+    矢印を描画する
+    :param img: フレーム
+    :param pt: 起点（タプル）
+    :param vector: ベクトル（タプル）
+    :param lengthTimes: 矢印の長さの倍率
+    :param color: 色
+    :param thickness: 太さ
+    :param lineType: ？
+    :param shift: ？
+    :return:
+    """
     if int(vector[0]) == 0 and int(vector[1]) == 0:
         pass
     else:
@@ -222,6 +234,29 @@ def cvLine(img, pt1, pt2, color, thickness=1):
     pt1 = (int(pt1[0]), int(pt1[1]))
     pt2 = (int(pt2[0]), int(pt2[1]))
     cv2.line(img, pt1, pt2, color, thickness)
+
+# TODO: cvLineから書き直して、ベクトル描画もそれに合わせて直すべき
+def cvLine2(img, pt1, pt2, color, thickness=1):
+    pt1 = (int(pt1[0]), int(pt1[1]))
+    pt2 = (int(pt2[0]), int(pt2[1]))
+    cv2.line(img, pt1, pt2, WHITE, thickness+2)
+    cv2.line(img, pt1, pt2, color, thickness)
+
+def cvLineGraph(img, x, pitchX, vector, nextVector, lengthTimes, color, isSigned=False, thickness=1, lineType=8, shift=0):
+    vx, vy = vector
+    nvx, nvy = nextVector
+    if isSigned:
+        verticalVector = (0, -vx)
+        nextVerticalVector = (0, -nvx)
+        baseY = img.shape[0] * 1 / 3  # 画面の下から1/3の高さ
+    else:
+        verticalVector = (0, -math.sqrt(vx ** 2 + vy ** 2))
+        nextVerticalVector = (0, -math.sqrt(nvx ** 2 + nvy ** 2))
+        baseY = img.shape[0] * 1 / 2  # 画面下端から20px上
+    cvLine(img, (x, baseY+verticalVector[1]*lengthTimes), (x+pitchX, baseY+nextVerticalVector[1]*lengthTimes),
+            color, thickness)
+
+#TODO: vector.x、vector.yで呼べるようにする（utilsの方も）
 
 # 追跡中と検出中に呼ばれるのでメソッドにしている
 def drawVelocityVectorsInStrobeMode(frameToDisplay, positionHistory,
