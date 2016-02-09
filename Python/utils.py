@@ -255,6 +255,12 @@ def cvLineGraph(img, x, pitchX, vector, nextVector, lengthTimes, color, isSigned
         baseY = img.shape[0] * 1 / 2  # 画面下端から20px上
     cvLine(img, (x, baseY+verticalVector[1]*lengthTimes), (x+pitchX, baseY+nextVerticalVector[1]*lengthTimes),
             color, thickness)
+def cvXAxis(img, isSigned, thickness=1):
+    if isSigned:
+        baseY = img.shape[0] * 1 / 3  # 画面の下から1/3の高さ
+    else:
+        baseY = img.shape[0] * 1 / 2  # 画面下端から20px上
+    cvArrow(img, (0, baseY), (img.shape[1], 0), 1, BLACK, thickness)
 
 #TODO: vector.x、vector.yで呼べるようにする（utilsの方も）
 

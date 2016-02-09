@@ -390,9 +390,7 @@ class Main(object):
                     # 線画のグラフが保存される
                     self._velocityGraphOld1 = copy.deepcopy(self._velocityGraph)
                     self._velocityXComponentGraphOld = copy.deepcopy(self._velocityXComponentGraph)
-                    self._shouldSaveGraph = False
-                    # 速度ベクトルを初期化する
-                    print self._velocityVector
+                    # 速度ベクトルを殺す
                     if self._velocityVector:
                         self._velocityVector = None
                     # グラフ描画色が赤になる
@@ -400,23 +398,32 @@ class Main(object):
                     self._resetKinetics()
                     # 「グラフを描画」がオフになる
                     self._shouldDrawVelocityVectorsGraph = False
-                # # グラフが保存されている状態で「グラフを保存」すると
-                # else:
-                #     if self._shouldDrawVelocityVectorsGraph is False:
-                #         # 「グラフを描画」がオンになる
-                #         self._shouldDrawVelocityVectorsGraph = True
-                #     # 赤グラフ描画中に「グラフを保存」すると
-                #     elif self._velocityGraphOld2 is None:
-                #         # 線画の赤グラフが保存される
-                #         self._velocityGraphOld2 = copy.deepcopy(self._velocityGraph)
-                #         # 「グラフを描画」がオフになる
-                #         self._shouldDrawVelocityVectorsGraph = False
-                #     # 赤グラフが保存されている状態で「グラフを保存」すると
-                #     else:
-                #         # 保存されていたグラフが両方消える
-                #         self._velocityGraphOld1 = None
-                #         self._velocityGraphOld2 = None
-                #         # （「グラフを描画」はオフのまま）
+                # グラフが保存されている状態で「グラフを保存」すると
+                else:
+                    if self._shouldDrawVelocityVectorsGraph is False and self._velocityGraphOld2 is None:
+                        # 「グラフを描画」がオンになる
+                        self._resetKinetics()
+                        self._shouldDrawVelocityVectorsGraph = True
+                    # 赤グラフ描画中に「グラフを保存」すると
+                    elif self._velocityGraphOld2 is None:
+                        # 線画の赤グラフが保存される
+                        self._velocityGraphOld2 = copy.deepcopy(self._velocityGraph)
+                        # 速度ベクトルを殺す
+                        if self._velocityVector:
+                            self._velocityVector = None
+                        # グラフ描画色が赤になる
+                        self._colorVelocityVector = utils.BLUE
+                        self._resetKinetics()
+                        # 「グラフを描画」がオフになる
+                        self._shouldDrawVelocityVectorsGraph = False
+                    # 赤グラフが保存されている状態で「グラフを保存」すると
+                    else:
+                        # 保存されていたグラフが両方消える
+                        self._velocityGraphOld1 = None
+                        self._velocityGraphOld2 = None
+                        # （「グラフを描画」はオフのまま）
+                self._shouldSaveGraph = False
+
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -1294,6 +1301,8 @@ class Graph(object):
         :param shouldShift: （グラフを重ねるために）間隔の半分だけ右にずらして描画する
         :return:
         """
+        utils.cvXAxis(frame, self._isSigned, self._thickness)
+
         for i in range(len(self._vector.history) - self._numFramesDelay - 1):
             if i % self._numStrobeModeSkips == 0 and \
                             self._vector.history[i]  is not None:
@@ -1324,6 +1333,7 @@ class Graph(object):
                         self._spaceBetweenVerticalVectors,
                         self._vector.history[i], self._vector.history[i+self._numStrobeModeSkips],
                         self._lengthTimes, color, self._isSigned, thickness)
+        utils.cvXAxis(frame, self._isSigned, self._thickness)
         drawSimpleLine(self, frame, True)
         drawSimpleLine(self, frame)
 
