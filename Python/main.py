@@ -114,7 +114,7 @@ class Main(object):
         self._gravityStrength              = 200
         self._shouldDrawSynthesizedVector  = False
 
-        self._currentAdjusting             = self.CAPTURE_BACKGROUND_FRAME
+        self._currentAdjusting             = self.SHOULD_DRAW_VELOCITY_VECTORS_GRAPH
         self._currentShowing               = self.ORIGINAL
 
         self._numFramesDelay               = 6  # 6, 12
@@ -174,7 +174,8 @@ class Main(object):
 
         # グラフの保存
         self._shouldSaveGraph              = False
-        self._velocityGraphOld             = None
+        self._velocityGraphOld1            = None
+        self._velocityGraphOld2            = None
         # 初期化するのを忘れていた
         self._position                     = None
         self._velocityVector               = None
@@ -339,9 +340,12 @@ class Main(object):
                     self._velocityVector.drawInStrobeMode(frameToDisplay)
                 # 速度グラフを描く
                 if self._shouldDrawVelocityVectorsGraph:
-                    if self._velocityGraphOld is not None:
-                        self._velocityGraphOld.draw(frameToDisplay, True)
                     self._velocityGraph.draw(frameToDisplay)
+                # 保存したグラフがあれば・・・
+                if self._velocityGraphOld1 is not None:
+                    self._velocityGraphOld1.drawLine(frameToDisplay)
+                if self._velocityGraphOld2 is not None:
+                    self._velocityGraphOld2.drawLine(frameToDisplay)
                 # 速度x成分ベクトルを描く
                 if self._shouldDrawVelocityVectorXComponent:
                     if self._velocityXComponentGraphOld is not None:
@@ -381,14 +385,38 @@ class Main(object):
 
 
             if self._shouldSaveGraph:
-                # self._velocityGraphOld = (copy.deepcopy(self._velocityGraph)).darken()
-                self._velocityGraphOld = copy.deepcopy(self._velocityGraph)
-                """:type : Graph"""
-                self._velocityGraphOld.darken()
-                self._velocityXComponentGraphOld = copy.deepcopy(self._velocityXComponentGraph)
-                self._velocityXComponentGraphOld.darken()
-                self._shouldSaveGraph = False
-                self._resetKinetics()
+                # 最初に「グラフを保存」すると
+                if self._velocityGraphOld1 is None:
+                    # 線画のグラフが保存される
+                    self._velocityGraphOld1 = copy.deepcopy(self._velocityGraph)
+                    self._velocityXComponentGraphOld = copy.deepcopy(self._velocityXComponentGraph)
+                    self._shouldSaveGraph = False
+                    # 速度ベクトルを初期化する
+                    print self._velocityVector
+                    if self._velocityVector:
+                        self._velocityVector = None
+                    # グラフ描画色が赤になる
+                    self._colorVelocityVector = utils.RED
+                    self._resetKinetics()
+                    # 「グラフを描画」がオフになる
+                    self._shouldDrawVelocityVectorsGraph = False
+                # # グラフが保存されている状態で「グラフを保存」すると
+                # else:
+                #     if self._shouldDrawVelocityVectorsGraph is False:
+                #         # 「グラフを描画」がオンになる
+                #         self._shouldDrawVelocityVectorsGraph = True
+                #     # 赤グラフ描画中に「グラフを保存」すると
+                #     elif self._velocityGraphOld2 is None:
+                #         # 線画の赤グラフが保存される
+                #         self._velocityGraphOld2 = copy.deepcopy(self._velocityGraph)
+                #         # 「グラフを描画」がオフになる
+                #         self._shouldDrawVelocityVectorsGraph = False
+                #     # 赤グラフが保存されている状態で「グラフを保存」すると
+                #     else:
+                #         # 保存されていたグラフが両方消える
+                #         self._velocityGraphOld1 = None
+                #         self._velocityGraphOld2 = None
+                #         # （「グラフを描画」はオフのまま）
 
 
             ### 画面左上にテキストで情報表示 ###
@@ -693,13 +721,7 @@ class Main(object):
                 else:
                     self._isScanningColor = True
             elif self._currentAdjusting == self.SHOULD_SAVE_GRAPH:
-                if self._velocityGraphOld is None:
-                    self._shouldSaveGraph  = True   # グラフを保存する
-                else:
-                    self._velocityGraphOld = None   # 保存したグラフを消す
-                    self._velocityXComponentGraphOld = None
-                    self._resetKinetics()           # グラフを消す
-                    self._shouldSaveGraph  = False  # グラフを保存しない
+                self._shouldSaveGraph  = not self._shouldSaveGraph
             else:
                 raise ValueError('self._currentAdjusting')
 
@@ -846,7 +868,7 @@ class Main(object):
                     self._hueMin, self._hueMax, self._valueMin, self._valueMax)
             put('Target Calibration', message)
         elif cur == self.SHOULD_SAVE_GRAPH:
-            put('Should Save Graph'  , self._velocityGraphOld is not None)
+            put('Should Save Graph', self._velocityGraphOld1 is not None)
         elif cur == self.SHOWING_FRAME:
             if   self._currentShowing == self.ORIGINAL:
                 currentShowing = 'Original'
@@ -1283,16 +1305,27 @@ class Graph(object):
                     frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips + shift,
                     self._vector.history[i], self._lengthTimes, self._color,
                     self._isSigned, self._thickness)
-
-
-    def darken(self):
+    def drawLine(self, frame):
         """
-        グラフを暗くする
+        折れ線グラフを描画する
         :param frame: 背景フレーム
         :return:
         """
-        b, g, r = self._color
-        self._color = utils.RED
+        def drawSimpleLine(self, frame, isWhite=False):
+            thickness = self._thickness + 2 if isWhite else self._thickness
+            color = utils.WHITE if isWhite else self._color
+            for i in range(len(self._vector.history) - self._numFramesDelay - 2):
+                # TODO: スキップせずに連続的に描くようにする
+                if i % self._numStrobeModeSkips == 0 and \
+                                self._vector.history[i]  is not None and \
+                                self._vector.history[i+self._numStrobeModeSkips] is not None:
+                    utils.cvLineGraph(
+                        frame, self._spaceBetweenVerticalVectors*i/self._numStrobeModeSkips,
+                        self._spaceBetweenVerticalVectors,
+                        self._vector.history[i], self._vector.history[i+self._numStrobeModeSkips],
+                        self._lengthTimes, color, self._isSigned, thickness)
+        drawSimpleLine(self, frame, True)
+        drawSimpleLine(self, frame)
 
 
 if __name__ == "__main__":
