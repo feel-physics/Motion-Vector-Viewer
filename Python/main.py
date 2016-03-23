@@ -85,7 +85,7 @@ class Main(object):
         self._valueMax                     = 250 # 白飛びに捕まらないように
         self._gamma                        = 100
         self._shouldProcessGaussianBlur    = True
-        self._gaussianBlurKernelSize       = 20
+        # self._gaussianBlurKernelSize       = 20
         self._shouldProcessClosing         = True
         self._closingIterations            = 2
 
@@ -93,7 +93,9 @@ class Main(object):
         self._houghCircleDp                = 4
         self._houghCircleParam1            = 100
         self._houghCircleParam2            = 150
-        self._houghCircleRadiusMin         = 100
+        # self._houghCircleRadiusMin         = 100
+        self._houghCircleRadiusMin         = 10
+        self._gaussianBlurKernelSize       = self._houghCircleRadiusMin / 5
         self._shouldDrawCannyEdge          = False
 
         self._centerPointOfCircle          = None
@@ -184,6 +186,8 @@ class Main(object):
         self._velocityXComponentGraph      = None
         # x成分グラフも
         self._velocityXComponentGraphOld   = None
+        # 追跡がすぐ落ちるので対処療法
+        self._minDensityTrackWindow        = 0.01
 
         self._resetKinetics()
 
@@ -719,7 +723,7 @@ class Main(object):
                     # 検出用閾値を設定する
                     self._hueMin   = self._hueMinScanned - 10
                     self._hueMax   = self._hueMaxScanned + 10
-                    self._valueMin = self._valueMinScanned - 50
+                    self._valueMin = self._valueMinScanned - 100
                     # valueMaxが256以上になるとTrackできなくなる
                     if self._valueMaxScanned < 256 - 30:
                         self._valueMax = self._valueMaxScanned + 30
@@ -993,8 +997,8 @@ class Main(object):
                 ### 新しい円を見つけた！ ###
 
                 # 追跡したい領域の初期設定
-                # track_window = (x-r, y-r, 2*r, 2*r)
-                track_window = (x-r/2, y-r/2, r, r)  # 検出窓を小さくして追跡精度を上げる
+                track_window = (x-r, y-r, 2*r, 2*r)
+                # track_window = (x-r/2, y-r/2, r, r)  # 検出窓を小さくして追跡精度を上げる
                 # 追跡のためのROI関心領域（Region of Interest)を設定
                 # print(x, y, r)
                 roi = frame[y-r:y+r, x-r:x+r]
@@ -1044,7 +1048,7 @@ class Main(object):
         self._densityTrackWindow = cv2.mean(dst[y:y+h, x:x+w])[0] / 256
 
         # 密度が0.05未満なら追跡を中断する
-        if self._densityTrackWindow < 0.05:
+        if self._densityTrackWindow < self._minDensityTrackWindow:
             self._isTracking = False
             # self._positionHistory = []  # 軌跡を消去する
             # self._velocityVectorsHistory = []
